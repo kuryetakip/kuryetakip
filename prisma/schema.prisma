@@ -1,0 +1,100 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum DeliveryType {
+  INDOOR
+  OUTDOOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Venue {
+  id           String   @id @default(cuid())
+  name         String
+  indoorPrice  Decimal  @db.Decimal(10, 2)
+  outdoorPrice Decimal  @db.Decimal(10, 2)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courierVenuePrices CourierVenuePrice[]
+  deliveryRecords    DeliveryRecord[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("venues")
+}
+
+model Courier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courierVenuePrices CourierVenuePrice[]
+  deliveryRecords    DeliveryRecord[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("couriers")
+}
+
+model CourierVenuePrice {
+  id           String   @id @default(cuid())
+  courierId    String
+  venueId      String
+  indoorPrice  Decimal  @db.Decimal(10, 2)
+  outdoorPrice Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, venueId])
+  @@index([courierId])
+  @@index([venueId])
+  @@map("courier_venue_prices")
+}
+
+model DeliveryRecord {
+  id                String       @id @default(cuid())
+  date              DateTime     @db.Date
+  courierId         String
+  venueId           String
+  deliveryType      DeliveryType
+  packageCount      Int          @default(0)
+  unitPriceSnapshot Decimal      @db.Decimal(10, 2)
+  totalAmount       Decimal      @db.Decimal(10, 2)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([courierId])
+  @@index([venueId])
+  @@index([courierId, date])
+  @@index([venueId, date])
+  @@index([date, deliveryType])
+  @@map("delivery_records")
+}
