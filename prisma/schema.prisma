@@ -78,7 +78,7 @@ model CourierVenuePrice {
 model DeliveryRecord {
   id                String       @id @default(cuid())
   date              DateTime     @db.Date
-  courierId         String
+  courierId         String?
   venueId           String
   deliveryType      DeliveryType
   packageCount      Int          @default(0)
@@ -87,7 +87,7 @@ model DeliveryRecord {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  courier Courier? @relation(fields: [courierId], references: [id], onDelete: Cascade)
   venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([date])

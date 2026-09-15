@@ -28,7 +28,7 @@ const handlePrint = () => {
   <Teleport to="body">
     <div v-if="modelValue && data" class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static">
       <!-- Modal Container -->
-      <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
+      <div class="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[95vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         <!-- Modal Toolbar (Hidden in Print) -->
         <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0 print:hidden">
           <div class="flex items-center gap-2">
@@ -72,7 +72,7 @@ const handlePrint = () => {
         </div>
 
         <!-- Scrollable A4 Preview Area -->
-        <div class="overflow-y-auto p-4 sm:p-8 bg-slate-100 flex justify-center print:p-0 print:bg-white print:overflow-visible">
+        <div class="overflow-y-auto p-4 sm:p-8 bg-slate-100 dark:bg-slate-950 flex justify-center print:p-0 print:bg-white print:overflow-visible">
           <!-- A4 Page Simulation -->
           <div
             id="printable-pdf-document"

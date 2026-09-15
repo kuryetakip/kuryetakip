@@ -1,3 +1,13 @@
+export interface VenueDailyStat {
+  date: string
+  indoorCount: number
+  indoorAmount: number
+  outdoorCount: number
+  outdoorAmount: number
+  totalCount: number
+  totalAmount: number
+}
+
 export interface VenueItem {
   id: string
   name: string
@@ -5,6 +15,15 @@ export interface VenueItem {
   outdoorPrice: number
   isActive: boolean
   hasRecords?: boolean
+  recordCount?: number
+  filteredRecordCount?: number
+  totalPackageCount?: number
+  indoorPackageCount?: number
+  outdoorPackageCount?: number
+  totalAmount?: number
+  indoorAmount?: number
+  outdoorAmount?: number
+  dailyBreakdown?: VenueDailyStat[]
   createdAt?: string
   updatedAt?: string
 }
@@ -14,12 +33,18 @@ export interface VenueFormData {
   indoorPrice: number | string
   outdoorPrice: number | string
   isActive: boolean
+  date?: string
+  indoorCount?: number | string
+  outdoorCount?: number | string
 }
 
 export const useVenues = () => {
   const venues = useState<VenueItem[]>('venues-list', () => [])
   const loading = ref(false)
   const searchQuery = ref('')
+  const filterDate = ref('')
+  const filterStartDate = ref('')
+  const filterEndDate = ref('')
   const toast = useToast()
 
   const fetchVenues = async (search?: string) => {
@@ -28,6 +53,15 @@ export const useVenues = () => {
       const queryParams: Record<string, string> = {}
       if (search !== undefined ? search : searchQuery.value) {
         queryParams.search = (search !== undefined ? search : searchQuery.value).trim()
+      }
+      if (filterDate.value) {
+        queryParams.date = filterDate.value
+      }
+      if (filterStartDate.value) {
+        queryParams.startDate = filterStartDate.value
+      }
+      if (filterEndDate.value) {
+        queryParams.endDate = filterEndDate.value
       }
 
       const response = await $fetch<{ success: boolean; data: VenueItem[] }>('/api/venues', {
@@ -125,6 +159,9 @@ export const useVenues = () => {
     venues: readonly(venues),
     loading: readonly(loading),
     searchQuery,
+    filterDate,
+    filterStartDate,
+    filterEndDate,
     fetchVenues,
     createVenue,
     updateVenue,

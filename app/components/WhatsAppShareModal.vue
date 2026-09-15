@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   MessageSquare,
   Copy,
   Check,
-  ExternalLink,
   Phone,
   User,
-  Calendar,
-  AlertCircle,
-  FileText,
-  X,
-  Share2
+  AlertCircle
 } from 'lucide-vue-next'
 import type { WhatsAppMessagePayload } from '~/services/whatsapp/types'
 import { whatsAppShareService } from '~/services/whatsapp/whatsappShareService'
@@ -100,24 +95,24 @@ const handleOpenWhatsApp = () => {
     size="md"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div class="space-y-4">
+    <div class="space-y-4 text-slate-900 dark:text-slate-100">
       <!-- Target Courier Info -->
-      <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between gap-3">
+      <div class="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between gap-3">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
             <User class="w-4 h-4" />
           </div>
           <div>
-            <div class="text-xs text-emerald-800 font-medium">Alıcı Kurye</div>
-            <div class="text-sm font-bold text-slate-900">
+            <div class="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Alıcı Kurye</div>
+            <div class="text-sm font-bold text-slate-900 dark:text-slate-100">
               {{ payload.recipientName || 'Kurye Belirtilmedi' }}
             </div>
           </div>
         </div>
 
         <div class="text-right text-xs">
-          <span class="text-slate-400 block font-medium">Toplam Hakediş</span>
-          <span class="font-bold font-mono text-emerald-700 text-sm">
+          <span class="text-slate-400 dark:text-slate-500 block font-medium">Toplam Hakediş</span>
+          <span class="font-bold font-mono text-emerald-700 dark:text-emerald-400 text-sm">
             {{ Number(payload.totalAmount || 0).toFixed(2) }} ₺
           </span>
         </div>
@@ -125,7 +120,7 @@ const handleOpenWhatsApp = () => {
 
       <!-- Phone Number Field -->
       <div>
-        <label class="block text-xs font-semibold text-slate-700 mb-1">
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
           Kurye Telefon Numarası
         </label>
         <div class="relative">
@@ -133,16 +128,16 @@ const handleOpenWhatsApp = () => {
             v-model="localPhone"
             type="tel"
             placeholder="05XX XXX XX XX"
-            class="w-full px-3 py-2 pl-9 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+            class="w-full px-3 py-2 pl-9 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
             @input="onPhoneChange"
           >
-          <Phone class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Phone class="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-2.5" />
         </div>
-        <p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-          <span v-if="normalizedPhone" class="text-emerald-600 font-mono font-medium">
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+          <span v-if="normalizedPhone" class="text-emerald-600 dark:text-emerald-400 font-mono font-medium">
             WhatsApp Formatı: +{{ normalizedPhone }}
           </span>
-          <span v-else class="text-slate-400">
+          <span v-else class="text-slate-400 dark:text-slate-500">
             (Telefon girilmezse genel WhatsApp paylaşım ekranı açılır)
           </span>
         </p>
@@ -151,32 +146,32 @@ const handleOpenWhatsApp = () => {
       <!-- Message Preview Box -->
       <div>
         <div class="flex items-center justify-between mb-1">
-          <label class="text-xs font-semibold text-slate-700">
+          <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">
             Gönderilecek Mesaj Taslağı
           </label>
           <button
             type="button"
-            class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-emerald-700 transition-colors"
+            class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
             @click="handleCopy"
           >
-            <component :is="isCopied ? Check : Copy" class="w-3.5 h-3.5" :class="isCopied ? 'text-emerald-600' : ''" />
+            <component :is="isCopied ? Check : Copy" class="w-3.5 h-3.5" :class="isCopied ? 'text-emerald-600 dark:text-emerald-400' : ''" />
             <span>{{ isCopied ? 'Kopyalandı' : 'Metni Kopyala' }}</span>
           </button>
         </div>
 
-        <div class="p-3.5 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap leading-relaxed border border-slate-800 shadow-inner select-all">
+        <div class="p-3.5 rounded-xl bg-slate-900 dark:bg-slate-950 text-slate-100 font-mono text-xs whitespace-pre-wrap leading-relaxed border border-slate-800 shadow-inner select-all">
           {{ formattedMessage }}
         </div>
       </div>
 
       <!-- Instructions Note -->
-      <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-        <AlertCircle class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+      <div class="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-xs flex items-start gap-2">
+        <AlertCircle class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div class="space-y-1">
-          <p class="font-semibold text-amber-900">
+          <p class="font-semibold text-amber-900 dark:text-amber-200">
             PDF Dosya Ekleme Hatırlatması:
           </p>
-          <p class="text-[11px] text-amber-800">
+          <p class="text-[11px] text-amber-800 dark:text-amber-400/90">
             Tarayıcı güvenlik kuralları gereği, WhatsApp Web açıldığında mesaj otomatik doldurulur. PDF raporu dosyasını açılan sohbete sürükleyip gönderebilirsiniz.
           </p>
         </div>
@@ -192,7 +187,7 @@ const handleOpenWhatsApp = () => {
           @click="handleCopy"
         >
           <template #leading>
-            <component :is="isCopied ? Check : Copy" class="w-3.5 h-3.5" :class="isCopied ? 'text-emerald-600' : ''" />
+            <component :is="isCopied ? Check : Copy" class="w-3.5 h-3.5" :class="isCopied ? 'text-emerald-600 dark:text-emerald-400' : ''" />
           </template>
           {{ isCopied ? 'Kopyalandı' : 'Metni Kopyala' }}
         </BaseButton>

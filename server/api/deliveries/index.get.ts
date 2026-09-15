@@ -94,12 +94,12 @@ export default defineEventHandler(async (event) => {
         totalAmount: amount,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
-        courier: {
+        courier: r.courier ? {
           id: r.courier.id,
           name: r.courier.name,
           phone: r.courier.phone,
           isActive: r.courier.isActive
-        },
+        } : null,
         venue: {
           id: r.venue.id,
           name: r.venue.name,

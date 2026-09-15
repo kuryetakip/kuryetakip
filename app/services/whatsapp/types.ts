@@ -33,7 +33,9 @@ export interface ShareResult {
 export interface IWhatsAppShareService {
   formatMessage(payload: WhatsAppMessagePayload): string
   normalizePhoneNumber(phone?: string | null): string
+  isValidPhoneNumber(phone?: string | null): boolean
   generateShareUrl(payload: WhatsAppMessagePayload): string
   canNativeShare(file?: File | Blob): boolean
   share(payload: WhatsAppMessagePayload, file?: File | Blob): Promise<ShareResult>
 }
+

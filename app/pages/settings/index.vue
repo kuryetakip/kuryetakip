@@ -14,13 +14,15 @@ import {
   Bike,
   Store,
   Package,
-  Layers
+  Layers,
+  Palette
 } from 'lucide-vue-next'
 import { useSettings } from '~/composables/useSettings'
 import { useToast } from '~/composables/useToast'
+import ThemeCards from '~/components/ThemeCards.vue'
 
 useHead({
-  title: 'Ayarlar — KuryeTakip'
+  title: 'Ayarlar & Görünüm — KuryeTakip'
 })
 
 const toast = useToast()
@@ -65,13 +67,14 @@ const handleSavePreferences = () => {
 <template>
   <div class="space-y-6 max-w-5xl">
     <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">
       <div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-900">
-          Uygulama Ayarları
+        <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+          <Settings class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <span>Uygulama Ayarları</span>
         </h1>
-        <p class="text-xs sm:text-sm text-slate-500 mt-1">
-          Kullanıcı profiliniz, operasyonel hakediş tercihleri ve sistem durumu.
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Kullanıcı profiliniz, tema ve görünüm tercihleri, hakediş ayarları ve sistem durumu.
         </p>
       </div>
 
@@ -90,49 +93,49 @@ const handleSavePreferences = () => {
 
     <!-- Quick Stats Telemetry Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <BaseCard no-padding class="p-3.5 bg-white border-slate-200">
+      <BaseCard no-padding class="p-3.5">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <Bike class="w-4 h-4" />
           </div>
           <div>
-            <div class="text-[11px] font-medium text-slate-400">Aktif Kurye</div>
-            <div class="text-lg font-bold text-slate-900 font-mono">
+            <div class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Aktif Kurye</div>
+            <div class="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
               {{ settings.systemStats.activeCouriers }}
             </div>
           </div>
         </div>
       </BaseCard>
 
-      <BaseCard no-padding class="p-3.5 bg-white border-slate-200">
+      <BaseCard no-padding class="p-3.5">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+          <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center">
             <Store class="w-4 h-4" />
           </div>
           <div>
-            <div class="text-[11px] font-medium text-slate-400">Aktif Mekan</div>
-            <div class="text-lg font-bold text-slate-900 font-mono">
+            <div class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Aktif Mekan</div>
+            <div class="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
               {{ settings.systemStats.activeVenues }}
             </div>
           </div>
         </div>
       </BaseCard>
 
-      <BaseCard no-padding class="p-3.5 bg-white border-slate-200">
+      <BaseCard no-padding class="p-3.5">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
             <Package class="w-4 h-4" />
           </div>
           <div>
-            <div class="text-[11px] font-medium text-slate-400">Toplam Kayıt</div>
-            <div class="text-lg font-bold text-slate-900 font-mono">
+            <div class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Toplam Kayıt</div>
+            <div class="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
               {{ settings.systemStats.totalDeliveries }}
             </div>
           </div>
         </div>
       </BaseCard>
 
-      <BaseCard no-padding class="p-3.5 bg-slate-900 text-white border-slate-800">
+      <BaseCard no-padding class="p-3.5 bg-slate-900 dark:bg-slate-850 text-white border-slate-800">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-slate-800 text-emerald-400 flex items-center justify-center">
             <Database class="w-4 h-4" />
@@ -147,6 +150,21 @@ const handleSavePreferences = () => {
         </div>
       </BaseCard>
     </div>
+
+    <!-- 0. THEME & APPEARANCE SECTION -->
+    <BaseCard
+      title="Görünüm ve Tema Tercihi"
+      description="Uygulama arayüzünü gündüz (Açık), gece (Koyu) veya cihazınızın işletim sistemi temasına (Otomatik) göre ayarlayın."
+    >
+      <template #header>
+        <div class="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+          <Palette class="w-4 h-4" />
+          <span>Tema Ayarı</span>
+        </div>
+      </template>
+
+      <ThemeCards />
+    </BaseCard>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- LEFT COLUMN: Profile & Preferences Forms (2 cols) -->
@@ -190,29 +208,29 @@ const handleSavePreferences = () => {
           <form class="space-y-4" @submit.prevent="handleSavePreferences">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Varsayılan Para Birimi
                 </label>
                 <input
                   type="text"
                   value="Türk Lirası — TRY (₺)"
                   disabled
-                  class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-xs sm:text-sm font-mono cursor-not-allowed"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-mono cursor-not-allowed"
                 >
-                <p class="text-[10px] text-slate-400 mt-1">Sistem para birimi Türk Lirası olarak sabitlenmiştir.</p>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Sistem para birimi Türk Lirası olarak sabitlenmiştir.</p>
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Varsayılan Rapor Dönemi
                 </label>
                 <select
                   v-model="prefForm.defaultPeriod"
-                  class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
-                  <option value="month">Bu Ay (Varsayılan)</option>
-                  <option value="week">Bu Hafta</option>
-                  <option value="today">Bugün</option>
+                  <option value="month" class="dark:bg-slate-900 dark:text-slate-100">Bu Ay (Varsayılan)</option>
+                  <option value="week" class="dark:bg-slate-900 dark:text-slate-100">Bu Hafta</option>
+                  <option value="today" class="dark:bg-slate-900 dark:text-slate-100">Bugün</option>
                 </select>
               </div>
             </div>
@@ -224,14 +242,14 @@ const handleSavePreferences = () => {
             />
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 WhatsApp Paylaşım Alt Notu
               </label>
               <textarea
                 v-model="prefForm.whatsappDefaultNote"
                 rows="2"
                 placeholder="Hakediş raporu PDF olarak hazırlanmıştır."
-                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none transition-shadow"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-shadow"
               ></textarea>
             </div>
 
@@ -252,27 +270,27 @@ const handleSavePreferences = () => {
         <!-- Application Info Card -->
         <BaseCard title="Uygulama Bilgileri">
           <div class="space-y-3 text-xs">
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
-              <span class="text-slate-500 font-medium">Uygulama:</span>
-              <span class="font-bold text-slate-900 font-mono">{{ settings.app.name }}</span>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-500 dark:text-slate-400 font-medium">Uygulama:</span>
+              <span class="font-bold text-slate-900 dark:text-slate-100 font-mono">{{ settings.app.name }}</span>
             </div>
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
-              <span class="text-slate-500 font-medium">Sürüm:</span>
-              <span class="font-mono text-slate-800 bg-slate-100 px-2 py-0.5 rounded font-semibold">
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-500 dark:text-slate-400 font-medium">Sürüm:</span>
+              <span class="font-mono text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-semibold">
                 v{{ settings.app.version }}
               </span>
             </div>
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
-              <span class="text-slate-500 font-medium">Framework:</span>
-              <span class="font-semibold text-slate-800">Nuxt 4 / Vue 3</span>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-500 dark:text-slate-400 font-medium">Framework:</span>
+              <span class="font-semibold text-slate-800 dark:text-slate-200">Nuxt 4 / Vue 3</span>
             </div>
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
-              <span class="text-slate-500 font-medium">Veritabanı:</span>
-              <span class="font-semibold text-emerald-700">Supabase PostgreSQL</span>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <span class="text-slate-500 dark:text-slate-400 font-medium">Veritabanı:</span>
+              <span class="font-semibold text-emerald-700 dark:text-emerald-400">Supabase PostgreSQL</span>
             </div>
             <div class="flex items-center justify-between py-1.5">
-              <span class="text-slate-500 font-medium">ORM Katmanı:</span>
-              <span class="font-semibold text-slate-800">Prisma ORM v6</span>
+              <span class="text-slate-500 dark:text-slate-400 font-medium">ORM Katmanı:</span>
+              <span class="font-semibold text-slate-800 dark:text-slate-200">Prisma ORM v6</span>
             </div>
           </div>
         </BaseCard>
@@ -280,33 +298,33 @@ const handleSavePreferences = () => {
         <!-- System Health & Architecture Summary -->
         <BaseCard title="Sistem Mimarisi">
           <div class="space-y-3 text-xs">
-            <div class="flex items-center justify-between py-1 text-slate-700">
+            <div class="flex items-center justify-between py-1 text-slate-700 dark:text-slate-300">
               <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Mekan & Fiyatlandırma</span>
               </div>
               <BaseBadge variant="success">Aktif</BaseBadge>
             </div>
 
-            <div class="flex items-center justify-between py-1 text-slate-700">
+            <div class="flex items-center justify-between py-1 text-slate-700 dark:text-slate-300">
               <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Kurye & Özel Tarife</span>
               </div>
               <BaseBadge variant="success">Aktif</BaseBadge>
             </div>
 
-            <div class="flex items-center justify-between py-1 text-slate-700">
+            <div class="flex items-center justify-between py-1 text-slate-700 dark:text-slate-300">
               <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Paket Kayıt & Hakediş</span>
               </div>
               <BaseBadge variant="success">Aktif</BaseBadge>
             </div>
 
-            <div class="flex items-center justify-between py-1 text-slate-700">
+            <div class="flex items-center justify-between py-1 text-slate-700 dark:text-slate-300">
               <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>A4 PDF Döküm & WhatsApp</span>
               </div>
               <BaseBadge variant="success">Aktif</BaseBadge>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch, computed } from 'vue'
 import { X } from 'lucide-vue-next'
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
   title?: string
   description?: string
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   persistent?: boolean
 }
 
@@ -61,8 +62,10 @@ onUnmounted(() => {
   }
 })
 
+const effectiveWidth = computed(() => props.size || props.maxWidth || 'md')
+
 const maxWidthClasses = computed(() => {
-  switch (props.maxWidth) {
+  switch (effectiveWidth.value) {
     case 'sm':
       return 'max-w-sm'
     case 'lg':
@@ -90,7 +93,7 @@ const maxWidthClasses = computed(() => {
     >
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
         @click="onBackdropClick"
       >
         <Transition
@@ -102,20 +105,20 @@ const maxWidthClasses = computed(() => {
           leave-to-class="transform scale-95 opacity-0 translate-y-2"
         >
           <div
-            class="w-full bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden"
+            class="w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-150"
             :class="maxWidthClasses"
             @click.stop
           >
             <!-- Header -->
             <div
               v-if="title || description || $slots.header"
-              class="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 bg-slate-50/50"
+              class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3 bg-slate-50/50 dark:bg-slate-850/50"
             >
               <div>
-                <h3 v-if="title" class="text-sm font-semibold text-slate-900 tracking-tight">
+                <h3 v-if="title" class="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
                   {{ title }}
                 </h3>
-                <p v-if="description" class="text-xs text-slate-500 mt-0.5">
+                <p v-if="description" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
                   {{ description }}
                 </p>
                 <slot name="header" />
@@ -123,7 +126,7 @@ const maxWidthClasses = computed(() => {
               <button
                 type="button"
                 aria-label="Kapat"
-                class="text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                class="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 @click="close"
               >
                 <X class="w-4 h-4" />
@@ -138,7 +141,7 @@ const maxWidthClasses = computed(() => {
             <!-- Footer -->
             <div
               v-if="$slots.footer"
-              class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5"
+              class="px-5 py-3.5 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5"
             >
               <slot name="footer" />
             </div>

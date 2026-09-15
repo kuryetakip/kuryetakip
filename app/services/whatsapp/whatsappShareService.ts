@@ -26,6 +26,14 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
   }
 
   /**
+   * Checks if normalized phone number is a valid 12-digit number (e.g. 905XXXXXXXXX)
+   */
+  isValidPhoneNumber(phone?: string | null): boolean {
+    const normalized = this.normalizePhoneNumber(phone)
+    return normalized.length === 12 && normalized.startsWith('905')
+  }
+
+  /**
    * Formats the official courier settlement message according to project specifications
    */
   formatMessage(payload: WhatsAppMessagePayload): string {
@@ -97,7 +105,7 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
       return `https://wa.me/${phone}?text=${text}`
     }
 
-    return `https://api.whatsapp.com/send?text=${text}`
+    return `https://wa.me/?text=${text}`
   }
 
   /**
@@ -125,7 +133,6 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
    * Performs the share action via Web Share API or direct WhatsApp URL redirection
    */
   async share(payload: WhatsAppMessagePayload, file?: File | Blob): Promise<ShareResult> {
-    const phone = this.normalizePhoneNumber(payload.recipientPhone)
     const shareUrl = this.generateShareUrl(payload)
 
     // Open WhatsApp in a new tab / window
@@ -139,3 +146,4 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
 }
 
 export const whatsAppShareService = new WhatsAppDirectLinkShareService()
+

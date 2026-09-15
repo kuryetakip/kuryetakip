@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch, computed } from 'vue'
 import { X } from 'lucide-vue-next'
 
 interface Props {
@@ -72,7 +72,7 @@ const widthClasses = computed(() => {
     <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden">
       <!-- Backdrop -->
       <div
-        class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity"
+        class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
         @click="close"
       />
 
@@ -81,18 +81,18 @@ const widthClasses = computed(() => {
         :class="position === 'right' ? 'right-0 pl-10' : 'left-0 pr-10'"
       >
         <div
-          class="w-screen bg-white shadow-2xl flex flex-col"
+          class="w-screen bg-white dark:bg-slate-900 shadow-2xl flex flex-col text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800"
           :class="widthClasses"
         >
           <!-- Header -->
-          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-slate-900">
+          <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-850/50">
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {{ title }}
             </h3>
             <button
               type="button"
               aria-label="Menüyü Kapat"
-              class="text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+              class="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               @click="close"
             >
               <X class="w-4 h-4" />
@@ -105,7 +105,7 @@ const widthClasses = computed(() => {
           </div>
 
           <!-- Footer -->
-          <div v-if="$slots.footer" class="p-4 border-t border-slate-100 bg-slate-50">
+          <div v-if="$slots.footer" class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
             <slot name="footer" />
           </div>
         </div>

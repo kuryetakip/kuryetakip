@@ -48,17 +48,17 @@ const onConfirm = () => {
       <div
         :class="[
           'p-2 rounded-full shrink-0',
-          variant === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-700'
+          variant === 'danger' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
         ]"
       >
         <AlertTriangle class="w-5 h-5" />
       </div>
 
       <div class="flex-1 min-w-0">
-        <h4 class="text-sm font-semibold text-slate-900">
+        <h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {{ title }}
         </h4>
-        <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+        <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
           {{ message }}
         </p>
       </div>

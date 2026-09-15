@@ -16,16 +16,16 @@ const props = withDefaults(defineProps<Props>(), {
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'success':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60'
     case 'warning':
-      return 'bg-amber-50 text-amber-700 border-amber-200/80'
+      return 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/60'
     case 'danger':
-      return 'bg-rose-50 text-rose-700 border-rose-200/80'
+      return 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/60'
     case 'brand':
-      return 'bg-sky-50 text-sky-700 border-sky-200/80'
+      return 'bg-sky-50 text-sky-700 border-sky-200/80 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-800/60'
     case 'neutral':
     default:
-      return 'bg-slate-100 text-slate-700 border-slate-200'
+      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
   }
 })
 
@@ -41,7 +41,7 @@ const dotClasses = computed(() => {
       return 'bg-sky-500'
     case 'neutral':
     default:
-      return 'bg-slate-400'
+      return 'bg-slate-400 dark:bg-slate-500'
   }
 })
 
@@ -55,7 +55,7 @@ const sizeClasses = computed(() => {
 <template>
   <span
     :class="[
-      'inline-flex items-center rounded-md border tracking-tight',
+      'inline-flex items-center rounded-md border tracking-tight transition-colors duration-150',
       variantClasses,
       sizeClasses
     ]"

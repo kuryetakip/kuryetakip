@@ -210,19 +210,19 @@ onMounted(async () => {
 <template>
   <div class="space-y-6 max-w-5xl mx-auto">
     <!-- Back Button & Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">
       <div class="flex items-center gap-3">
         <NuxtLink
           to="/couriers"
-          class="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs"
+          class="p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
         >
           <ArrowLeft class="w-4 h-4" />
         </NuxtLink>
         <div>
-          <h1 class="text-xl font-bold tracking-tight text-slate-900">
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Kurye Detayı & Özel Fiyatlar
           </h1>
-          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Kurye bilgileri ve mekan bazlı özel hakediş fiyat tanımları.
           </p>
         </div>
@@ -270,25 +270,25 @@ onMounted(async () => {
       <BaseCard>
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div class="flex items-start sm:items-center gap-4">
-            <div class="w-14 h-14 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Bike class="w-7 h-7 text-emerald-400" />
+            <div class="w-14 h-14 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Bike class="w-7 h-7 text-emerald-400 dark:text-white" />
             </div>
             <div>
               <div class="flex items-center gap-2.5">
-                <h2 class="text-lg font-bold text-slate-900">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">
                   {{ currentCourier.name }}
                 </h2>
                 <BaseBadge :variant="currentCourier.isActive ? 'success' : 'neutral'" dot>
                   {{ currentCourier.isActive ? 'Aktif Kurye' : 'Pasif Kurye' }}
                 </BaseBadge>
               </div>
-              <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-1.5">
+              <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 <div class="flex items-center gap-1.5">
-                  <Phone class="w-3.5 h-3.5 text-slate-400" />
+                  <Phone class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span>{{ currentCourier.phone || 'Telefon belirtilmedi' }}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                  <Calendar class="w-3.5 h-3.5 text-slate-400" />
+                  <Calendar class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span>Kayıt: {{ formatDate(currentCourier.createdAt) }}</span>
                 </div>
               </div>
@@ -301,11 +301,11 @@ onMounted(async () => {
       <div class="space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Tag class="w-4 h-4 text-slate-700" />
+            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Tag class="w-4 h-4 text-slate-700 dark:text-slate-300" />
               Mekan Bazlı Özel Fiyatlar
             </h3>
-            <p class="text-xs text-slate-500 mt-0.5">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Bu kuryeye özel tanımlanan iç ve dış teslimat hakediş birim fiyatları.
             </p>
           </div>
@@ -324,8 +324,8 @@ onMounted(async () => {
         </div>
 
         <!-- Price Rules Explanatory Banner -->
-        <div class="flex items-start gap-3 p-3.5 rounded-lg bg-blue-50/70 border border-blue-200 text-blue-900 text-xs leading-relaxed">
-          <Info class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <div class="flex items-start gap-3 p-3.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 text-blue-900 dark:text-blue-300 text-xs leading-relaxed">
+          <Info class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
           <div>
             <span class="font-semibold">Fiyatlandırma Mantığı:</span> Bir kurye için bir mekanda özel fiyat tanımlanmışsa, paket girişlerinde kuryenin özel fiyatı uygulanır. Özel fiyat tanımlanmamış mekanlarda ise mekanın standart fiyatı otomatik geçerli olur.
           </div>
@@ -345,47 +345,47 @@ onMounted(async () => {
           </BaseEmptyState>
         </div>
 
-        <div v-else class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div v-else class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs sm:text-sm">
-              <thead class="bg-slate-50 border-b border-slate-200">
+              <thead class="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th class="px-4 py-3 font-semibold text-slate-700">Mekan</th>
-                  <th class="px-4 py-3 font-semibold text-slate-500 text-right">Mekan Standart (İç / Dış)</th>
-                  <th class="px-4 py-3 font-semibold text-slate-900 text-right">Kurye Özel İç Fiyat</th>
-                  <th class="px-4 py-3 font-semibold text-slate-900 text-right">Kurye Özel Dış Fiyat</th>
-                  <th class="px-4 py-3 font-semibold text-slate-700 text-right">İşlemler</th>
+                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Mekan</th>
+                  <th class="px-4 py-3 font-semibold text-slate-500 dark:text-slate-400 text-right">Mekan Standart (İç / Dış)</th>
+                  <th class="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 text-right">Kurye Özel İç Fiyat</th>
+                  <th class="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 text-right">Kurye Özel Dış Fiyat</th>
+                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">İşlemler</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-900 dark:text-slate-100">
                 <tr
                   v-for="priceItem in courierPrices"
                   :key="priceItem.id"
-                  class="hover:bg-slate-50/80 transition-colors"
+                  class="hover:bg-slate-50/80 dark:hover:bg-slate-850 transition-colors"
                 >
                   <!-- Mekan Adı -->
-                  <td class="px-4 py-3.5 font-semibold text-slate-900">
+                  <td class="px-4 py-3.5 font-semibold text-slate-900 dark:text-slate-100">
                     <div class="flex items-center gap-2">
-                      <Store class="w-4 h-4 text-slate-500 shrink-0" />
+                      <Store class="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
                       <span>{{ priceItem.venue.name }}</span>
                     </div>
                   </td>
 
                   <!-- Mekan Standart Liste Fiyatı Referansı -->
-                  <td class="px-4 py-3.5 text-right text-slate-500 font-mono text-xs">
+                  <td class="px-4 py-3.5 text-right text-slate-500 dark:text-slate-400 font-mono text-xs">
                     {{ priceItem.venue.indoorPrice.toFixed(2) }} ₺ / {{ priceItem.venue.outdoorPrice.toFixed(2) }} ₺
                   </td>
 
                   <!-- Kurye Özel İç Fiyat -->
-                  <td class="px-4 py-3.5 text-right font-bold text-slate-900">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-mono">
+                  <td class="px-4 py-3.5 text-right font-bold text-slate-900 dark:text-slate-100">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 font-mono">
                       {{ priceItem.indoorPrice.toFixed(2) }} ₺
                     </span>
                   </td>
 
                   <!-- Kurye Özel Dış Fiyat -->
-                  <td class="px-4 py-3.5 text-right font-bold text-slate-900">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200/60 font-mono">
+                  <td class="px-4 py-3.5 text-right font-bold text-slate-900 dark:text-slate-100">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60 font-mono">
                       {{ priceItem.outdoorPrice.toFixed(2) }} ₺
                     </span>
                   </td>
@@ -399,7 +399,7 @@ onMounted(async () => {
                         title="Fiyatı Düzenle"
                         @click="openEditPriceModal(priceItem)"
                       >
-                        <Edit2 class="w-3.5 h-3.5 text-slate-600" />
+                        <Edit2 class="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                       </BaseButton>
 
                       <BaseButton
@@ -408,7 +408,7 @@ onMounted(async () => {
                         title="Özel Fiyatı Kaldır"
                         @click="openDeletePriceConfirm(priceItem)"
                       >
-                        <Trash2 class="w-3.5 h-3.5 text-rose-600" />
+                        <Trash2 class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                       </BaseButton>
                     </div>
                   </td>
@@ -417,7 +417,7 @@ onMounted(async () => {
             </table>
           </div>
 
-          <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 font-medium">
+          <div class="px-4 py-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-medium">
             Toplam {{ courierPrices.length }} mekana özel fiyat tanımlı
           </div>
         </div>

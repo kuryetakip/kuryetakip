@@ -6,6 +6,13 @@ export interface CourierItem {
   hasRecords?: boolean
   deliveryCount?: number
   customPriceCount?: number
+  targetDate?: string
+  todayIndoorPackages?: number
+  todayOutdoorPackages?: number
+  todayTotalPackages?: number
+  todayIndoorAmount?: number
+  todayOutdoorAmount?: number
+  todayTotalAmount?: number
   createdAt?: string
   updatedAt?: string
 }
@@ -45,14 +52,19 @@ export const useCouriers = () => {
   const courierPrices = useState<CourierVenuePriceItem[]>('current-courier-prices', () => [])
   const loading = ref(false)
   const searchQuery = ref('')
+  const filterDate = ref(new Date().toISOString().substring(0, 10))
   const toast = useToast()
 
-  const fetchCouriers = async (search?: string) => {
+  const fetchCouriers = async (search?: string, dateOverride?: string) => {
     loading.value = true
     try {
       const queryParams: Record<string, string> = {}
       if (search !== undefined ? search : searchQuery.value) {
         queryParams.search = (search !== undefined ? search : searchQuery.value).trim()
+      }
+      const targetD = dateOverride !== undefined ? dateOverride : filterDate.value
+      if (targetD) {
+        queryParams.date = targetD
       }
 
       const response = await $fetch<{ success: boolean; data: CourierItem[] }>('/api/couriers', {
@@ -261,6 +273,7 @@ export const useCouriers = () => {
     courierPrices: readonly(courierPrices),
     loading: readonly(loading),
     searchQuery,
+    filterDate,
     fetchCouriers,
     fetchCourierById,
     fetchCourierPrices,
