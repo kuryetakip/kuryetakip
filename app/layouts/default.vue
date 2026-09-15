@@ -81,7 +81,7 @@ const handleLogout = async () => {
         </button>
 
         <!-- Brand Logo -->
-        <NuxtLink to="/deliveries" class="flex items-center gap-2.5 group">
+        <NuxtLink to="/venues" class="flex items-center gap-2.5 group">
           <div class="w-8 h-8 rounded-lg bg-slate-900 dark:bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs group-hover:bg-slate-800 dark:group-hover:bg-emerald-500 transition-colors">
             <Bike class="w-4 h-4 text-emerald-400 dark:text-white" />
           </div>

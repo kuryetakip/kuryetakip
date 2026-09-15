@@ -166,9 +166,12 @@ const openDeleteConfirm = (record: DeliveryRecordItem) => {
 
 const handleConfirmDelete = async () => {
   if (deliveryToDelete.value) {
-    await deleteDelivery(deliveryToDelete.value.id)
-    isConfirmDeleteOpen.value = false
-    deliveryToDelete.value = null
+    const success = await deleteDelivery(deliveryToDelete.value.id)
+    if (success) {
+      isConfirmDeleteOpen.value = false
+      deliveryToDelete.value = null
+      await fetchVenues()
+    }
   }
 }
 
@@ -888,7 +891,7 @@ onMounted(async () => {
     <BaseConfirmDialog
       v-model="isConfirmDeleteOpen"
       title="Paket Kaydını Sil"
-      :message="`Bu kurye paket kaydını (${deliveryToDelete?.courier.name} - ${deliveryToDelete?.packageCount} Adet ${deliveryToDelete?.deliveryType === 'INDOOR' ? 'İç' : 'Dış'} Paket) kalıcı olarak silmek istediğinize emin misiniz?`"
+      :message="deliveryToDelete ? `Bu paket kaydını (${deliveryToDelete.courier?.name || deliveryToDelete.venue?.name || 'Mekan Kaydı'} — ${deliveryToDelete.packageCount} Adet ${deliveryToDelete.deliveryType === 'INDOOR' ? 'İç' : 'Dış'} Mekan) kalıcı olarak silmek istediğinize emin misiniz?` : 'Seçili paket kaydını kalıcı olarak silmek istediğinize emin misiniz?'"
       confirm-text="Kalıcı Olarak Sil"
       variant="danger"
       :loading="loading"

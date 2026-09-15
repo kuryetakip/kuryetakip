@@ -577,7 +577,7 @@ onMounted(async () => {
     <BaseConfirmDialog
       v-model="isDeletePriceConfirmOpen"
       title="Özel Fiyatı Kaldır"
-      :message="`&quot;${priceToDelete?.venue.name}&quot; mekanına ait kurye özel fiyatını kaldırmak istediğinize emin misiniz? Kaldırıldığında kurye için mekanın standart liste fiyatı geçerli olacaktır.`"
+      :message="priceToDelete ? `&quot;${priceToDelete.venue?.name || 'Mekan'}&quot; mekanına ait kurye özel fiyatını kaldırmak istediğinize emin misiniz? Kaldırıldığında kurye için mekanın standart liste fiyatı geçerli olacaktır.` : 'Özel fiyatı kaldırmak istediğinize emin misiniz?'"
       confirm-text="Özel Fiyatı Kaldır"
       variant="danger"
       @confirm="handleConfirmDeletePrice"

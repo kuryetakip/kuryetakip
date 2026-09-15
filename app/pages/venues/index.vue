@@ -1013,7 +1013,7 @@ onMounted(() => {
     <BaseConfirmDialog
       v-model="isConfirmDeleteOpen"
       title="Mekanı Sil"
-      :message="`&quot;${venueToDelete?.name}&quot; mekanını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`"
+      :message="venueToDelete ? `&quot;${venueToDelete.name}&quot; mekanını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.` : 'Mekanı silmek istediğinizden emin misiniz?'"
       confirm-text="Kalıcı Olarak Sil"
       variant="danger"
       :loading="loading"

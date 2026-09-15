@@ -1478,7 +1478,7 @@ onMounted(async () => {
     <BaseConfirmDialog
       v-model="isConfirmDeleteOpen"
       title="Kuryeyi Sil"
-      :message="`&quot;${courierToDelete?.name}&quot; kuryesini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`"
+      :message="courierToDelete ? `&quot;${courierToDelete.name}&quot; kuryesini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.` : 'Kuryeyi silmek istediğinizden emin misiniz?'"
       confirm-text="Kalıcı Olarak Sil"
       variant="danger"
       :loading="loading"

@@ -49,7 +49,7 @@ export function useAuth() {
       if (res.success && res.user) {
         user.value = res.user
         toast.success(`Hoş geldiniz, ${res.user.name || res.user.username}!`)
-        await router.push('/deliveries')
+        await router.push('/venues')
         return true
       }
       return false
