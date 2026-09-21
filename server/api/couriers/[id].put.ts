@@ -40,6 +40,16 @@ export default defineEventHandler(async (event) => {
       dataToUpdate.phone = body.phone ? String(body.phone).trim() : null
     }
 
+    if (body?.indoorPrice !== undefined) {
+      const p = Number(body.indoorPrice)
+      dataToUpdate.indoorPrice = isNaN(p) ? 0 : p
+    }
+
+    if (body?.outdoorPrice !== undefined) {
+      const p = Number(body.outdoorPrice)
+      dataToUpdate.outdoorPrice = isNaN(p) ? 0 : p
+    }
+
     if (body?.isActive !== undefined) {
       dataToUpdate.isActive = Boolean(body.isActive)
     }

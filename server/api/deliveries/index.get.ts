@@ -64,6 +64,8 @@ export default defineEventHandler(async (event) => {
     let totalPackages = 0
     let indoorPackages = 0
     let outdoorPackages = 0
+    let totalCourierAmount = 0
+    let totalVenueAmount = 0
     let indoorSettlementAmount = 0
     let outdoorSettlementAmount = 0
     let totalSettlementAmount = 0
@@ -73,15 +75,26 @@ export default defineEventHandler(async (event) => {
       const unitPrice = Number(r.unitPriceSnapshot)
       const amount = Number(r.totalAmount)
 
+      const venuePrice = Number(r.venuePriceSnapshot || 0) > 0 ? Number(r.venuePriceSnapshot) : Number(r.venue?.indoorPrice || unitPrice)
+      const venueAmount = Number(r.venueTotalAmount || 0) > 0 ? Number(r.venueTotalAmount) : Number((count * venuePrice).toFixed(2))
+
+      const courierPrice = Number(r.courierPriceSnapshot || 0) > 0 ? Number(r.courierPriceSnapshot) : unitPrice
+      const courierAmount = Number(r.courierTotalAmount || 0) > 0 ? Number(r.courierTotalAmount) : amount
+
+      const profit = Number((venueAmount - courierAmount).toFixed(2))
+
       totalPackages += count
+      totalCourierAmount += courierAmount
+      totalVenueAmount += venueAmount
+
       if (r.deliveryType === DeliveryType.INDOOR) {
         indoorPackages += count
-        indoorSettlementAmount += amount
+        indoorSettlementAmount += courierAmount
       } else {
         outdoorPackages += count
-        outdoorSettlementAmount += amount
+        outdoorSettlementAmount += courierAmount
       }
-      totalSettlementAmount += amount
+      totalSettlementAmount += courierAmount
 
       return {
         id: r.id,
@@ -90,8 +103,13 @@ export default defineEventHandler(async (event) => {
         venueId: r.venueId,
         deliveryType: r.deliveryType,
         packageCount: count,
-        unitPriceSnapshot: unitPrice,
-        totalAmount: amount,
+        venuePriceSnapshot: venuePrice,
+        venueTotalAmount: venueAmount,
+        courierPriceSnapshot: courierPrice,
+        courierTotalAmount: courierAmount,
+        profitAmount: profit,
+        unitPriceSnapshot: courierPrice,
+        totalAmount: courierAmount,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         courier: r.courier ? {
@@ -100,15 +118,17 @@ export default defineEventHandler(async (event) => {
           phone: r.courier.phone,
           isActive: r.courier.isActive
         } : null,
-        venue: {
+        venue: r.venue ? {
           id: r.venue.id,
           name: r.venue.name,
           indoorPrice: Number(r.venue.indoorPrice),
           outdoorPrice: Number(r.venue.outdoorPrice),
           isActive: r.venue.isActive
-        }
+        } : null
       }
     })
+
+    const netProfit = Number((totalVenueAmount - totalCourierAmount).toFixed(2))
 
     return {
       success: true,
@@ -118,6 +138,9 @@ export default defineEventHandler(async (event) => {
         totalPackages,
         indoorPackages,
         outdoorPackages,
+        totalCourierAmount: Number(totalCourierAmount.toFixed(2)),
+        totalVenueAmount: Number(totalVenueAmount.toFixed(2)),
+        netProfitAmount: netProfit,
         indoorSettlementAmount: Number(indoorSettlementAmount.toFixed(2)),
         outdoorSettlementAmount: Number(outdoorSettlementAmount.toFixed(2)),
         totalSettlementAmount: Number(totalSettlementAmount.toFixed(2))

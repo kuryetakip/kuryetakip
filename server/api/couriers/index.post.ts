@@ -7,6 +7,8 @@ export default defineEventHandler(async (event) => {
     const name = typeof body?.name === 'string' ? body.name.trim() : ''
     const phone = typeof body?.phone === 'string' ? body.phone.trim() : (body?.phone ? String(body.phone).trim() : null)
     const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true
+    const indoorPrice = body?.indoorPrice !== undefined && !isNaN(Number(body.indoorPrice)) ? Number(body.indoorPrice) : 0
+    const outdoorPrice = body?.outdoorPrice !== undefined && !isNaN(Number(body.outdoorPrice)) ? Number(body.outdoorPrice) : 0
 
     // Server-side validations
     if (!name) {
@@ -20,7 +22,9 @@ export default defineEventHandler(async (event) => {
       data: {
         name,
         phone: phone || null,
-        isActive
+        isActive,
+        indoorPrice,
+        outdoorPrice
       }
     })
 

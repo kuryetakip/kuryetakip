@@ -60,7 +60,9 @@ export default defineEventHandler(async (event) => {
             date: true,
             packageCount: true,
             totalAmount: true,
+            venueTotalAmount: true,
             deliveryType: true,
+            venuePriceSnapshot: true,
             unitPriceSnapshot: true
           }
         }
@@ -88,7 +90,9 @@ export default defineEventHandler(async (event) => {
 
       for (const rec of v.deliveryRecords) {
         const count = rec.packageCount || 0
-        const amount = Number(rec.totalAmount || 0)
+        const amount = Number(rec.venueTotalAmount || 0) > 0
+          ? Number(rec.venueTotalAmount)
+          : Number(rec.totalAmount || 0)
         const dateKey = rec.date.toISOString().substring(0, 10)
 
         totalPackageCount += count

@@ -36,6 +36,9 @@ export interface VenueFormData {
   date?: string
   indoorCount?: number | string
   outdoorCount?: number | string
+  courierId?: string
+  courierIndoorPrice?: number | string
+  courierOutdoorPrice?: number | string
 }
 
 export const useVenues = () => {

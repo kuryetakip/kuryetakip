@@ -3,6 +3,8 @@ export interface CourierItem {
   name: string
   phone: string | null
   isActive: boolean
+  indoorPrice?: number
+  outdoorPrice?: number
   hasRecords?: boolean
   deliveryCount?: number
   customPriceCount?: number
@@ -37,6 +39,8 @@ export interface CourierVenuePriceItem {
 export interface CourierFormData {
   name: string
   phone: string
+  indoorPrice?: number | string
+  outdoorPrice?: number | string
   isActive: boolean
 }
 

@@ -42,26 +42,21 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Resolve venue: If not provided, find first active venue or create default
-    if (!venueId) {
-      const activeVenue = await prisma.venue.findFirst({
-        where: { isActive: true }
-      }) || await prisma.venue.findFirst()
-
-      if (activeVenue) {
-        venueId = activeVenue.id
-      } else {
-        const defaultVenue = await prisma.venue.create({
-          data: {
-            name: 'Genel Operasyon',
-            indoorPrice: new Prisma.Decimal('30.00'),
-            outdoorPrice: new Prisma.Decimal('32.00'),
-            isActive: true
-          }
-        })
-        venueId = defaultVenue.id
+    // Resolve venue: Optional
+    let finalVenueId: string | null = venueId || null
+    if (finalVenueId) {
+      const venueExists = await prisma.venue.findUnique({
+        where: { id: finalVenueId }
+      })
+      if (!venueExists) {
+        finalVenueId = null
       }
     }
+
+    // Resolve default rates for fallback if needed
+    const resolvedDefault = finalVenueId
+      ? await resolveCourierRate(courierId, finalVenueId, DeliveryType.INDOOR).catch(() => null)
+      : null
 
     // Check if submitting combined indoor + outdoor form
     const hasCombinedFields = body?.indoorCount !== undefined || body?.outdoorCount !== undefined
@@ -69,50 +64,69 @@ export default defineEventHandler(async (event) => {
     if (hasCombinedFields) {
       const indoorCount = Number(body?.indoorCount || 0)
       const outdoorCount = Number(body?.outdoorCount || 0)
-      const indoorPrice = Number(body?.indoorPrice ?? 0)
-      const outdoorPrice = Number(body?.outdoorPrice ?? 0)
+
+      // Venue prices
+      const rawVenueIndoor = body?.venueIndoorPrice !== undefined ? body.venueIndoorPrice : body?.indoorPrice
+      const rawVenueOutdoor = body?.venueOutdoorPrice !== undefined ? body.venueOutdoorPrice : body?.outdoorPrice
+      const venueIndoorPrice = Number(rawVenueIndoor ?? resolvedDefault?.venueIndoorPrice ?? 0)
+      const venueOutdoorPrice = Number(rawVenueOutdoor ?? resolvedDefault?.venueOutdoorPrice ?? 0)
+
+      // Courier prices
+      const rawCourierIndoor = body?.courierIndoorPrice !== undefined ? body.courierIndoorPrice : body?.indoorPrice
+      const rawCourierOutdoor = body?.courierOutdoorPrice !== undefined ? body.courierOutdoorPrice : body?.outdoorPrice
+      const courierIndoorPrice = Number(rawCourierIndoor ?? resolvedDefault?.courierIndoorPrice ?? courier.indoorPrice ?? 0)
+      const courierOutdoorPrice = Number(rawCourierOutdoor ?? resolvedDefault?.courierOutdoorPrice ?? courier.outdoorPrice ?? 0)
 
       if (indoorCount <= 0 && outdoorCount <= 0) {
         throw createError({
           statusCode: 400,
-          message: 'En az bir teslimat tipi için (İç veya Dış Mekan) geçerli paket sayısı girilmelidir.'
+          message: 'En az bir teslimat tipi için (İç veya Dış Paket) geçerli paket sayısı girilmelidir.'
         })
       }
 
-      if (indoorCount > 0 && (isNaN(indoorPrice) || indoorPrice < 0)) {
+      if (indoorCount > 0 && (isNaN(courierIndoorPrice) || courierIndoorPrice < 0)) {
         throw createError({
           statusCode: 400,
-          message: 'İç mekan birim fiyatı 0 veya daha büyük bir sayı olmalıdır.'
+          message: 'İç paket birim hakediş fiyatı 0 veya daha büyük bir sayı olmalıdır.'
         })
       }
 
-      if (outdoorCount > 0 && (isNaN(outdoorPrice) || outdoorPrice < 0)) {
+      if (outdoorCount > 0 && (isNaN(courierOutdoorPrice) || courierOutdoorPrice < 0)) {
         throw createError({
           statusCode: 400,
-          message: 'Dış mekan birim fiyatı 0 veya daha büyük bir sayı olmalıdır.'
+          message: 'Dış paket birim hakediş fiyatı 0 veya daha büyük bir sayı olmalıdır.'
         })
       }
 
       const createdRecords = []
-      let totalSum = 0
+      let totalCourierSum = 0
+      let totalVenueSum = 0
       let totalCount = 0
 
       // 1. Create INDOOR record if count > 0
       if (indoorCount > 0) {
-        const unitSnap = Number(indoorPrice.toFixed(2))
-        const tot = Number((indoorCount * unitSnap).toFixed(2))
-        totalSum += tot
+        const vSnap = finalVenueId ? Number(venueIndoorPrice.toFixed(2)) : 0
+        const vTot = Number((indoorCount * vSnap).toFixed(2))
+        const cSnap = Number(courierIndoorPrice.toFixed(2))
+        const cTot = Number((indoorCount * cSnap).toFixed(2))
+
+        totalVenueSum += vTot
+        totalCourierSum += cTot
         totalCount += indoorCount
 
         const rec = await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
             courierId,
-            venueId,
+            venueId: finalVenueId,
             deliveryType: DeliveryType.INDOOR,
             packageCount: indoorCount,
-            unitPriceSnapshot: new Prisma.Decimal(unitSnap.toFixed(2)),
-            totalAmount: new Prisma.Decimal(tot.toFixed(2))
+            venuePriceSnapshot: new Prisma.Decimal(vSnap.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(vTot.toFixed(2)),
+            courierPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+            courierTotalAmount: new Prisma.Decimal(cTot.toFixed(2)),
+            unitPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+            totalAmount: new Prisma.Decimal(cTot.toFixed(2))
           },
           include: { courier: true, venue: true }
         })
@@ -121,20 +135,28 @@ export default defineEventHandler(async (event) => {
 
       // 2. Create OUTDOOR record if count > 0
       if (outdoorCount > 0) {
-        const unitSnap = Number(outdoorPrice.toFixed(2))
-        const tot = Number((outdoorCount * unitSnap).toFixed(2))
-        totalSum += tot
+        const vSnap = finalVenueId ? Number(venueOutdoorPrice.toFixed(2)) : 0
+        const vTot = Number((outdoorCount * vSnap).toFixed(2))
+        const cSnap = Number(courierOutdoorPrice.toFixed(2))
+        const cTot = Number((outdoorCount * cSnap).toFixed(2))
+
+        totalVenueSum += vTot
+        totalCourierSum += cTot
         totalCount += outdoorCount
 
         const rec = await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
             courierId,
-            venueId,
+            venueId: finalVenueId,
             deliveryType: DeliveryType.OUTDOOR,
             packageCount: outdoorCount,
-            unitPriceSnapshot: new Prisma.Decimal(unitSnap.toFixed(2)),
-            totalAmount: new Prisma.Decimal(tot.toFixed(2))
+            venuePriceSnapshot: new Prisma.Decimal(vSnap.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(vTot.toFixed(2)),
+            courierPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+            courierTotalAmount: new Prisma.Decimal(cTot.toFixed(2)),
+            unitPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+            totalAmount: new Prisma.Decimal(cTot.toFixed(2))
           },
           include: { courier: true, venue: true }
         })
@@ -144,22 +166,20 @@ export default defineEventHandler(async (event) => {
       return {
         success: true,
         data: createdRecords,
-        message: `${courier.name} için toplam ${totalCount} paket kaydı ve ${totalSum.toFixed(2)} ₺ hakediş başarıyla kaydedildi.`
+        message: `${courier.name} için toplam ${totalCount} paket kaydı (Kurye Hakedişi: ${totalCourierSum.toFixed(2)} ₺, Mekan Tutar: ${totalVenueSum.toFixed(2)} ₺) başarıyla kaydedildi.`
       }
     }
 
     // Single record submission (for edit or single add)
     const deliveryTypeStr = body?.deliveryType === 'OUTDOOR' ? 'OUTDOOR' : 'INDOOR'
     const packageCount = Number(body?.packageCount)
-    const rawUnitPrice = body?.unitPrice !== undefined ? body.unitPrice : body?.unitPriceSnapshot
-    const unitPrice = Number(rawUnitPrice)
+    const deliveryType = deliveryTypeStr === 'OUTDOOR' ? DeliveryType.OUTDOOR : DeliveryType.INDOOR
 
-    if (isNaN(unitPrice) || unitPrice < 0) {
-      throw createError({
-        statusCode: 400,
-        message: 'Birim fiyat 0 veya daha büyük bir sayı olmalıdır.'
-      })
-    }
+    const rawVenuePrice = body?.venueUnitPrice !== undefined ? body.venueUnitPrice : body?.unitPrice
+    const rawCourierPrice = body?.courierUnitPrice !== undefined ? body.courierUnitPrice : body?.unitPrice
+
+    const venueUnitPrice = Number(rawVenuePrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.venueIndoorPrice : resolvedDefault?.venueOutdoorPrice) ?? 0)
+    const courierUnitPrice = Number(rawCourierPrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.courierIndoorPrice : resolvedDefault?.courierOutdoorPrice) ?? venueUnitPrice)
 
     if (isNaN(packageCount) || !Number.isInteger(packageCount) || packageCount <= 0) {
       throw createError({
@@ -168,19 +188,31 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const deliveryType = deliveryTypeStr === 'OUTDOOR' ? DeliveryType.OUTDOOR : DeliveryType.INDOOR
-    const unitPriceSnapshot = Number(unitPrice.toFixed(2))
-    const totalAmount = Number((packageCount * unitPriceSnapshot).toFixed(2))
+    if (isNaN(venueUnitPrice) || venueUnitPrice < 0 || isNaN(courierUnitPrice) || courierUnitPrice < 0) {
+      throw createError({
+        statusCode: 400,
+        message: 'Birim fiyatlar 0 veya daha büyük bir sayı olmalıdır.'
+      })
+    }
+
+    const vSnap = finalVenueId ? Number(venueUnitPrice.toFixed(2)) : 0
+    const vTot = Number((packageCount * vSnap).toFixed(2))
+    const cSnap = Number(courierUnitPrice.toFixed(2))
+    const cTot = Number((packageCount * cSnap).toFixed(2))
 
     const record = await prisma.deliveryRecord.create({
       data: {
         date: utcDate,
         courierId,
-        venueId,
+        venueId: finalVenueId,
         deliveryType,
         packageCount,
-        unitPriceSnapshot: new Prisma.Decimal(unitPriceSnapshot.toFixed(2)),
-        totalAmount: new Prisma.Decimal(totalAmount.toFixed(2))
+        venuePriceSnapshot: new Prisma.Decimal(vSnap.toFixed(2)),
+        venueTotalAmount: new Prisma.Decimal(vTot.toFixed(2)),
+        courierPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+        courierTotalAmount: new Prisma.Decimal(cTot.toFixed(2)),
+        unitPriceSnapshot: new Prisma.Decimal(cSnap.toFixed(2)),
+        totalAmount: new Prisma.Decimal(cTot.toFixed(2))
       },
       include: {
         courier: true,
@@ -197,12 +229,16 @@ export default defineEventHandler(async (event) => {
         venueId: record.venueId,
         deliveryType: record.deliveryType,
         packageCount: record.packageCount,
+        venuePriceSnapshot: Number(record.venuePriceSnapshot),
+        venueTotalAmount: Number(record.venueTotalAmount),
+        courierPriceSnapshot: Number(record.courierPriceSnapshot),
+        courierTotalAmount: Number(record.courierTotalAmount),
         unitPriceSnapshot: Number(record.unitPriceSnapshot),
         totalAmount: Number(record.totalAmount),
         courier: record.courier,
         venue: record.venue
       },
-      message: `${courier.name} için ${packageCount} adet ${deliveryType === DeliveryType.INDOOR ? 'İç Mekan' : 'Dış Mekan'} paket kaydı oluşturuldu (Birim: ${unitPriceSnapshot.toFixed(2)} ₺, Toplam: ${totalAmount.toFixed(2)} ₺).`
+      message: `${courier.name} için ${packageCount} adet ${deliveryType === DeliveryType.INDOOR ? 'İç Mekan' : 'Dış Mekan'} paket kaydı oluşturuldu (Kurye: ${cTot.toFixed(2)} ₺, Mekan: ${vTot.toFixed(2)} ₺).`
     }
   } catch (error: any) {
     console.error('Deliveries POST error:', error)

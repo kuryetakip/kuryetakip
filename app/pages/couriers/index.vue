@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Tag
 } from 'lucide-vue-next'
 import { useCouriers, type CourierItem, type CourierFormData } from '~/composables/useCouriers'
 import { useDeliveries } from '~/composables/useDeliveries'
@@ -61,6 +62,10 @@ const quickDeliveryForm = ref({
   date: new Date().toISOString().substring(0, 10),
   courierId: '',
   venueId: '',
+  venueIndoorPrice: '' as string | number,
+  venueOutdoorPrice: '' as string | number,
+  courierIndoorPrice: '' as string | number,
+  courierOutdoorPrice: '' as string | number,
   indoorPrice: '' as string | number,
   indoorCount: '' as string | number,
   outdoorPrice: '' as string | number,
@@ -101,6 +106,8 @@ const whatsAppPayload = ref<WhatsAppMessagePayload>({
 const formData = ref<CourierFormData>({
   name: '',
   phone: '',
+  indoorPrice: '',
+  outdoorPrice: '',
   isActive: true
 })
 const formErrors = ref<Record<string, string>>({})
@@ -281,6 +288,8 @@ const openAddModal = () => {
   formData.value = {
     name: '',
     phone: '',
+    indoorPrice: '',
+    outdoorPrice: '',
     isActive: true
   }
   formErrors.value = {}
@@ -293,6 +302,8 @@ const openEditModal = (courier: CourierItem) => {
   formData.value = {
     name: courier.name,
     phone: courier.phone || '',
+    indoorPrice: courier.indoorPrice !== undefined && courier.indoorPrice > 0 ? courier.indoorPrice : '',
+    outdoorPrice: courier.outdoorPrice !== undefined && courier.outdoorPrice > 0 ? courier.outdoorPrice : '',
     isActive: courier.isActive
   }
   formErrors.value = {}
@@ -337,29 +348,62 @@ const handleFormSubmit = async () => {
 const activeCouriersList = computed(() => couriers.value.filter(c => c.isActive))
 const activeVenuesList = computed(() => venues.value.filter(v => v.isActive))
 
+const fetchQuickRates = async (cId: string, vId: string) => {
+  if (!cId || !vId) return
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/deliveries/rates', {
+      query: { courierId: cId, venueId: vId, deliveryType: 'INDOOR' }
+    })
+    if (res.success && res.data) {
+      quickDeliveryForm.value.venueIndoorPrice = res.data.venueIndoorPrice
+      quickDeliveryForm.value.venueOutdoorPrice = res.data.venueOutdoorPrice
+      quickDeliveryForm.value.courierIndoorPrice = res.data.courierIndoorPrice
+      quickDeliveryForm.value.courierOutdoorPrice = res.data.courierOutdoorPrice
+      quickDeliveryForm.value.indoorPrice = res.data.courierIndoorPrice
+      quickDeliveryForm.value.outdoorPrice = res.data.courierOutdoorPrice
+    }
+  } catch (err) {
+    console.error('Fetch quick rates error:', err)
+  }
+}
+
 const onQuickVenueChange = (venueId: string) => {
   quickDeliveryForm.value.venueId = venueId
-  if (venueId) {
-    const selected = venues.value.find(v => v.id === venueId)
-    if (selected) {
-      quickDeliveryForm.value.indoorPrice = selected.indoorPrice
-      quickDeliveryForm.value.outdoorPrice = selected.outdoorPrice
-    }
+  if (venueId && quickDeliveryForm.value.courierId) {
+    fetchQuickRates(quickDeliveryForm.value.courierId, venueId)
   }
 }
 
 const quickIndoorTotal = computed(() => {
   const count = Number(quickDeliveryForm.value.indoorCount) || 0
-  const price = Number(quickDeliveryForm.value.indoorPrice) || 0
+  const price = Number(quickDeliveryForm.value.indoorPrice ?? quickDeliveryForm.value.courierIndoorPrice) || 0
   if (count <= 0 || price <= 0) return 0
   return Number((count * price).toFixed(2))
 })
 
 const quickOutdoorTotal = computed(() => {
   const count = Number(quickDeliveryForm.value.outdoorCount) || 0
-  const price = Number(quickDeliveryForm.value.outdoorPrice) || 0
+  const price = Number(quickDeliveryForm.value.outdoorPrice ?? quickDeliveryForm.value.courierOutdoorPrice) || 0
   if (count <= 0 || price <= 0) return 0
   return Number((count * price).toFixed(2))
+})
+
+const quickVenueIndoorTotal = computed(() => {
+  const count = Number(quickDeliveryForm.value.indoorCount) || 0
+  const price = Number(quickDeliveryForm.value.venueIndoorPrice) || 0
+  if (count <= 0 || price <= 0) return 0
+  return Number((count * price).toFixed(2))
+})
+
+const quickVenueOutdoorTotal = computed(() => {
+  const count = Number(quickDeliveryForm.value.outdoorCount) || 0
+  const price = Number(quickDeliveryForm.value.venueOutdoorPrice) || 0
+  if (count <= 0 || price <= 0) return 0
+  return Number((count * price).toFixed(2))
+})
+
+const quickVenueGrandTotal = computed(() => {
+  return Number((quickVenueIndoorTotal.value + quickVenueOutdoorTotal.value).toFixed(2))
 })
 
 const quickTotalPackages = computed(() => {
@@ -372,18 +416,40 @@ const quickGrandTotal = computed(() => {
   return Number((quickIndoorTotal.value + quickOutdoorTotal.value).toFixed(2))
 })
 
-const openQuickDeliveryModal = (courier?: CourierItem) => {
+const quickNetProfit = computed(() => {
+  return Number((quickVenueGrandTotal.value - quickGrandTotal.value).toFixed(2))
+})
+
+const onQuickCourierChange = (courierId: string) => {
+  quickDeliveryForm.value.courierId = courierId
+  const c = couriers.value.find(item => item.id === courierId)
+  if (c) {
+    quickDeliveryCourier.value = c
+    if (c.indoorPrice) {
+      quickDeliveryForm.value.courierIndoorPrice = c.indoorPrice
+      quickDeliveryForm.value.indoorPrice = c.indoorPrice
+    }
+    if (c.outdoorPrice) {
+      quickDeliveryForm.value.courierOutdoorPrice = c.outdoorPrice
+      quickDeliveryForm.value.outdoorPrice = c.outdoorPrice
+    }
+  }
+}
+
+const openQuickDeliveryModal = async (courier?: CourierItem) => {
   quickDeliveryCourier.value = courier || null
   const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
-  const defaultVenue = activeVenuesList.value.length > 0 ? activeVenuesList.value[0] : null
+  const targetCourierId = courier ? courier.id : (activeCouriersList.value[0]?.id || '')
+  const selectedC = courier || couriers.value.find(c => c.id === targetCourierId)
 
   quickDeliveryForm.value = {
     date: targetDate,
-    courierId: courier ? courier.id : (activeCouriersList.value[0]?.id || ''),
-    venueId: defaultVenue ? defaultVenue.id : '',
-    indoorPrice: defaultVenue ? defaultVenue.indoorPrice : 30,
+    courierId: targetCourierId,
+    courierIndoorPrice: selectedC?.indoorPrice ? selectedC.indoorPrice : 0,
+    courierOutdoorPrice: selectedC?.outdoorPrice ? selectedC.outdoorPrice : 0,
+    indoorPrice: selectedC?.indoorPrice ? selectedC.indoorPrice : 0,
     indoorCount: '',
-    outdoorPrice: defaultVenue ? defaultVenue.outdoorPrice : 32,
+    outdoorPrice: selectedC?.outdoorPrice ? selectedC.outdoorPrice : 0,
     outdoorCount: ''
   }
   quickDeliveryErrors.value = {}
@@ -403,20 +469,20 @@ const validateQuickDeliveryForm = () => {
   const outdoorCountNum = Number(quickDeliveryForm.value.outdoorCount) || 0
 
   if (indoorCountNum <= 0 && outdoorCountNum <= 0) {
-    errors.general = 'En az bir teslimat tipi için (İç Mekan veya Dış Mekan) paket sayısı girmelisiniz.'
+    errors.general = 'En az bir teslimat tipi için (İç Paket veya Dış Paket) paket sayısı girmelisiniz.'
   }
 
   if (indoorCountNum > 0) {
-    const p = Number(quickDeliveryForm.value.indoorPrice)
-    if (quickDeliveryForm.value.indoorPrice === '' || isNaN(p) || p < 0) {
-      errors.indoorPrice = 'İç mekan birim fiyatı giriniz.'
+    const p = Number(quickDeliveryForm.value.courierIndoorPrice || quickDeliveryForm.value.indoorPrice)
+    if (isNaN(p) || p < 0) {
+      errors.indoorPrice = 'Geçerli bir iç paket hakediş fiyatı giriniz.'
     }
   }
 
   if (outdoorCountNum > 0) {
-    const p = Number(quickDeliveryForm.value.outdoorPrice)
-    if (quickDeliveryForm.value.outdoorPrice === '' || isNaN(p) || p < 0) {
-      errors.outdoorPrice = 'Dış mekan birim fiyatı giriniz.'
+    const p = Number(quickDeliveryForm.value.courierOutdoorPrice || quickDeliveryForm.value.outdoorPrice)
+    if (isNaN(p) || p < 0) {
+      errors.outdoorPrice = 'Geçerli bir dış paket hakediş fiyatı giriniz.'
     }
   }
 
@@ -428,14 +494,18 @@ const handleQuickDeliverySubmit = async () => {
   if (!validateQuickDeliveryForm()) return
   quickDeliveryLoading.value = true
   try {
+    const cIndoor = Number(quickDeliveryForm.value.indoorPrice ?? quickDeliveryForm.value.courierIndoorPrice) || 0
+    const cOutdoor = Number(quickDeliveryForm.value.outdoorPrice ?? quickDeliveryForm.value.courierOutdoorPrice) || 0
+
     const payload = {
       date: quickDeliveryForm.value.date,
       courierId: quickDeliveryForm.value.courierId,
-      venueId: quickDeliveryForm.value.venueId || undefined,
       indoorCount: Number(quickDeliveryForm.value.indoorCount) || 0,
-      indoorPrice: Number(quickDeliveryForm.value.indoorPrice) || 0,
       outdoorCount: Number(quickDeliveryForm.value.outdoorCount) || 0,
-      outdoorPrice: Number(quickDeliveryForm.value.outdoorPrice) || 0
+      courierIndoorPrice: cIndoor,
+      courierOutdoorPrice: cOutdoor,
+      indoorPrice: cIndoor,
+      outdoorPrice: cOutdoor
     }
 
     const success = await createDelivery(payload)
@@ -1239,7 +1309,7 @@ onMounted(async () => {
     <BaseModal
       v-model="isQuickDeliveryModalOpen"
       :title="`Paket Girişi & Hakediş — ${quickDeliveryCourier?.name || 'Kurye Seçiniz'}`"
-      description="Tarih, kurye, mekan ve teslimat tipine göre (İç ve Dış Mekan) birim fiyat ve paket sayılarını girerek anında hakediş hesaplayın."
+      description="Tarih, kurye ve teslimat tipine göre (İç ve Dış Paket) birim fiyat ve paket sayılarını girerek anında hakediş hesaplayın."
     >
       <form class="space-y-4" @submit.prevent="handleQuickDeliverySubmit">
         <!-- Genel Hata Bildirimi -->
@@ -1247,8 +1317,8 @@ onMounted(async () => {
           {{ quickDeliveryErrors.general }}
         </div>
 
-        <!-- 1. Tarih, Kurye & Mekan Seçimi -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- 1. Tarih ve Kurye Seçimi -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <BaseInput
             v-model="quickDeliveryForm.date"
             label="Tarih"
@@ -1264,47 +1334,31 @@ onMounted(async () => {
             :error="quickDeliveryErrors.courierId"
             placeholder="Kurye seçiniz..."
             required
-          />
-
-          <BaseSelect
-            v-model="quickDeliveryForm.venueId"
-            label="Mekan (Birim Fiyatlar)"
-            :options="[
-              { value: '', label: 'Genel (Manuel Fiyat)' },
-              ...activeVenuesList.map(v => ({ value: v.id, label: `${v.name} (İç: ${v.indoorPrice.toFixed(2)}₺ / Dış: ${v.outdoorPrice.toFixed(2)}₺)` }))
-            ]"
-            placeholder="Mekan seçiniz..."
-            @change="onQuickVenueChange"
+            @update:model-value="onQuickCourierChange"
           />
         </div>
 
-        <!-- 2. İÇ MEKAN TESLİMATLARI BÖLÜMÜ -->
-        <div class="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <span class="text-xs font-bold text-emerald-950 dark:text-emerald-300 uppercase tracking-wider">İç Mekan Teslimatı</span>
-            </div>
-            <span v-if="quickIndoorTotal > 0" class="text-xs font-bold font-mono text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700">
-              Ara Toplam: {{ quickIndoorTotal.toFixed(2) }} ₺
-            </span>
+        <!-- 2. İÇ PAKET TESLİMATI KARTI -->
+        <div class="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-wider">İÇ PAKET TESLİMATI</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <BaseInput
               v-model="quickDeliveryForm.indoorPrice"
-              label="İç Mekan Birim Fiyat (₺)"
+              label="İç Birim Fiyat (₺)"
               type="number"
               step="0.01"
               min="0"
-              placeholder="Örn: 30.00"
+              placeholder="Örn: 90"
+              hint="Kurye iç paket birim fiyatı"
               :error="quickDeliveryErrors.indoorPrice"
-              hint="Mekanın iç mekan birim fiyatı"
             />
-
             <BaseInput
               v-model="quickDeliveryForm.indoorCount"
-              label="İç Mekan Paket Sayısı (Adet)"
+              label="İç Paket Sayısı (Adet)"
               type="number"
               min="0"
               step="1"
@@ -1314,33 +1368,27 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 3. DIŞ MEKAN TESLİMATLARI BÖLÜMÜ -->
-        <div class="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-sky-500" />
-              <span class="text-xs font-bold text-sky-950 dark:text-sky-300 uppercase tracking-wider">Dış Mekan Teslimatı</span>
-            </div>
-            <span v-if="quickOutdoorTotal > 0" class="text-xs font-bold font-mono text-sky-800 dark:text-sky-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-sky-300 dark:border-sky-700">
-              Ara Toplam: {{ quickOutdoorTotal.toFixed(2) }} ₺
-            </span>
+        <!-- 3. DIŞ PAKET TESLİMATI KARTI -->
+        <div class="p-4 rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-800/50 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-wider">DIŞ PAKET TESLİMATI</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <BaseInput
               v-model="quickDeliveryForm.outdoorPrice"
-              label="Dış Mekan Birim Fiyat (₺)"
+              label="Dış Birim Fiyat (₺)"
               type="number"
               step="0.01"
               min="0"
-              placeholder="Örn: 32.00"
+              placeholder="Örn: 135"
+              hint="Kurye dış paket birim fiyatı"
               :error="quickDeliveryErrors.outdoorPrice"
-              hint="Mekanın dış mekan birim fiyatı"
             />
-
             <BaseInput
               v-model="quickDeliveryForm.outdoorCount"
-              label="Dış Mekan Paket Sayısı (Adet)"
+              label="Dış Paket Sayısı (Adet)"
               type="number"
               min="0"
               step="1"
@@ -1350,29 +1398,37 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 4. CANLI HESAPLAMA & GENEL TOPLAM HAKEDİŞ ÖNİZLEME KARTI -->
-        <div class="p-4 rounded-xl bg-slate-900 dark:bg-slate-800 text-white space-y-2.5 border border-slate-800 dark:border-slate-700">
+        <!-- 4. CANLI HESAPLAMA & HAKEDİŞ KARTI -->
+        <div class="p-4 rounded-xl bg-slate-900 text-white space-y-2 border border-slate-800">
           <div class="flex items-center justify-between text-xs text-slate-300">
             <span>Toplam Paket Sayısı:</span>
-            <span class="font-bold font-mono text-white">{{ quickTotalPackages }} Adet</span>
+            <span class="font-bold font-mono text-white text-sm">
+              {{ quickTotalPackages }} Adet
+            </span>
           </div>
 
           <div class="flex items-center justify-between text-xs text-slate-300">
-            <span>İç Mekan Hakediş ({{ Number(quickDeliveryForm.indoorCount) || 0 }} × {{ Number(quickDeliveryForm.indoorPrice) || 0 }} ₺):</span>
-            <span class="font-bold font-mono text-emerald-400">{{ quickIndoorTotal.toFixed(2) }} ₺</span>
+            <span>İç Paket Hakediş ({{ quickDeliveryForm.indoorCount || 0 }} × {{ Number(quickDeliveryForm.indoorPrice || 0) }} ₺):</span>
+            <span class="font-bold font-mono text-emerald-400 text-sm">
+              {{ quickIndoorTotal.toFixed(2) }} ₺
+            </span>
           </div>
 
           <div class="flex items-center justify-between text-xs text-slate-300">
-            <span>Dış Mekan Hakediş ({{ Number(quickDeliveryForm.outdoorCount) || 0 }} × {{ Number(quickDeliveryForm.outdoorPrice) || 0 }} ₺):</span>
-            <span class="font-bold font-mono text-sky-400">{{ quickOutdoorTotal.toFixed(2) }} ₺</span>
+            <span>Dış Paket Hakediş ({{ quickDeliveryForm.outdoorCount || 0 }} × {{ Number(quickDeliveryForm.outdoorPrice || 0) }} ₺):</span>
+            <span class="font-bold font-mono text-emerald-400 text-sm">
+              {{ quickOutdoorTotal.toFixed(2) }} ₺
+            </span>
           </div>
 
-          <div class="flex items-center justify-between text-sm font-bold text-white border-t border-slate-800 dark:border-slate-700 pt-2.5">
-            <span class="flex items-center gap-1.5">
+          <div class="pt-2.5 border-t border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-1.5 font-bold text-white text-sm">
               <Sparkles class="w-4 h-4 text-emerald-400" />
               <span>Genel Toplam Hakediş:</span>
-            </span>
-            <span class="text-emerald-400 font-mono text-lg font-extrabold">{{ quickGrandTotal.toFixed(2) }} ₺</span>
+            </div>
+            <div class="text-xl font-bold font-mono text-emerald-400">
+              {{ quickGrandTotal.toFixed(2) }} ₺
+            </div>
           </div>
         </div>
 
@@ -1390,6 +1446,7 @@ onMounted(async () => {
             size="sm"
             type="submit"
             :loading="quickDeliveryLoading"
+            class="!bg-slate-900 hover:!bg-slate-800 !text-white font-bold"
           >
             Hakedişi Kaydet
           </BaseButton>
@@ -1401,7 +1458,7 @@ onMounted(async () => {
     <BaseModal
       v-model="isAddModalOpen"
       :title="isEditing ? 'Kurye Bilgilerini Düzenle' : 'Yeni Kurye Ekle'"
-      :description="isEditing ? 'Kurye iletişim ve durum bilgilerini güncelleyin.' : 'Kurye adı ve iletişim numarasını sisteme kaydedin.'"
+      :description="isEditing ? 'Kurye hakediş fiyatları, iletişim ve durum bilgilerini güncelleyin.' : 'Kurye adı, varsayılan paket hakediş fiyatları ve iletişim numarasını sisteme kaydedin.'"
     >
       <form class="space-y-4" @submit.prevent="handleFormSubmit">
         <BaseInput
@@ -1423,6 +1480,34 @@ onMounted(async () => {
             <Phone class="w-4 h-4 text-slate-400" />
           </template>
         </BaseInput>
+
+        <!-- Kurye Varsayılan Hakediş Fiyat Girişleri -->
+        <div class="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2.5">
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Tag class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Kurye Varsayılan Paket Hakedişleri</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <BaseInput
+              v-model="formData.indoorPrice"
+              label="İç Mekan Hakediş (₺)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Örn: 30.00"
+              hint="Kuryeye ödenecek standart iç paket ücreti"
+            />
+            <BaseInput
+              v-model="formData.outdoorPrice"
+              label="Dış Mekan Hakediş (₺)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Örn: 32.00"
+              hint="Kuryeye ödenecek standart dış paket ücreti"
+            />
+          </div>
+        </div>
 
         <!-- Aktif / Pasif Seçimi -->
         <div class="pt-2 flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">

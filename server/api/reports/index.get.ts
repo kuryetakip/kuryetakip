@@ -151,21 +151,27 @@ export default defineEventHandler(async (event) => {
     let grandOutdoorAmount = 0
     let grandTotalCount = 0
     let grandTotalAmount = 0
+    let grandVenueAmount = 0
+    let grandCourierAmount = 0
 
     for (const r of records) {
       const isIndoor = r.deliveryType === DeliveryType.INDOOR
       const count = r.packageCount
-      const amount = Number(r.totalAmount)
+      const courierAmount = Number(r.courierTotalAmount || 0) > 0 ? Number(r.courierTotalAmount) : Number(r.totalAmount)
+      const venueAmount = Number(r.venueTotalAmount || 0) > 0 ? Number(r.venueTotalAmount) : courierAmount
 
       // Grand totals
       grandTotalCount += count
-      grandTotalAmount += amount
+      grandTotalAmount += courierAmount
+      grandCourierAmount += courierAmount
+      grandVenueAmount += venueAmount
+
       if (isIndoor) {
         grandIndoorCount += count
-        grandIndoorAmount += amount
+        grandIndoorAmount += courierAmount
       } else {
         grandOutdoorCount += count
-        grandOutdoorAmount += amount
+        grandOutdoorAmount += courierAmount
       }
 
       // Matrix entry key: courierId_venueId
@@ -173,9 +179,9 @@ export default defineEventHandler(async (event) => {
       if (!matrixMap.has(matrixKey)) {
         matrixMap.set(matrixKey, {
           courierId: r.courierId,
-          courierName: r.courier.name,
+          courierName: r.courier?.name || 'Bilinmeyen',
           venueId: r.venueId,
-          venueName: r.venue.name,
+          venueName: r.venue?.name || 'Bilinmeyen',
           indoorCount: 0,
           indoorAmount: 0,
           outdoorCount: 0,
@@ -186,21 +192,21 @@ export default defineEventHandler(async (event) => {
       }
       const mItem = matrixMap.get(matrixKey)!
       mItem.totalCount += count
-      mItem.totalAmount += amount
+      mItem.totalAmount += courierAmount
       if (isIndoor) {
         mItem.indoorCount += count
-        mItem.indoorAmount += amount
+        mItem.indoorAmount += courierAmount
       } else {
         mItem.outdoorCount += count
-        mItem.outdoorAmount += amount
+        mItem.outdoorAmount += courierAmount
       }
 
-      // Courier group
+      // Courier group (using courier payout amounts)
       if (!courierMap.has(r.courierId)) {
         courierMap.set(r.courierId, {
           courierId: r.courierId,
-          courierName: r.courier.name,
-          courierPhone: r.courier.phone,
+          courierName: r.courier?.name || 'Bilinmeyen',
+          courierPhone: r.courier?.phone || null,
           indoorCount: 0,
           indoorAmount: 0,
           outdoorCount: 0,
@@ -212,19 +218,19 @@ export default defineEventHandler(async (event) => {
       }
       const cGroup = courierMap.get(r.courierId)!
       cGroup.totalCount += count
-      cGroup.totalAmount += amount
+      cGroup.totalAmount += courierAmount
       if (isIndoor) {
         cGroup.indoorCount += count
-        cGroup.indoorAmount += amount
+        cGroup.indoorAmount += courierAmount
       } else {
         cGroup.outdoorCount += count
-        cGroup.outdoorAmount += amount
+        cGroup.outdoorAmount += courierAmount
       }
 
       if (!cGroup.venues.has(r.venueId)) {
         cGroup.venues.set(r.venueId, {
           venueId: r.venueId,
-          venueName: r.venue.name,
+          venueName: r.venue?.name || 'Bilinmeyen',
           indoorCount: 0,
           indoorAmount: 0,
           outdoorCount: 0,
@@ -235,20 +241,20 @@ export default defineEventHandler(async (event) => {
       }
       const cvItem = cGroup.venues.get(r.venueId)!
       cvItem.totalCount += count
-      cvItem.totalAmount += amount
+      cvItem.totalAmount += courierAmount
       if (isIndoor) {
         cvItem.indoorCount += count
-        cvItem.indoorAmount += amount
+        cvItem.indoorAmount += courierAmount
       } else {
         cvItem.outdoorCount += count
-        cvItem.outdoorAmount += amount
+        cvItem.outdoorAmount += courierAmount
       }
 
-      // Venue group
+      // Venue group (using venue billing amounts)
       if (!venueMap.has(r.venueId)) {
         venueMap.set(r.venueId, {
           venueId: r.venueId,
-          venueName: r.venue.name,
+          venueName: r.venue?.name || 'Bilinmeyen',
           indoorCount: 0,
           indoorAmount: 0,
           outdoorCount: 0,
@@ -260,19 +266,19 @@ export default defineEventHandler(async (event) => {
       }
       const vGroup = venueMap.get(r.venueId)!
       vGroup.totalCount += count
-      vGroup.totalAmount += amount
+      vGroup.totalAmount += venueAmount
       if (isIndoor) {
         vGroup.indoorCount += count
-        vGroup.indoorAmount += amount
+        vGroup.indoorAmount += venueAmount
       } else {
         vGroup.outdoorCount += count
-        vGroup.outdoorAmount += amount
+        vGroup.outdoorAmount += venueAmount
       }
 
       if (!vGroup.couriers.has(r.courierId)) {
         vGroup.couriers.set(r.courierId, {
           courierId: r.courierId,
-          courierName: r.courier.name,
+          courierName: r.courier?.name || 'Bilinmeyen',
           indoorCount: 0,
           indoorAmount: 0,
           outdoorCount: 0,
@@ -341,7 +347,10 @@ export default defineEventHandler(async (event) => {
         indoorAmount: Number(grandIndoorAmount.toFixed(2)),
         outdoorCount: grandOutdoorCount,
         outdoorAmount: Number(grandOutdoorAmount.toFixed(2)),
-        totalAmount: Number(grandTotalAmount.toFixed(2))
+        totalAmount: Number(grandTotalAmount.toFixed(2)),
+        venueTotalAmount: Number(grandVenueAmount.toFixed(2)),
+        courierTotalAmount: Number(grandCourierAmount.toFixed(2)),
+        netProfitAmount: Number((grandVenueAmount - grandCourierAmount).toFixed(2))
       },
       matrixRows,
       courierReports,

@@ -120,9 +120,9 @@ export default defineEventHandler(async (event) => {
     }>()
 
     const formattedRecords = records.map((rec) => {
-      const recordAmount = Number(rec.totalAmount)
+      const recordAmount = Number(rec.courierTotalAmount || 0) > 0 ? Number(rec.courierTotalAmount) : Number(rec.totalAmount)
       const recordCount = rec.packageCount
-      const unitPrice = Number(rec.unitPriceSnapshot)
+      const unitPrice = Number(rec.courierPriceSnapshot || 0) > 0 ? Number(rec.courierPriceSnapshot) : Number(rec.unitPriceSnapshot)
 
       totalAmount += recordAmount
       totalPackageCount += recordCount

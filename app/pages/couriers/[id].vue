@@ -99,6 +99,8 @@ const openEditCourierModal = () => {
   formData.value = {
     name: currentCourier.value.name,
     phone: currentCourier.value.phone || '',
+    indoorPrice: currentCourier.value.indoorPrice !== undefined && Number(currentCourier.value.indoorPrice) > 0 ? currentCourier.value.indoorPrice : '',
+    outdoorPrice: currentCourier.value.outdoorPrice !== undefined && Number(currentCourier.value.outdoorPrice) > 0 ? currentCourier.value.outdoorPrice : '',
     isActive: currentCourier.value.isActive
   }
   formErrors.value = {}
@@ -291,6 +293,9 @@ onMounted(async () => {
                   <Calendar class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span>Kayıt: {{ formatDate(currentCourier.createdAt) }}</span>
                 </div>
+                <div v-if="Number(currentCourier.indoorPrice) > 0 || Number(currentCourier.outdoorPrice) > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-mono text-[11px] font-semibold">
+                  <span>Varsayılan: İç {{ Number(currentCourier.indoorPrice || 0).toFixed(2) }} ₺ / Dış {{ Number(currentCourier.outdoorPrice || 0).toFixed(2) }} ₺</span>
+                </div>
               </div>
             </div>
           </div>
@@ -448,6 +453,34 @@ onMounted(async () => {
             <Phone class="w-4 h-4 text-slate-400" />
           </template>
         </BaseInput>
+
+        <!-- Kurye Varsayılan Hakediş Fiyatları -->
+        <div class="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2.5">
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Tag class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Kurye Varsayılan Paket Hakedişleri</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <BaseInput
+              v-model="formData.indoorPrice"
+              label="İç Mekan Hakediş (₺)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Örn: 30.00"
+              hint="Kuryeye ödenecek standart iç paket ücreti"
+            />
+            <BaseInput
+              v-model="formData.outdoorPrice"
+              label="Dış Mekan Hakediş (₺)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Örn: 32.00"
+              hint="Kuryeye ödenecek standart dış paket ücreti"
+            />
+          </div>
+        </div>
 
         <div class="pt-2 flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div>

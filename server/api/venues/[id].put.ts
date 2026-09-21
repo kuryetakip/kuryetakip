@@ -82,8 +82,26 @@ export default defineEventHandler(async (event) => {
       const d = dateStr ? new Date(dateStr) : new Date()
       const utcDate = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
 
+      let courierIndoorPrice = body?.courierIndoorPrice !== undefined && !isNaN(Number(body.courierIndoorPrice))
+        ? Number(body.courierIndoorPrice)
+        : 0
+      let courierOutdoorPrice = body?.courierOutdoorPrice !== undefined && !isNaN(Number(body.courierOutdoorPrice))
+        ? Number(body.courierOutdoorPrice)
+        : 0
+
+      if (courierId && (courierIndoorPrice === 0 && courierOutdoorPrice === 0)) {
+        try {
+          const cRate = await resolveCourierRate(courierId, updated.id, DeliveryType.INDOOR)
+          courierIndoorPrice = cRate.courierIndoorPrice
+          courierOutdoorPrice = cRate.courierOutdoorPrice
+        } catch {
+          // ignore if cannot resolve
+        }
+      }
+
       if (indoorCount > 0) {
-        const total = Number((indoorCount * finalIndoorPrice).toFixed(2))
+        const venueTotal = Number((indoorCount * finalIndoorPrice).toFixed(2))
+        const courierTotal = Number((indoorCount * courierIndoorPrice).toFixed(2))
         await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
@@ -91,14 +109,19 @@ export default defineEventHandler(async (event) => {
             venueId: updated.id,
             deliveryType: DeliveryType.INDOOR,
             packageCount: indoorCount,
+            venuePriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+            courierPriceSnapshot: new Prisma.Decimal(courierIndoorPrice.toFixed(2)),
+            courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
             unitPriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
-            totalAmount: new Prisma.Decimal(total.toFixed(2))
+            totalAmount: new Prisma.Decimal(venueTotal.toFixed(2))
           }
         })
       }
 
       if (outdoorCount > 0) {
-        const total = Number((outdoorCount * finalOutdoorPrice).toFixed(2))
+        const venueTotal = Number((outdoorCount * finalOutdoorPrice).toFixed(2))
+        const courierTotal = Number((outdoorCount * courierOutdoorPrice).toFixed(2))
         await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
@@ -106,8 +129,12 @@ export default defineEventHandler(async (event) => {
             venueId: updated.id,
             deliveryType: DeliveryType.OUTDOOR,
             packageCount: outdoorCount,
+            venuePriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+            courierPriceSnapshot: new Prisma.Decimal(courierOutdoorPrice.toFixed(2)),
+            courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
             unitPriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
-            totalAmount: new Prisma.Decimal(total.toFixed(2))
+            totalAmount: new Prisma.Decimal(venueTotal.toFixed(2))
           }
         })
       }

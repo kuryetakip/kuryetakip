@@ -3,6 +3,13 @@ import { createError } from 'h3'
 
 
 export interface ResolvedRate {
+  venueIndoorPrice: number
+  venueOutdoorPrice: number
+  courierIndoorPrice: number
+  courierOutdoorPrice: number
+  venueSelectedPrice: number
+  courierSelectedPrice: number
+  // Backwards-compatible aliases
   indoorPrice: number
   outdoorPrice: number
   selectedUnitPrice: number
@@ -12,10 +19,11 @@ export interface ResolvedRate {
 }
 
 /**
- * Resolves the unit price for a given courier, venue, and delivery type.
- * Priority:
- * 1. CourierVenuePrice (if exists for courier + venue)
- * 2. Venue default price (fallback)
+ * Resolves separate rates for both Venue (billed to restaurant) and Courier (paid to courier).
+ * Priority for Courier:
+ * 1. CourierVenuePrice override (if custom price defined for courier + venue)
+ * 2. Courier's default rates (courier.indoorPrice / courier.outdoorPrice if > 0)
+ * 3. Fallback to Venue default price
  */
 export async function resolveCourierRate(
   courierId: string,
@@ -46,6 +54,9 @@ export async function resolveCourierRate(
     })
   }
 
+  const venueIndoorPrice = Number(venue.indoorPrice)
+  const venueOutdoorPrice = Number(venue.outdoorPrice)
+
   // 3. Check custom CourierVenuePrice override
   const customPrice = await prisma.courierVenuePrice.findUnique({
     where: {
@@ -56,26 +67,39 @@ export async function resolveCourierRate(
     }
   })
 
-  let indoorPrice: number
-  let outdoorPrice: number
+  let courierIndoorPrice: number
+  let courierOutdoorPrice: number
   let isCustomRate = false
 
   if (customPrice) {
-    indoorPrice = Number(customPrice.indoorPrice)
-    outdoorPrice = Number(customPrice.outdoorPrice)
+    courierIndoorPrice = Number(customPrice.indoorPrice)
+    courierOutdoorPrice = Number(customPrice.outdoorPrice)
+    isCustomRate = true
+  } else if (Number(courier.indoorPrice) > 0 || Number(courier.outdoorPrice) > 0) {
+    courierIndoorPrice = Number(courier.indoorPrice)
+    courierOutdoorPrice = Number(courier.outdoorPrice)
     isCustomRate = true
   } else {
-    indoorPrice = Number(venue.indoorPrice)
-    outdoorPrice = Number(venue.outdoorPrice)
+    // Fallback to venue price if courier has no specific price set
+    courierIndoorPrice = venueIndoorPrice
+    courierOutdoorPrice = venueOutdoorPrice
     isCustomRate = false
   }
 
-  const selectedUnitPrice = deliveryType === DeliveryType.INDOOR ? indoorPrice : outdoorPrice
+  const venueSelectedPrice = deliveryType === DeliveryType.INDOOR ? venueIndoorPrice : venueOutdoorPrice
+  const courierSelectedPrice = deliveryType === DeliveryType.INDOOR ? courierIndoorPrice : courierOutdoorPrice
 
   return {
-    indoorPrice,
-    outdoorPrice,
-    selectedUnitPrice,
+    venueIndoorPrice,
+    venueOutdoorPrice,
+    courierIndoorPrice,
+    courierOutdoorPrice,
+    venueSelectedPrice,
+    courierSelectedPrice,
+    // Aliases for compatibility
+    indoorPrice: courierIndoorPrice,
+    outdoorPrice: courierOutdoorPrice,
+    selectedUnitPrice: courierSelectedPrice,
     isCustomRate,
     courierName: courier.name,
     venueName: venue.name

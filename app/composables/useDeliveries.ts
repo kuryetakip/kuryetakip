@@ -5,6 +5,11 @@ export interface DeliveryRecordItem {
   venueId: string
   deliveryType: 'INDOOR' | 'OUTDOOR'
   packageCount: number
+  venuePriceSnapshot?: number
+  venueTotalAmount?: number
+  courierPriceSnapshot?: number
+  courierTotalAmount?: number
+  profitAmount?: number
   unitPriceSnapshot: number
   totalAmount: number
   createdAt?: string
@@ -29,6 +34,9 @@ export interface DeliverySummary {
   totalPackages: number
   indoorPackages: number
   outdoorPackages: number
+  totalCourierAmount?: number
+  totalVenueAmount?: number
+  netProfitAmount?: number
   indoorSettlementAmount: number
   outdoorSettlementAmount: number
   totalSettlementAmount: number
@@ -40,14 +48,26 @@ export interface DeliveryFormData {
   venueId?: string
   deliveryType?: 'INDOOR' | 'OUTDOOR'
   unitPrice?: number | string
+  venueUnitPrice?: number | string
+  courierUnitPrice?: number | string
   packageCount?: number | string
   indoorPrice?: number | string
   indoorCount?: number | string
   outdoorPrice?: number | string
   outdoorCount?: number | string
+  venueIndoorPrice?: number | string
+  venueOutdoorPrice?: number | string
+  courierIndoorPrice?: number | string
+  courierOutdoorPrice?: number | string
 }
 
 export interface RatePreviewData {
+  venueIndoorPrice: number
+  venueOutdoorPrice: number
+  courierIndoorPrice: number
+  courierOutdoorPrice: number
+  venueSelectedPrice: number
+  courierSelectedPrice: number
   indoorPrice: number
   outdoorPrice: number
   selectedUnitPrice: number

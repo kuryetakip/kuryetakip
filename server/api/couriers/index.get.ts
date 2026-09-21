@@ -40,7 +40,9 @@ export default defineEventHandler(async (event) => {
             id: true,
             packageCount: true,
             totalAmount: true,
+            courierTotalAmount: true,
             deliveryType: true,
+            courierPriceSnapshot: true,
             unitPriceSnapshot: true
           }
         }
@@ -55,7 +57,10 @@ export default defineEventHandler(async (event) => {
 
       for (const rec of c.deliveryRecords) {
         const count = rec.packageCount || 0
-        const amount = Number(rec.totalAmount || 0)
+        // Use courierTotalAmount if set, fallback to totalAmount
+        const amount = Number(rec.courierTotalAmount || 0) > 0
+          ? Number(rec.courierTotalAmount)
+          : Number(rec.totalAmount || 0)
 
         if (rec.deliveryType === 'INDOOR') {
           todayIndoorPackages += count
@@ -73,6 +78,8 @@ export default defineEventHandler(async (event) => {
         id: c.id,
         name: c.name,
         phone: c.phone,
+        indoorPrice: Number(c.indoorPrice || 0),
+        outdoorPrice: Number(c.outdoorPrice || 0),
         isActive: c.isActive,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
