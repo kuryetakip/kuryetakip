@@ -688,7 +688,7 @@ onMounted(async () => {
     <BaseModal
       v-model="isAddModalOpen"
       title="Paket Kaydı Ekle"
-      description="Tarih, kurye, mekan ve teslimat tipine göre (İç ve Dış Mekan) birim fiyat ve paket sayılarını giriniz."
+      description="Tarih, kurye ve teslimat tipine göre (İç ve Dış Paket) birim fiyat ve paket sayılarını giriniz."
     >
       <form class="space-y-4" @submit.prevent="handleAddSubmit">
         <!-- Genel Hata Bildirimi -->
@@ -696,8 +696,8 @@ onMounted(async () => {
           {{ addFormErrors.general }}
         </div>
 
-        <!-- 1. Tarih, Kurye & Mekan Seçimi -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- 1. Tarih ve Kurye Seçimi -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <BaseInput
             v-model="addForm.date"
             label="Tarih"
@@ -715,17 +715,6 @@ onMounted(async () => {
             required
             @change="onAddCourierChange"
           />
-
-          <BaseSelect
-            v-model="addForm.venueId"
-            label="Mekan (Birim Fiyatlar)"
-            :options="[
-              { value: '', label: 'Genel (Manuel Fiyat)' },
-              ...activeVenues.map(v => ({ value: v.id, label: `${v.name} (İç: ${v.indoorPrice.toFixed(2)}₺ / Dış: ${v.outdoorPrice.toFixed(2)}₺)` }))
-            ]"
-            placeholder="Mekan seçiniz..."
-            @change="onAddVenueChange"
-          />
         </div>
 
         <!-- 2. TESLİMAT PAKET SAYILARI -->
@@ -733,7 +722,7 @@ onMounted(async () => {
           <div class="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50 space-y-1">
             <BaseInput
               v-model="addForm.indoorCount"
-              label="İç Mekan Paket Sayısı (Adet)"
+              label="İç Paket Sayısı (Adet)"
               type="number"
               min="0"
               step="1"
@@ -745,7 +734,7 @@ onMounted(async () => {
           <div class="p-3 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200/70 dark:border-sky-800/50 space-y-1">
             <BaseInput
               v-model="addForm.outdoorCount"
-              label="Dış Mekan Paket Sayısı (Adet)"
+              label="Dış Paket Sayısı (Adet)"
               type="number"
               min="0"
               step="1"
