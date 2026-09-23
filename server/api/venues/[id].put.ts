@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     let finalOutdoorPrice = Number(existing.outdoorPrice)
 
     if (body?.indoorPrice !== undefined) {
-      const indoorPriceNum = Number(body.indoorPrice)
+      const indoorPriceNum = Number(String(body.indoorPrice).replace(',', '.'))
       if (isNaN(indoorPriceNum) || indoorPriceNum < 0) {
         throw createError({
           statusCode: 400,
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (body?.outdoorPrice !== undefined) {
-      const outdoorPriceNum = Number(body.outdoorPrice)
+      const outdoorPriceNum = Number(String(body.outdoorPrice).replace(',', '.'))
       if (isNaN(outdoorPriceNum) || outdoorPriceNum < 0) {
         throw createError({
           statusCode: 400,

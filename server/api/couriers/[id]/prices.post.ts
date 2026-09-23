@@ -13,8 +13,14 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
 
     const venueId = typeof body?.venueId === 'string' ? body.venueId.trim() : ''
-    const indoorPriceNum = Number(body?.indoorPrice)
-    const outdoorPriceNum = Number(body?.outdoorPrice)
+    const parsePrice = (val: any) => {
+      if (val === undefined || val === null || val === '') return 0
+      const n = Number(String(val).replace(',', '.'))
+      return isNaN(n) ? 0 : n
+    }
+
+    const indoorPriceNum = parsePrice(body?.indoorPrice)
+    const outdoorPriceNum = parsePrice(body?.outdoorPrice)
 
     if (!venueId) {
       throw createError({

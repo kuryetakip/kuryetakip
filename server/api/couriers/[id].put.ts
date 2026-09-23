@@ -41,12 +41,12 @@ export default defineEventHandler(async (event) => {
     }
 
     if (body?.indoorPrice !== undefined) {
-      const p = Number(body.indoorPrice)
+      const p = Number(String(body.indoorPrice).replace(',', '.'))
       dataToUpdate.indoorPrice = isNaN(p) ? 0 : p
     }
 
     if (body?.outdoorPrice !== undefined) {
-      const p = Number(body.outdoorPrice)
+      const p = Number(String(body.outdoorPrice).replace(',', '.'))
       dataToUpdate.outdoorPrice = isNaN(p) ? 0 : p
     }
 

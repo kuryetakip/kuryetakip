@@ -5,8 +5,14 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
 
     const name = typeof body?.name === 'string' ? body.name.trim() : ''
-    const indoorPriceNum = Number(body?.indoorPrice)
-    const outdoorPriceNum = Number(body?.outdoorPrice)
+    const parsePrice = (val: any) => {
+      if (val === undefined || val === null || val === '') return 0
+      const n = Number(String(val).replace(',', '.'))
+      return isNaN(n) ? 0 : n
+    }
+
+    const indoorPriceNum = parsePrice(body?.indoorPrice)
+    const outdoorPriceNum = parsePrice(body?.outdoorPrice)
     const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true
 
     // Server-side validations
