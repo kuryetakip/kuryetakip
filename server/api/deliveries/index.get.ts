@@ -14,22 +14,22 @@ export default defineEventHandler(async (event) => {
 
     // Date filtering: single date or date range
     if (dateStr) {
-      const targetDate = new Date(dateStr)
-      if (!isNaN(targetDate.getTime())) {
-        where.date = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()))
+      const [y, m, d] = dateStr.split('-').map(Number)
+      if (y && m && d) {
+        where.date = new Date(Date.UTC(y, m - 1, d))
       }
     } else if (startDateStr || endDateStr) {
       where.date = {}
       if (startDateStr) {
-        const s = new Date(startDateStr)
-        if (!isNaN(s.getTime())) {
-          where.date.gte = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()))
+        const [y, m, d] = startDateStr.split('-').map(Number)
+        if (y && m && d) {
+          where.date.gte = new Date(Date.UTC(y, m - 1, d))
         }
       }
       if (endDateStr) {
-        const e = new Date(endDateStr)
-        if (!isNaN(e.getTime())) {
-          where.date.lte = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate()))
+        const [y, m, d] = endDateStr.split('-').map(Number)
+        if (y && m && d) {
+          where.date.lte = new Date(Date.UTC(y, m - 1, d))
         }
       }
     }

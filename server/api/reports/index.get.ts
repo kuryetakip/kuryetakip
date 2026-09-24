@@ -289,13 +289,13 @@ export default defineEventHandler(async (event) => {
       }
       const vcItem = vGroup.couriers.get(r.courierId)!
       vcItem.totalCount += count
-      vcItem.totalAmount += amount
+      vcItem.totalAmount += venueAmount
       if (isIndoor) {
         vcItem.indoorCount += count
-        vcItem.indoorAmount += amount
+        vcItem.indoorAmount += venueAmount
       } else {
         vcItem.outdoorCount += count
-        vcItem.outdoorAmount += amount
+        vcItem.outdoorAmount += venueAmount
       }
     }
 

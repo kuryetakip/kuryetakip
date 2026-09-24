@@ -36,8 +36,14 @@ export default defineEventHandler(async (event) => {
       ? body.courierUnitPrice
       : (body?.courierPriceSnapshot !== undefined ? body.courierPriceSnapshot : (body?.unitPrice !== undefined ? body.unitPrice : Number(existing.courierPriceSnapshot || existing.unitPriceSnapshot)))
 
-    const venueUnitPrice = Number(rawVenuePrice)
-    const courierUnitPrice = Number(rawCourierPrice)
+    const parsePrice = (val: any) => {
+      if (val === undefined || val === null || val === '') return 0
+      const n = Number(String(val).replace(',', '.'))
+      return isNaN(n) ? 0 : n
+    }
+
+    const venueUnitPrice = parsePrice(rawVenuePrice)
+    const courierUnitPrice = parsePrice(rawCourierPrice)
 
     if (isNaN(packageCount) || !Number.isInteger(packageCount) || packageCount <= 0) {
       throw createError({
@@ -57,14 +63,14 @@ export default defineEventHandler(async (event) => {
 
     let utcDate = existing.date
     if (dateStr) {
-      const parsedDate = new Date(dateStr)
-      if (isNaN(parsedDate.getTime())) {
+      const [y, m, d] = dateStr.split('-').map(Number)
+      if (!y || !m || !d) {
         throw createError({
           statusCode: 400,
           message: 'Geçersiz tarih formatı.'
         })
       }
-      utcDate = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate()))
+      utcDate = new Date(Date.UTC(y, m - 1, d))
     }
 
     // Server-side total calculation

@@ -79,8 +79,14 @@ export default defineEventHandler(async (event) => {
     const dateStr = typeof body?.date === 'string' ? body.date.trim() : ''
 
     if (indoorCount > 0 || outdoorCount > 0) {
-      const d = dateStr ? new Date(dateStr) : new Date()
-      const utcDate = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+      let utcDate: Date
+      if (dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number)
+        utcDate = new Date(Date.UTC(y, m - 1, d))
+      } else {
+        const d = new Date()
+        utcDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+      }
 
       let courierIndoorPrice = body?.courierIndoorPrice !== undefined && !isNaN(Number(body.courierIndoorPrice))
         ? Number(body.courierIndoorPrice)

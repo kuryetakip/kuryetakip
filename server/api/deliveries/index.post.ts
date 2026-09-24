@@ -16,14 +16,14 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const parsedDate = new Date(dateStr)
-    if (isNaN(parsedDate.getTime())) {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    if (!y || !m || !d) {
       throw createError({
         statusCode: 400,
         message: 'Geçersiz tarih formatı.'
       })
     }
-    const utcDate = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate()))
+    const utcDate = new Date(Date.UTC(y, m - 1, d))
 
     if (!courierId) {
       throw createError({
@@ -65,17 +65,23 @@ export default defineEventHandler(async (event) => {
       const indoorCount = Number(body?.indoorCount || 0)
       const outdoorCount = Number(body?.outdoorCount || 0)
 
+      const parsePrice = (val: any) => {
+        if (val === undefined || val === null || val === '') return 0
+        const n = Number(String(val).replace(',', '.'))
+        return isNaN(n) ? 0 : n
+      }
+
       // Venue prices
       const rawVenueIndoor = body?.venueIndoorPrice !== undefined ? body.venueIndoorPrice : body?.indoorPrice
       const rawVenueOutdoor = body?.venueOutdoorPrice !== undefined ? body.venueOutdoorPrice : body?.outdoorPrice
-      const venueIndoorPrice = Number(rawVenueIndoor ?? resolvedDefault?.venueIndoorPrice ?? 0)
-      const venueOutdoorPrice = Number(rawVenueOutdoor ?? resolvedDefault?.venueOutdoorPrice ?? 0)
+      const venueIndoorPrice = parsePrice(rawVenueIndoor ?? resolvedDefault?.venueIndoorPrice ?? 0)
+      const venueOutdoorPrice = parsePrice(rawVenueOutdoor ?? resolvedDefault?.venueOutdoorPrice ?? 0)
 
       // Courier prices
       const rawCourierIndoor = body?.courierIndoorPrice !== undefined ? body.courierIndoorPrice : body?.indoorPrice
       const rawCourierOutdoor = body?.courierOutdoorPrice !== undefined ? body.courierOutdoorPrice : body?.outdoorPrice
-      const courierIndoorPrice = Number(rawCourierIndoor ?? resolvedDefault?.courierIndoorPrice ?? courier.indoorPrice ?? 0)
-      const courierOutdoorPrice = Number(rawCourierOutdoor ?? resolvedDefault?.courierOutdoorPrice ?? courier.outdoorPrice ?? 0)
+      const courierIndoorPrice = parsePrice(rawCourierIndoor ?? resolvedDefault?.courierIndoorPrice ?? courier.indoorPrice ?? 0)
+      const courierOutdoorPrice = parsePrice(rawCourierOutdoor ?? resolvedDefault?.courierOutdoorPrice ?? courier.outdoorPrice ?? 0)
 
       if (indoorCount <= 0 && outdoorCount <= 0) {
         throw createError({
@@ -178,8 +184,14 @@ export default defineEventHandler(async (event) => {
     const rawVenuePrice = body?.venueUnitPrice !== undefined ? body.venueUnitPrice : body?.unitPrice
     const rawCourierPrice = body?.courierUnitPrice !== undefined ? body.courierUnitPrice : body?.unitPrice
 
-    const venueUnitPrice = Number(rawVenuePrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.venueIndoorPrice : resolvedDefault?.venueOutdoorPrice) ?? 0)
-    const courierUnitPrice = Number(rawCourierPrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.courierIndoorPrice : resolvedDefault?.courierOutdoorPrice) ?? venueUnitPrice)
+    const parsePrice = (val: any) => {
+      if (val === undefined || val === null || val === '') return 0
+      const n = Number(String(val).replace(',', '.'))
+      return isNaN(n) ? 0 : n
+    }
+
+    const venueUnitPrice = parsePrice(rawVenuePrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.venueIndoorPrice : resolvedDefault?.venueOutdoorPrice) ?? 0)
+    const courierUnitPrice = parsePrice(rawCourierPrice ?? (deliveryType === DeliveryType.INDOOR ? resolvedDefault?.courierIndoorPrice : resolvedDefault?.courierOutdoorPrice) ?? venueUnitPrice)
 
     if (isNaN(packageCount) || !Number.isInteger(packageCount) || packageCount <= 0) {
       throw createError({
