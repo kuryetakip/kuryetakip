@@ -84,28 +84,7 @@ const editFormErrors = ref<Record<string, string>>({})
 const activeCouriers = computed(() => couriers.value.filter(c => c.isActive))
 const activeVenues = computed(() => venues.value.filter(v => v.isActive))
 
-const fetchAddRates = async () => {
-  const cId = addForm.value.courierId
-  const vId = addForm.value.venueId
-  if (!cId || !vId) return
-  try {
-    const res = await $fetch<{ success: boolean; data: any }>('/api/deliveries/rates', {
-      query: { courierId: cId, venueId: vId, deliveryType: 'INDOOR' }
-    })
-    if (res.success && res.data) {
-      addForm.value.venueIndoorPrice = res.data.venueIndoorPrice
-      addForm.value.venueOutdoorPrice = res.data.venueOutdoorPrice
-      addForm.value.courierIndoorPrice = res.data.courierIndoorPrice
-      addForm.value.courierOutdoorPrice = res.data.courierOutdoorPrice
-      addForm.value.indoorPrice = res.data.courierIndoorPrice
-      addForm.value.outdoorPrice = res.data.courierOutdoorPrice
-    }
-  } catch (err) {
-    console.error('Fetch add rates error:', err)
-  }
-}
-
-// Venue & Courier Change Handlers -> Auto-fill default unit prices
+// Venue Change Handler -> Auto-fill default unit prices
 const onAddVenueChange = (newVenueId: string) => {
   addForm.value.venueId = newVenueId
   if (newVenueId) {
@@ -113,22 +92,6 @@ const onAddVenueChange = (newVenueId: string) => {
     if (selected) {
       addForm.value.venueIndoorPrice = selected.indoorPrice
       addForm.value.venueOutdoorPrice = selected.outdoorPrice
-    }
-    if (addForm.value.courierId) {
-      fetchAddRates()
-    }
-  }
-}
-
-const onAddCourierChange = (newCourierId: string) => {
-  addForm.value.courierId = newCourierId
-  if (newCourierId && addForm.value.venueId) {
-    fetchAddRates()
-  } else if (newCourierId) {
-    const selected = couriers.value.find(c => c.id === newCourierId)
-    if (selected) {
-      if (selected.indoorPrice) addForm.value.courierIndoorPrice = selected.indoorPrice
-      if (selected.outdoorPrice) addForm.value.courierOutdoorPrice = selected.outdoorPrice
     }
   }
 }
@@ -210,37 +173,32 @@ const setDateQuickFilter = (daysOffset: number) => {
   fetchDeliveries()
 }
 
-const openAddModal = async () => {
+const openAddModal = () => {
   const defaultVenue = activeVenues.value.length > 0 ? activeVenues.value[0] : null
-  const defaultCourier = activeCouriers.value.length > 0 ? activeCouriers.value[0] : null
 
   addForm.value = {
     date: filterDate.value || new Date().toISOString().substring(0, 10),
-    courierId: defaultCourier ? defaultCourier.id : '',
+    courierId: '',
     venueId: defaultVenue ? defaultVenue.id : '',
     venueIndoorPrice: defaultVenue ? defaultVenue.indoorPrice : '',
     venueOutdoorPrice: defaultVenue ? defaultVenue.outdoorPrice : '',
-    courierIndoorPrice: defaultCourier?.indoorPrice ? defaultCourier.indoorPrice : (defaultVenue ? defaultVenue.indoorPrice : ''),
-    courierOutdoorPrice: defaultCourier?.outdoorPrice ? defaultCourier.outdoorPrice : (defaultVenue ? defaultVenue.outdoorPrice : ''),
-    indoorPrice: defaultCourier?.indoorPrice ? defaultCourier.indoorPrice : (defaultVenue ? defaultVenue.indoorPrice : ''),
+    courierIndoorPrice: defaultVenue ? defaultVenue.indoorPrice : '',
+    courierOutdoorPrice: defaultVenue ? defaultVenue.outdoorPrice : '',
+    indoorPrice: defaultVenue ? defaultVenue.indoorPrice : '',
     indoorCount: '',
-    outdoorPrice: defaultCourier?.outdoorPrice ? defaultCourier.outdoorPrice : (defaultVenue ? defaultVenue.outdoorPrice : ''),
+    outdoorPrice: defaultVenue ? defaultVenue.outdoorPrice : '',
     outdoorCount: ''
   }
   addFormErrors.value = {}
   isAddModalOpen.value = true
-
-  if (defaultCourier && defaultVenue) {
-    await fetchAddRates()
-  }
 }
 
 const openEditModal = (record: DeliveryRecordItem) => {
   selectedDeliveryId.value = record.id
   editForm.value = {
     date: record.date,
-    courierId: record.courierId,
-    venueId: record.venueId,
+    courierId: record.courierId || '',
+    venueId: record.venueId || '',
     deliveryType: record.deliveryType,
     courierUnitPrice: record.courierPriceSnapshot !== undefined && record.courierPriceSnapshot > 0 ? record.courierPriceSnapshot : record.unitPriceSnapshot,
     venueUnitPrice: record.venuePriceSnapshot !== undefined && record.venuePriceSnapshot > 0 ? record.venuePriceSnapshot : Number(record.venue?.indoorPrice || record.unitPriceSnapshot),
@@ -272,10 +230,6 @@ const validateAddForm = () => {
   if (!addForm.value.date) {
     errors.date = 'Tarih zorunludur.'
   }
-  if (!addForm.value.courierId) {
-    errors.courierId = 'Kurye seçimi zorunludur.'
-  }
-
   const indoorCountNum = Number(addForm.value.indoorCount) || 0
   const outdoorCountNum = Number(addForm.value.outdoorCount) || 0
 
@@ -315,9 +269,6 @@ const validateEditForm = () => {
   const errors: Record<string, string> = {}
   if (!editForm.value.date) {
     errors.date = 'Tarih zorunludur.'
-  }
-  if (!editForm.value.courierId) {
-    errors.courierId = 'Kurye seçimi zorunludur.'
   }
   const count = Number(editForm.value.packageCount)
   if (isNaN(count) || !Number.isInteger(count) || count <= 0) {
@@ -705,16 +656,6 @@ onMounted(async () => {
             :error="addFormErrors.date"
             required
           />
-
-          <BaseSelect
-            v-model="addForm.courierId"
-            label="Kurye"
-            :options="activeCouriers.map(c => ({ value: c.id, label: c.name }))"
-            :error="addFormErrors.courierId"
-            placeholder="Kurye seçiniz..."
-            required
-            @change="onAddCourierChange"
-          />
         </div>
 
         <!-- 2. TESLİMAT PAKET SAYILARI -->
@@ -880,10 +821,12 @@ onMounted(async () => {
           <BaseSelect
             v-model="editForm.courierId"
             label="Kurye"
-            :options="activeCouriers.map(c => ({ value: c.id, label: c.name }))"
+            :options="[
+              { value: '', label: 'Kuryesiz / Genel Kayıt' },
+              ...activeCouriers.map(c => ({ value: c.id, label: c.name }))
+            ]"
             :error="editFormErrors.courierId"
-            placeholder="Kurye seçiniz..."
-            required
+            placeholder=""
           />
 
           <!-- Mekan -->

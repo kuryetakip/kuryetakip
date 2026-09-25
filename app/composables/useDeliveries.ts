@@ -1,8 +1,8 @@
 export interface DeliveryRecordItem {
   id: string
   date: string
-  courierId: string
-  venueId: string
+  courierId: string | null
+  venueId: string | null
   deliveryType: 'INDOOR' | 'OUTDOOR'
   packageCount: number
   venuePriceSnapshot?: number
@@ -19,14 +19,14 @@ export interface DeliveryRecordItem {
     name: string
     phone: string | null
     isActive: boolean
-  }
+  } | null
   venue: {
     id: string
     name: string
     indoorPrice: number
     outdoorPrice: number
     isActive: boolean
-  }
+  } | null
 }
 
 export interface DeliverySummary {

@@ -24,7 +24,9 @@ export default defineEventHandler(async (event) => {
     }
 
     const dateStr = body?.date ? String(body.date).trim() : null
-    const courierId = body?.courierId ? String(body.courierId).trim() : existing.courierId
+    const courierId = body?.courierId !== undefined
+      ? (String(body.courierId).trim() || null)
+      : existing.courierId
     const venueId = body?.venueId ? String(body.venueId).trim() : existing.venueId
     const deliveryTypeStr = body?.deliveryType !== undefined ? body.deliveryType : existing.deliveryType
     const packageCount = body?.packageCount !== undefined ? Number(body.packageCount) : existing.packageCount

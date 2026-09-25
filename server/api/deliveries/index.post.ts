@@ -25,17 +25,10 @@ export default defineEventHandler(async (event) => {
     }
     const utcDate = new Date(Date.UTC(y, m - 1, d))
 
-    if (!courierId) {
-      throw createError({
-        statusCode: 400,
-        message: 'Lütfen bir kurye seçiniz.'
-      })
-    }
-
-    const courier = await prisma.courier.findUnique({
-      where: { id: courierId }
-    })
-    if (!courier) {
+    const courier = courierId
+      ? await prisma.courier.findUnique({ where: { id: courierId } })
+      : null
+    if (courierId && !courier) {
       throw createError({
         statusCode: 404,
         message: 'Seçilen kurye bulunamadı.'
@@ -54,7 +47,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Resolve default rates for fallback if needed
-    const resolvedDefault = finalVenueId
+    const resolvedDefault = finalVenueId && courierId
       ? await resolveCourierRate(courierId, finalVenueId, DeliveryType.INDOOR).catch(() => null)
       : null
 
@@ -80,8 +73,8 @@ export default defineEventHandler(async (event) => {
       // Courier prices
       const rawCourierIndoor = body?.courierIndoorPrice !== undefined ? body.courierIndoorPrice : body?.indoorPrice
       const rawCourierOutdoor = body?.courierOutdoorPrice !== undefined ? body.courierOutdoorPrice : body?.outdoorPrice
-      const courierIndoorPrice = parsePrice(rawCourierIndoor ?? resolvedDefault?.courierIndoorPrice ?? courier.indoorPrice ?? 0)
-      const courierOutdoorPrice = parsePrice(rawCourierOutdoor ?? resolvedDefault?.courierOutdoorPrice ?? courier.outdoorPrice ?? 0)
+      const courierIndoorPrice = parsePrice(rawCourierIndoor ?? resolvedDefault?.courierIndoorPrice ?? courier?.indoorPrice ?? 0)
+      const courierOutdoorPrice = parsePrice(rawCourierOutdoor ?? resolvedDefault?.courierOutdoorPrice ?? courier?.outdoorPrice ?? 0)
 
       if (indoorCount <= 0 && outdoorCount <= 0) {
         throw createError({
@@ -123,7 +116,7 @@ export default defineEventHandler(async (event) => {
         const rec = await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
-            courierId,
+            courierId: courier?.id || null,
             venueId: finalVenueId,
             deliveryType: DeliveryType.INDOOR,
             packageCount: indoorCount,
@@ -153,7 +146,7 @@ export default defineEventHandler(async (event) => {
         const rec = await prisma.deliveryRecord.create({
           data: {
             date: utcDate,
-            courierId,
+            courierId: courier?.id || null,
             venueId: finalVenueId,
             deliveryType: DeliveryType.OUTDOOR,
             packageCount: outdoorCount,
@@ -172,7 +165,7 @@ export default defineEventHandler(async (event) => {
       return {
         success: true,
         data: createdRecords,
-        message: `${courier.name} için toplam ${totalCount} paket kaydı (Kurye Hakedişi: ${totalCourierSum.toFixed(2)} ₺, Mekan Tutar: ${totalVenueSum.toFixed(2)} ₺) başarıyla kaydedildi.`
+        message: `${courier?.name || 'Genel kayıt'} için toplam ${totalCount} paket kaydı (Kurye Hakedişi: ${totalCourierSum.toFixed(2)} ₺, Mekan Tutar: ${totalVenueSum.toFixed(2)} ₺) başarıyla kaydedildi.`
       }
     }
 
@@ -215,7 +208,7 @@ export default defineEventHandler(async (event) => {
     const record = await prisma.deliveryRecord.create({
       data: {
         date: utcDate,
-        courierId,
+        courierId: courier?.id || null,
         venueId: finalVenueId,
         deliveryType,
         packageCount,
@@ -250,7 +243,7 @@ export default defineEventHandler(async (event) => {
         courier: record.courier,
         venue: record.venue
       },
-      message: `${courier.name} için ${packageCount} adet ${deliveryType === DeliveryType.INDOOR ? 'İç Mekan' : 'Dış Mekan'} paket kaydı oluşturuldu (Kurye: ${cTot.toFixed(2)} ₺, Mekan: ${vTot.toFixed(2)} ₺).`
+      message: `${courier?.name || 'Genel kayıt'} için ${packageCount} adet ${deliveryType === DeliveryType.INDOOR ? 'İç Mekan' : 'Dış Mekan'} paket kaydı oluşturuldu (Kurye: ${cTot.toFixed(2)} ₺, Mekan: ${vTot.toFixed(2)} ₺).`
     }
   } catch (error: any) {
     console.error('Deliveries POST error:', error)
