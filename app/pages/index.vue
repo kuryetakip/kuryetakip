@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Ana route (/) mekanlar (/venues) sayfasına yönlendirilir
+// Ana route (/) mekanlar (/venues) sayfasına yönlendirilirss
 await navigateTo('/venues', { replace: true })
 </script>
 

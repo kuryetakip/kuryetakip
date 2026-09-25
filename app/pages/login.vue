@@ -39,7 +39,7 @@ const handleLogin = async () => {
       <ThemeSelector />
     </div>
 
-    <!-- Toast Component -->
+    <!-- Toast Componssent -->
     <BaseToast />
 
     <!-- LEFT SECTION : BRANDING & VISUAL -->

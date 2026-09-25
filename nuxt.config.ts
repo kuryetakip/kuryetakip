@@ -1,3 +1,5 @@
+import { F } from "vue-router/dist/index-D7ja2BKs.js"
+
 // Nuxt configuration with Supabase PgBouncer Pooler
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -40,3 +42,5 @@ export default defineNuxtConfig({
   }
 })
 
+
+//ssss
