@@ -21,6 +21,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  courierTransactions CourierTransaction[]
+
   @@map("users")
 }
 
@@ -107,18 +109,19 @@ model DeliveryRecord {
 }
 
 model CourierTransaction {
-  id          String   @id @default(cuid())
-  courierId   String
-  amount      Decimal  @db.Decimal(10, 2)
-  date        DateTime @db.Date
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  courierId    String
+  amount       Decimal  @db.Decimal(10, 2)
+  entryDate    DateTime @db.Date @map("entry_date")
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  createdById  String?  @map("created_by")
 
   courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([courierId])
-  @@index([date])
-  @@index([courierId, date])
+  @@index([entryDate])
+  @@index([courierId, entryDate])
   @@map("courier_transactions")
 }

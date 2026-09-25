@@ -3,8 +3,9 @@ import { z } from 'zod'
 
 const prisma = new PrismaClient()
 
+// amount can be negative for correction records
 const transactionSchema = z.object({
-  amount: z.number().positive('Tutar sıfırdan büyük olmalıdır.'),
+  amount: z.number().refine(val => val !== 0, { message: 'Tutar sıfır olamaz.' }),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Geçerli bir tarih giriniz (YYYY-AA-GG).'),
   description: z.string().optional()
 })
@@ -36,8 +37,9 @@ export default defineEventHandler(async (event) => {
       data: {
         courierId: id,
         amount,
-        date: new Date(date),
-        description
+        entryDate: new Date(date),
+        notes: description,
+        // createdById can be set if auth context is available
       }
     })
 

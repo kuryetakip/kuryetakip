@@ -105,8 +105,9 @@ const openTransactionModal = (courier: CourierItem) => {
 
 const validateTransactionForm = () => {
   const errors: Record<string, string> = {}
-  if (!transactionForm.value.amount || Number(transactionForm.value.amount) <= 0) {
-    errors.amount = 'Geçerli bir tutar giriniz.'
+  const amount = Number(transactionForm.value.amount)
+  if (!transactionForm.value.amount || amount === 0 || isNaN(amount)) {
+    errors.amount = 'Geçerli bir tutar giriniz (sıfır olamaz, düzeltme için negatif değer girebilirsiniz).'
   }
   if (!transactionForm.value.date) {
     errors.date = 'Tarih zorunludur.'
@@ -1625,8 +1626,8 @@ onMounted(async () => {
     <!-- 4. SİLME ONAY MODAL -->
     <BaseModal
       v-model="isTransactionModalOpen"
-      title="Para Girişi Ekle"
-      description="Kuryenin yaptığı tahsilat veya teslim ettiği nakit tutarını girin."
+      title="Para Girişi / Düzeltme İşlemi"
+      description="Kuryenin yaptığı tahsilat veya teslim ettiği nakit tutarını girin. Düzeltme yapmak için eksi (-) değerli tutar girebilirsiniz (Örn: -100). Tüm kayıtlar silinmez bir şekilde (Audit Log) tutulur."
     >
       <form @submit.prevent="handleTransactionSubmit" class="space-y-4">
         <div class="space-y-4">
@@ -1635,9 +1636,8 @@ onMounted(async () => {
             label="Tutar (₺)"
             type="number"
             step="0.01"
-            min="0.01"
             required
-            placeholder="Örn: 500"
+            placeholder="Örn: 500 (Düzeltme için: -100)"
             :error="transactionErrors.amount"
           />
 

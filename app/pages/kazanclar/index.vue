@@ -147,16 +147,19 @@ const columns = [
           </tr>
           <tr v-for="t in transactions" :key="t.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
             <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
-              {{ formatDate(t.date) }}
+              {{ formatDate(t.entryDate) }}
             </td>
             <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
               {{ t.courier?.name }}
             </td>
-            <td class="px-4 py-3 text-sm text-right font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+            <td class="px-4 py-3 text-sm text-right font-bold font-mono" :class="Number(t.amount) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
               {{ Number(t.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
             </td>
             <td class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-              {{ t.description || '-' }}
+              {{ t.notes || '-' }}
+              <span v-if="Number(t.amount) < 0" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
+                Düzeltme İşlemi
+              </span>
             </td>
           </tr>
         </template>

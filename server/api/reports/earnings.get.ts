@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   
   try {
     const whereClause: any = {
-      date: {
+      entryDate: {
         gte: startDate,
         lte: endDate
       }
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
           select: { name: true }
         }
       },
-      orderBy: { date: 'desc' }
+      orderBy: { entryDate: 'desc' }
     })
     
     const totalAmount = transactions.reduce((sum, t) => sum + Number(t.amount), 0)
