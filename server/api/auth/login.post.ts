@@ -14,9 +14,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Check credentials: user specified username "admin" and password "Admin@2026!"
-    const isValidUsername = usernameOrEmail === 'admin' || usernameOrEmail === 'admin@kuryetakip.com'
-    const isValidPassword = password === 'Admin@2026!'
+    // Check credentials: user specified username "adem" and password "1"
+    const isValidUsername = usernameOrEmail === 'adem' || usernameOrEmail === 'adem@kuryetakip.com' || usernameOrEmail === 'admin@kuryetakip.com'
+    const isValidPassword = password === '1'
 
     if (!isValidUsername || !isValidPassword) {
       throw createError({
@@ -27,23 +27,28 @@ export default defineEventHandler(async (event) => {
 
     // Find or ensure User record in DB
     let dbUser = await prisma.user.findFirst({
-      where: { email: 'admin@kuryetakip.com' }
+      where: {
+        OR: [
+          { email: 'adem@kuryetakip.com' },
+          { email: 'admin@kuryetakip.com' }
+        ]
+      }
     })
 
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
-          name: 'Admin',
-          email: 'admin@kuryetakip.com'
+          name: 'Adem',
+          email: 'adem@kuryetakip.com'
         }
       })
     }
 
     const authUser: AuthUser = {
       id: dbUser.id,
-      name: dbUser.name || 'Admin',
+      name: dbUser.name || 'Adem',
       email: dbUser.email,
-      username: 'admin',
+      username: 'adem',
       role: 'admin'
     }
 
