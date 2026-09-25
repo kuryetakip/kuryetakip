@@ -144,12 +144,14 @@ const handleLogin = async () => {
 
         <!-- Modern Login Card -->
         <div class="bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-100 dark:border-slate-800 backdrop-blur-xl transition-all duration-300">
-          <form class="space-y-6" @submit.prevent="handleLogin">
+          <form class="space-y-6" novalidate @submit.prevent="handleLogin">
             <!-- Error Banner -->
             <div
               v-if="errorMessage"
+              id="login-error"
               class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm"
               role="alert"
+              aria-live="assertive"
             >
               <AlertCircle class="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
               <span class="font-medium leading-relaxed">{{ errorMessage }}</span>
@@ -170,6 +172,8 @@ const handleLogin = async () => {
                   type="text"
                   autocomplete="username"
                   required
+                  :aria-invalid="!!errorMessage"
+                  :aria-describedby="errorMessage ? 'login-error' : undefined"
                   placeholder="Kullanıcı adınızı girin"
                   class="block w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
                 />
@@ -193,6 +197,8 @@ const handleLogin = async () => {
                   :type="showPassword ? 'text' : 'password'"
                   autocomplete="current-password"
                   required
+                  :aria-invalid="!!errorMessage"
+                  :aria-describedby="errorMessage ? 'login-error' : undefined"
                   placeholder="Şifrenizi girin"
                   class="block w-full pl-11 pr-12 py-3.5 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs"
                 />
@@ -213,6 +219,7 @@ const handleLogin = async () => {
             <button
               type="submit"
               :disabled="loading"
+              :aria-busy="loading"
               class="relative w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 focus:ring-emerald-500 disabled:opacity-75 disabled:cursor-not-allowed transition-all duration-200 shadow-[0_4px_20px_rgba(16,185,129,0.4)] hover:shadow-[0_6px_25px_rgba(16,185,129,0.5)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group"
             >
               <span v-if="loading" class="flex items-center gap-2.5">
