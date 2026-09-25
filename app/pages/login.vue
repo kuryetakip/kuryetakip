@@ -200,7 +200,7 @@ const handleLogin = async () => {
                     required
                     :aria-invalid="!!errorMessage"
                     :aria-describedby="errorMessage ? 'login-error' : undefined"
-                    placeholder="admin"
+                    placeholder="Kullanıcı adınızı girin"
                     class="login-field__input"
                     @focus="focusedField = 'username'"
                     @blur="focusedField = null"
@@ -223,7 +223,7 @@ const handleLogin = async () => {
                     required
                     :aria-invalid="!!errorMessage"
                     :aria-describedby="errorMessage ? 'login-error' : undefined"
-                    placeholder="••••••••"
+                    placeholder="Şifrenizi girin"
                     class="login-field__input login-field__input--password"
                     @focus="focusedField = 'password'"
                     @blur="focusedField = null"
@@ -238,14 +238,6 @@ const handleLogin = async () => {
                     <EyeOff v-else :size="18" />
                   </button>
                 </div>
-              </div>
-
-              <!-- Demo credentials hint -->
-              <div class="login-hint">
-                <span class="login-hint__label">Demo Bilgiler:</span>
-                <code class="login-hint__code">admin</code>
-                <span class="login-hint__sep">/</span>
-                <code class="login-hint__code">Admin@2026!</code>
               </div>
 
               <!-- Submit -->
@@ -770,37 +762,6 @@ const handleLogin = async () => {
   background: rgba(51, 65, 85, 0.4);
 }
 
-/* ======== DEMO HINT ======== */
-.login-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: rgba(16, 185, 129, 0.06);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  font-size: 0.8125rem;
-}
-
-.login-hint__label {
-  color: #64748b;
-  font-weight: 500;
-}
-
-.login-hint__code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.1);
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.375rem;
-}
-
-.login-hint__sep {
-  color: #334155;
-}
-
 /* ======== ERROR ALERT ======== */
 .login-alert {
   display: flex;
@@ -1056,23 +1017,6 @@ const handleLogin = async () => {
 .light .login-field__eye:hover {
   color: #334155;
   background: rgba(226, 232, 240, 0.6);
-}
-
-:root:not(.dark) .login-hint,
-.light .login-hint {
-  background: rgba(16, 185, 129, 0.04);
-  border-color: rgba(16, 185, 129, 0.12);
-}
-
-:root:not(.dark) .login-hint__label,
-.light .login-hint__label {
-  color: #64748b;
-}
-
-:root:not(.dark) .login-hint__code,
-.light .login-hint__code {
-  color: #059669;
-  background: rgba(16, 185, 129, 0.08);
 }
 
 :root:not(.dark) .login-alert,
