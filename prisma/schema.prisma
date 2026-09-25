@@ -53,6 +53,7 @@ model Courier {
 
   courierVenuePrices CourierVenuePrice[]
   deliveryRecords    DeliveryRecord[]
+  transactions       CourierTransaction[]
 
   @@index([name])
   @@index([isActive])
@@ -103,4 +104,21 @@ model DeliveryRecord {
   @@index([venueId, date])
   @@index([date, deliveryType])
   @@map("delivery_records")
+}
+
+model CourierTransaction {
+  id          String   @id @default(cuid())
+  courierId   String
+  amount      Decimal  @db.Decimal(10, 2)
+  date        DateTime @db.Date
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@index([courierId])
+  @@index([date])
+  @@index([courierId, date])
+  @@map("courier_transactions")
 }

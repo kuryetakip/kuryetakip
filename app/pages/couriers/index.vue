@@ -48,7 +48,8 @@ const {
   createCourier,
   updateCourier,
   toggleCourierStatus,
-  deleteCourier
+  deleteCourier,
+  createTransaction
 } = useCouriers()
 
 const { venues, fetchVenues } = useVenues()
@@ -79,6 +80,54 @@ const isEditing = ref(false)
 const currentCourierId = ref<string | null>(null)
 const isConfirmDeleteOpen = ref(false)
 const courierToDelete = ref<CourierItem | null>(null)
+
+// Courier Detail Modal State
+const isTransactionModalOpen = ref(false)
+const transactionCourier = ref<CourierItem | null>(null)
+const transactionForm = ref({
+  amount: '',
+  date: new Date().toISOString().substring(0, 10),
+  description: ''
+})
+const transactionErrors = ref<Record<string, string>>({})
+const transactionLoading = ref(false)
+
+const openTransactionModal = (courier: CourierItem) => {
+  transactionCourier.value = courier
+  transactionForm.value = {
+    amount: '',
+    date: new Date().toISOString().substring(0, 10),
+    description: ''
+  }
+  transactionErrors.value = {}
+  isTransactionModalOpen.value = true
+}
+
+const validateTransactionForm = () => {
+  const errors: Record<string, string> = {}
+  if (!transactionForm.value.amount || Number(transactionForm.value.amount) <= 0) {
+    errors.amount = 'Geçerli bir tutar giriniz.'
+  }
+  if (!transactionForm.value.date) {
+    errors.date = 'Tarih zorunludur.'
+  }
+  transactionErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+const handleTransactionSubmit = async () => {
+  if (!validateTransactionForm() || !transactionCourier.value) return
+  transactionLoading.value = true
+  const success = await createTransaction(transactionCourier.value.id, {
+    amount: Number(transactionForm.value.amount),
+    date: transactionForm.value.date,
+    description: transactionForm.value.description
+  })
+  transactionLoading.value = false
+  if (success) {
+    isTransactionModalOpen.value = false
+  }
+}
 
 // Courier Detail Modal State
 const isDetailModalOpen = ref(false)
@@ -872,6 +921,20 @@ onMounted(async () => {
                   Paket Gir
                 </BaseButton>
 
+                <!-- Para Girişi Butonu -->
+                <BaseButton
+                  variant="outline"
+                  size="sm"
+                  class="!text-xs !py-1 !px-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-semibold"
+                  title="Bu Kurye İçin Para Girişi (Tahsilat) Ekle"
+                  @click="openTransactionModal(courier)"
+                >
+                  <template #leading>
+                    <Plus class="w-3.5 h-3.5 text-blue-700 dark:text-blue-400 stroke-[2.5]" />
+                  </template>
+                  Para Girişi
+                </BaseButton>
+
                 <!-- Detay Butonu -->
                 <BaseButton
                   variant="outline"
@@ -1560,6 +1623,63 @@ onMounted(async () => {
     />
 
     <!-- 4. SİLME ONAY MODAL -->
+    <BaseModal
+      v-model="isTransactionModalOpen"
+      title="Para Girişi Ekle"
+      description="Kuryenin yaptığı tahsilat veya teslim ettiği nakit tutarını girin."
+    >
+      <form @submit.prevent="handleTransactionSubmit" class="space-y-4">
+        <div class="space-y-4">
+          <BaseInput
+            v-model="transactionForm.amount"
+            label="Tutar (₺)"
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+            placeholder="Örn: 500"
+            :error="transactionErrors.amount"
+          />
+
+          <BaseInput
+            v-model="transactionForm.date"
+            label="Tarih"
+            type="date"
+            required
+            :error="transactionErrors.date"
+          />
+
+          <BaseInput
+            v-model="transactionForm.description"
+            label="Açıklama (Opsiyonel)"
+            type="text"
+            placeholder="Nakit teslimat vb."
+          />
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2.5">
+          <BaseButton
+            variant="outline"
+            size="sm"
+            type="button"
+            :disabled="transactionLoading"
+            @click="isTransactionModalOpen = false"
+          >
+            İptal
+          </BaseButton>
+          <BaseButton
+            variant="primary"
+            size="sm"
+            type="submit"
+            :loading="transactionLoading"
+          >
+            Kaydet
+          </BaseButton>
+        </div>
+      </form>
+    </BaseModal>
+
+    <!-- 5. SİLME ONAY MODAL -->
     <BaseConfirmDialog
       v-model="isConfirmDeleteOpen"
       title="Kuryeyi Sil"

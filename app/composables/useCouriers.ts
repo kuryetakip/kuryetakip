@@ -271,6 +271,28 @@ export const useCouriers = () => {
     }
   }
 
+  const createTransaction = async (courierId: string, payload: { amount: number, date: string, description?: string }) => {
+    loading.value = true
+    try {
+      const response = await $fetch<{ success: boolean; data: any }>(`/api/couriers/${courierId}/transactions`, {
+        method: 'POST',
+        body: payload
+      })
+
+      if (response.success) {
+        toast.success('Para girişi başarıyla eklendi.', 'Başarılı')
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error('Create transaction error:', err)
+      toast.error(err?.data?.statusMessage || 'Para girişi eklenirken bir hata oluştu.', 'Hata')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     couriers: readonly(couriers),
     currentCourier: readonly(currentCourier),
@@ -287,6 +309,7 @@ export const useCouriers = () => {
     createCourier,
     updateCourier,
     toggleCourierStatus,
-    deleteCourier
+    deleteCourier,
+    createTransaction
   }
 }
