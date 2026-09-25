@@ -21,7 +21,6 @@ import {
   Bike
 } from 'lucide-vue-next'
 import { useVenues, type VenueItem, type VenueFormData } from '~/composables/useVenues'
-import { useCouriers } from '~/composables/useCouriers'
 
 useHead({
   title: 'Mekan Yönetimi & Günlük Paket Takibi — KuryeTakip'
@@ -38,9 +37,6 @@ const {
   toggleVenueStatus,
   deleteVenue
 } = useVenues()
-
-const { couriers, fetchCouriers } = useCouriers()
-const activeCouriers = computed(() => couriers.value.filter(c => c.isActive))
 
 // Modal states
 const isModalOpen = ref(false)
@@ -62,7 +58,6 @@ const quickDeliveryForm = ref({
   outdoorCount: '' as string | number,
   venueIndoorPrice: '' as string | number,
   venueOutdoorPrice: '' as string | number,
-  courierId: '',
   courierIndoorPrice: '' as string | number,
   courierOutdoorPrice: '' as string | number
 })
@@ -213,47 +208,16 @@ const openEditModal = (venue: VenueItem) => {
 
 const openQuickDelivery = (venue: VenueItem) => {
   targetVenue.value = venue
-  const defaultCourierId = activeCouriers.value[0]?.id || ''
   quickDeliveryForm.value = {
     date: filterDate.value || new Date().toISOString().substring(0, 10),
     indoorCount: '',
     outdoorCount: '',
     venueIndoorPrice: venue.indoorPrice,
     venueOutdoorPrice: venue.outdoorPrice,
-    courierId: defaultCourierId,
-    courierIndoorPrice: activeCouriers.value[0]?.indoorPrice || 0,
-    courierOutdoorPrice: activeCouriers.value[0]?.outdoorPrice || 0
-  }
-  if (defaultCourierId) {
-    onCourierChange(defaultCourierId)
+    courierIndoorPrice: '',
+    courierOutdoorPrice: ''
   }
   isQuickDeliveryOpen.value = true
-}
-
-const onCourierChange = async (courierId: string) => {
-  if (!courierId) {
-    quickDeliveryForm.value.courierIndoorPrice = ''
-    quickDeliveryForm.value.courierOutdoorPrice = ''
-    return
-  }
-  const selectedC = couriers.value.find(c => c.id === courierId)
-  if (selectedC) {
-    quickDeliveryForm.value.courierIndoorPrice = selectedC.indoorPrice || 0
-    quickDeliveryForm.value.courierOutdoorPrice = selectedC.outdoorPrice || 0
-  }
-  if (targetVenue.value) {
-    try {
-      const res = await $fetch<{ success: boolean; data: any }>('/api/deliveries/rate-preview', {
-        query: { courierId, venueId: targetVenue.value.id }
-      })
-      if (res.success && res.data) {
-        quickDeliveryForm.value.courierIndoorPrice = res.data.courierIndoorPrice
-        quickDeliveryForm.value.courierOutdoorPrice = res.data.courierOutdoorPrice
-      }
-    } catch {
-      // fallback to courier defaults
-    }
-  }
 }
 
 const openHistoryModal = (venue: VenueItem) => {
@@ -317,7 +281,6 @@ const handleQuickDeliverySubmit = async () => {
     date: quickDeliveryForm.value.date,
     indoorCount: indoor,
     outdoorCount: outdoor,
-    courierId: quickDeliveryForm.value.courierId || undefined,
     courierIndoorPrice: Number(quickDeliveryForm.value.courierIndoorPrice) || 0,
     courierOutdoorPrice: Number(quickDeliveryForm.value.courierOutdoorPrice) || 0
   }
@@ -330,7 +293,6 @@ const handleQuickDeliverySubmit = async () => {
 
 onMounted(() => {
   fetchVenues()
-  fetchCouriers()
 })
 </script>
 
@@ -888,32 +850,12 @@ onMounted(() => {
       description="Mekan için paket sayılarını girin, mekan tahsilat ücretlerini ve kurye hakediş ücretlerini ayrı ayrı belirleyin."
     >
       <form class="space-y-4" @submit.prevent="handleQuickDeliverySubmit">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <BaseInput
-            v-model="quickDeliveryForm.date"
-            label="Teslimat Tarihi"
-            type="date"
-            required
-          />
-
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Kurye Seçimi
-            </label>
-            <BaseSelect
-              v-model="quickDeliveryForm.courierId"
-              :options="[
-                { value: '', label: 'Kuryesiz / Genel Kayıt' },
-                ...activeCouriers.map(c => ({
-                  value: c.id,
-                  label: `${c.name} ${c.phone ? '— ' + c.phone : ''}`
-                }))
-              ]"
-              placeholder="Kurye seçiniz..."
-              @update:model-value="onCourierChange"
-            />
-          </div>
-        </div>
+        <BaseInput
+          v-model="quickDeliveryForm.date"
+          label="Teslimat Tarihi"
+          type="date"
+          required
+        />
 
         <!-- Paket Sayıları -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
