@@ -50,6 +50,11 @@ export default defineEventHandler(async (event) => {
       dataToUpdate.outdoorPrice = isNaN(p) ? 0 : p
     }
 
+    if (body?.paidAmount !== undefined) {
+      const p = Number(String(body.paidAmount).replace(',', '.'))
+      dataToUpdate.paidAmount = isNaN(p) ? 0 : p
+    }
+
     if (body?.isActive !== undefined) {
       dataToUpdate.isActive = Boolean(body.isActive)
     }

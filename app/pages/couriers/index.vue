@@ -24,7 +24,8 @@ import {
   Clock,
   ArrowRight,
   ExternalLink,
-  Tag
+  Tag,
+  AlertTriangle
 } from 'lucide-vue-next'
 import { useCouriers, type CourierItem, type CourierFormData } from '~/composables/useCouriers'
 import { useDeliveries } from '~/composables/useDeliveries'
@@ -47,13 +48,167 @@ const {
   fetchCouriers,
   createCourier,
   updateCourier,
+  updateCourierPaidAmount,
   toggleCourierStatus,
   deleteCourier,
   createTransaction
 } = useCouriers()
 
 const { venues, fetchVenues } = useVenues()
-const { createDelivery } = useDeliveries()
+const { createDelivery, updateDelivery, deleteDelivery } = useDeliveries()
+
+// Inline Paid Amount (Avans / Ödenen) State
+const courierPaidInputs = ref<Record<string, string | number>>({})
+const savingPaidCourierId = ref<string | null>(null)
+
+const onPaidAmountInput = (courierId: string, val: string) => {
+  courierPaidInputs.value[courierId] = val
+}
+
+const getCourierPaidAmount = (courier: CourierItem) => {
+  if (courierPaidInputs.value[courier.id] !== undefined) {
+    const val = Number(courierPaidInputs.value[courier.id])
+    return isNaN(val) ? 0 : val
+  }
+  return Number(courier.paidAmount || 0)
+}
+
+const getCourierRemainingBalance = (courier: CourierItem) => {
+  const tot = courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0
+  const paid = getCourierPaidAmount(courier)
+  return Number((tot - paid).toFixed(2))
+}
+
+const savePaidAmount = async (courier: CourierItem) => {
+  const inputVal = courierPaidInputs.value[courier.id]
+  if (inputVal === undefined) return
+  const num = Number(inputVal)
+  if (isNaN(num) || num < 0) {
+    toast.error('Geçerli bir verilen tutar giriniz.', 'Hata')
+    return
+  }
+  if (num === (courier.paidAmount || 0)) {
+    delete courierPaidInputs.value[courier.id]
+    return
+  }
+
+  savingPaidCourierId.value = courier.id
+  try {
+    const success = await updateCourierPaidAmount(courier.id, num)
+    if (success) {
+      delete courierPaidInputs.value[courier.id]
+      await fetchCouriers()
+    }
+  } finally {
+    savingPaidCourierId.value = null
+  }
+}
+
+// Past delivery record edit modal state
+const isEditDeliveryModalOpen = ref(false)
+const editDeliveryLoading = ref(false)
+const editDeliveryForm = ref({
+  id: '',
+  date: '',
+  courierId: '',
+  venueId: '',
+  deliveryType: 'INDOOR' as 'INDOOR' | 'OUTDOOR',
+  packageCount: 1 as string | number,
+  courierUnitPrice: 0 as string | number
+})
+const editDeliveryErrors = ref<Record<string, string>>({})
+
+// Delivery record delete confirm state
+const isConfirmDeleteDeliveryOpen = ref(false)
+const deliveryToDelete = ref<any | null>(null)
+const deleteDeliveryLoading = ref(false)
+
+const openEditDeliveryModal = (record: any) => {
+  editDeliveryForm.value = {
+    id: record.id,
+    date: record.date,
+    courierId: record.courierId || detailCourier.value?.id || '',
+    venueId: record.venueId || '',
+    deliveryType: record.deliveryType || 'INDOOR',
+    packageCount: record.packageCount,
+    courierUnitPrice: record.courierPriceSnapshot !== undefined && record.courierPriceSnapshot > 0
+      ? record.courierPriceSnapshot
+      : record.unitPriceSnapshot
+  }
+  editDeliveryErrors.value = {}
+  isEditDeliveryModalOpen.value = true
+}
+
+const editDeliveryCalculatedTotal = computed(() => {
+  const count = Number(editDeliveryForm.value.packageCount) || 0
+  const price = Number(editDeliveryForm.value.courierUnitPrice) || 0
+  if (count <= 0 || price < 0) return 0
+  return Number((count * price).toFixed(2))
+})
+
+const validateEditDeliveryForm = () => {
+  const errors: Record<string, string> = {}
+  if (!editDeliveryForm.value.date) {
+    errors.date = 'Tarih zorunludur.'
+  }
+  const count = Number(editDeliveryForm.value.packageCount)
+  if (isNaN(count) || !Number.isInteger(count) || count <= 0) {
+    errors.packageCount = 'Paket sayısı en az 1 tam sayı olmalıdır.'
+  }
+  const price = Number(editDeliveryForm.value.courierUnitPrice)
+  if (isNaN(price) || price < 0) {
+    errors.courierUnitPrice = 'Geçerli bir hakediş birim fiyatı giriniz.'
+  }
+  editDeliveryErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+const handleEditDeliverySubmit = async () => {
+  if (!validateEditDeliveryForm() || !editDeliveryForm.value.id) return
+  editDeliveryLoading.value = true
+  try {
+    const payload = {
+      date: editDeliveryForm.value.date,
+      courierId: editDeliveryForm.value.courierId,
+      venueId: editDeliveryForm.value.venueId || undefined,
+      deliveryType: editDeliveryForm.value.deliveryType,
+      packageCount: Number(editDeliveryForm.value.packageCount),
+      courierUnitPrice: Number(editDeliveryForm.value.courierUnitPrice),
+      unitPrice: Number(editDeliveryForm.value.courierUnitPrice)
+    }
+    const success = await updateDelivery(editDeliveryForm.value.id, payload)
+    if (success) {
+      isEditDeliveryModalOpen.value = false
+      toast.success('Geçmiş paket kaydı başarıyla güncellendi.', 'Güncellendi')
+      await fetchDetailReport()
+      await fetchCouriers()
+    }
+  } finally {
+    editDeliveryLoading.value = false
+  }
+}
+
+const openDeleteDeliveryConfirm = (record: any) => {
+  deliveryToDelete.value = record
+  isConfirmDeleteDeliveryOpen.value = true
+}
+
+const handleConfirmDeleteDelivery = async () => {
+  if (!deliveryToDelete.value) return
+  deleteDeliveryLoading.value = true
+  try {
+    const success = await deleteDelivery(deliveryToDelete.value.id)
+    if (success) {
+      isConfirmDeleteDeliveryOpen.value = false
+      deliveryToDelete.value = null
+      toast.success('Paket kaydı silindi ve kurye hakedişi güncellendi.', 'Silindi')
+      await fetchDetailReport()
+      await fetchCouriers()
+    }
+  } finally {
+    deleteDeliveryLoading.value = false
+  }
+}
 
 // Quick Delivery Modal State
 const isQuickDeliveryModalOpen = ref(false)
@@ -168,11 +323,12 @@ const columns = [
   { key: 'indoorPackages', label: 'İç Mekan', align: 'right' as const },
   { key: 'outdoorPackages', label: 'Dış Mekan', align: 'right' as const },
   { key: 'totalPackages', label: 'Toplam Paket', align: 'right' as const },
-  { key: 'totalAmount', label: 'Hakediş', align: 'right' as const },
-  { key: 'isActive', label: 'Durum', align: 'center' as const }
+  { key: 'totalEarnings', label: 'Toplam Hakediş', align: 'right' as const },
+  { key: 'paidAmount', label: 'Verilen Tutar / Avans (Ödenen)', align: 'center' as const },
+  { key: 'remainingBalance', label: 'Kalan Hakediş', align: 'right' as const }
 ]
 
-// KPI calculations across all filtered couriers for the selected date
+// KPI calculations across all filtered couriers for the selected date & overall
 const totalCouriersCount = computed(() => couriers.value.length)
 const activeCouriersCount = computed(() => couriers.value.filter(c => c.isActive).length)
 const totalIndoorAcrossCouriers = computed(() => {
@@ -192,6 +348,17 @@ const totalPackagesAcrossCouriers = computed(() => {
 })
 const totalAmountAcrossCouriers = computed(() => {
   return couriers.value.reduce((sum, c) => sum + (c.todayTotalAmount || 0), 0)
+})
+
+// Cumulative totals across all couriers
+const totalCumulativeEarningsAcrossCouriers = computed(() => {
+  return couriers.value.reduce((sum, c) => sum + (c.cumulativeTotalAmount ?? c.totalEarnings ?? 0), 0)
+})
+const totalPaidAcrossCouriers = computed(() => {
+  return couriers.value.reduce((sum, c) => sum + getCourierPaidAmount(c), 0)
+})
+const totalRemainingBalanceAcrossCouriers = computed(() => {
+  return Number((totalCumulativeEarningsAcrossCouriers.value - totalPaidAcrossCouriers.value).toFixed(2))
 })
 
 // Filtered couriers based on search query
@@ -340,6 +507,7 @@ const openAddModal = () => {
     phone: '',
     indoorPrice: '',
     outdoorPrice: '',
+    paidAmount: '',
     isActive: true
   }
   formErrors.value = {}
@@ -354,6 +522,7 @@ const openEditModal = (courier: CourierItem) => {
     phone: courier.phone || '',
     indoorPrice: courier.indoorPrice !== undefined && courier.indoorPrice > 0 ? courier.indoorPrice : '',
     outdoorPrice: courier.outdoorPrice !== undefined && courier.outdoorPrice > 0 ? courier.outdoorPrice : '',
+    paidAmount: courier.paidAmount !== undefined && courier.paidAmount > 0 ? courier.paidAmount : '',
     isActive: courier.isActive
   }
   formErrors.value = {}
@@ -511,8 +680,8 @@ const validateQuickDeliveryForm = () => {
   if (!quickDeliveryForm.value.date) {
     errors.date = 'Tarih zorunludur.'
   }
-  if (!quickDeliveryForm.value.courierId) {
-    errors.courierId = 'Kurye seçimi zorunludur.'
+  if (!quickDeliveryForm.value.courierId && !quickDeliveryCourier.value) {
+    errors.general = 'Kurye bilgisi bulunamadı. Lütfen bir kurye satırından tekrar deneyin.'
   }
 
   const indoorCountNum = Number(quickDeliveryForm.value.indoorCount) || 0
@@ -643,53 +812,69 @@ onMounted(async () => {
         </div>
       </BaseCard>
 
-      <!-- 2. Günlük İç Mekan Paketleri -->
+      <!-- 2. Seçilen Gün Paket ve Hakediş -->
       <BaseCard no-padding class="p-4 border-l-4 border-l-emerald-500 flex flex-col justify-between">
         <div>
           <div class="text-xs font-semibold text-emerald-800 dark:text-emerald-400 flex items-center justify-between">
-            <span>Seçilen Gün: İç Mekan</span>
+            <span>Seçilen Gün: Paketler</span>
             <span class="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
           <div class="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1 font-mono">
-            {{ totalIndoorAmountAcrossCouriers.toFixed(2) }} ₺
+            {{ totalPackagesAcrossCouriers }} Paket
           </div>
         </div>
         <div class="text-[11px] font-medium text-emerald-600/90 dark:text-emerald-400/90 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <span>İç Paket Adedi:</span>
-          <span class="font-mono font-bold">{{ totalIndoorAcrossCouriers }} Adet</span>
+          <span>İç: {{ totalIndoorAcrossCouriers }} / Dış: {{ totalOutdoorAcrossCouriers }}</span>
+          <span class="font-mono font-bold">{{ totalAmountAcrossCouriers.toFixed(2) }} ₺</span>
         </div>
       </BaseCard>
 
-      <!-- 3. Günlük Dış Mekan Paketleri -->
-      <BaseCard no-padding class="p-4 border-l-4 border-l-sky-500 flex flex-col justify-between">
+      <!-- 3. Toplam Hakediş & Verilen Avans -->
+      <BaseCard no-padding class="p-4 border-l-4 border-l-amber-500 flex flex-col justify-between">
         <div>
-          <div class="text-xs font-semibold text-sky-800 dark:text-sky-400 flex items-center justify-between">
-            <span>Seçilen Gün: Dış Mekan</span>
-            <span class="w-2 h-2 rounded-full bg-sky-500" />
+          <div class="text-xs font-semibold text-amber-800 dark:text-amber-400 flex items-center justify-between">
+            <span>Verilen Tutar / Avans</span>
+            <span class="w-2 h-2 rounded-full bg-amber-500" />
           </div>
-          <div class="text-2xl font-bold text-sky-700 dark:text-sky-400 mt-1 font-mono">
-            {{ totalOutdoorAmountAcrossCouriers.toFixed(2) }} ₺
+          <div class="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1 font-mono">
+            {{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
           </div>
         </div>
-        <div class="text-[11px] font-medium text-sky-600/90 dark:text-sky-400/90 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <span>Dış Paket Adedi:</span>
-          <span class="font-mono font-bold">{{ totalOutdoorAcrossCouriers }} Adet</span>
+        <div class="text-[11px] font-medium text-amber-600/90 dark:text-amber-400/90 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <span>Genel Toplam Hakediş:</span>
+          <span class="font-mono font-bold">{{ totalCumulativeEarningsAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</span>
         </div>
       </BaseCard>
 
-      <!-- 4. Günlük Toplam Hakediş -->
-      <BaseCard no-padding class="p-4 bg-slate-900 dark:bg-slate-900 text-white border-slate-800 dark:border-slate-700 flex flex-col justify-between">
+      <!-- 4. Kalan Toplam Hakediş (Net Bakiye) -->
+      <BaseCard
+        no-padding
+        :class="[
+          'p-4 flex flex-col justify-between transition-colors',
+          totalRemainingBalanceAcrossCouriers < 0
+            ? 'bg-rose-950/90 text-white border-rose-800 border-2 shadow-sm'
+            : 'bg-slate-900 dark:bg-slate-900 text-white border-slate-800 dark:border-slate-700'
+        ]"
+      >
         <div>
-          <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-            Günlük Toplam Hakediş
+          <div class="text-xs font-semibold uppercase tracking-wider flex items-center justify-between">
+            <span :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-300' : 'text-emerald-400'">
+              Kalan Toplam Hakediş
+            </span>
+            <AlertTriangle v-if="totalRemainingBalanceAcrossCouriers < 0" class="w-4 h-4 text-rose-400 shrink-0" />
           </div>
-          <div class="text-2xl font-bold text-emerald-400 mt-1 font-mono">
-            {{ totalAmountAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          <div
+            :class="[
+              'text-2xl font-bold mt-1 font-mono',
+              totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-400' : 'text-emerald-400'
+            ]"
+          >
+            {{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
           </div>
         </div>
-        <div class="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 dark:border-slate-800 flex items-center justify-between">
-          <span>Toplam Atılan Paket</span>
-          <span class="font-mono text-emerald-300 font-semibold">{{ totalPackagesAcrossCouriers }} Paket</span>
+        <div class="text-[11px] text-slate-300 dark:text-slate-400 mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
+          <span>{{ totalRemainingBalanceAcrossCouriers < 0 ? 'Fazla Ödeme Mevcut' : 'Ödenecek Net Bakiye' }}</span>
+          <span class="font-mono font-semibold">{{ totalRemainingBalanceAcrossCouriers < 0 ? 'Kurye Borçlu' : 'Güncel Bakiye' }}</span>
         </div>
       </BaseCard>
     </div>
@@ -881,28 +1066,62 @@ onMounted(async () => {
               </span>
             </td>
 
-            <!-- 6. Bugünkü Toplam Hakediş -->
-            <td class="px-4 py-3.5 text-right">
-              <span class="inline-flex items-center px-2.5 py-1 rounded bg-slate-900 dark:bg-slate-800 text-emerald-400 font-mono font-bold text-xs sm:text-sm border border-slate-800 dark:border-slate-700">
-                {{ (courier.todayTotalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
-              </span>
+            <!-- 6. Toplam Hakediş -->
+            <td class="px-4 py-3.5 text-right font-mono">
+              <div class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+              </div>
+              <div class="text-[10px] text-slate-400 dark:text-slate-500 font-sans mt-0.5">
+                Seçilen Gün: {{ (courier.todayTotalAmount || 0).toFixed(2) }} ₺
+              </div>
             </td>
 
-            <!-- 7. Durum (Aktif/Pasif) -->
+            <!-- 7. Verilen Tutar / Avans (Ödenen) -->
             <td class="px-4 py-3.5 text-center">
-              <button
-                type="button"
-                :title="courier.isActive ? 'Pasife al' : 'Aktife al'"
-                class="focus:outline-none"
-                @click="toggleCourierStatus(courier)"
-              >
-                <BaseBadge
-                  :variant="courier.isActive ? 'success' : 'neutral'"
-                  dot
+              <div class="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500">
+                <span class="text-xs font-semibold text-slate-400">₺</span>
+                <input
+                  :value="courierPaidInputs[courier.id] !== undefined ? courierPaidInputs[courier.id] : (courier.paidAmount || 0)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  class="w-20 sm:w-24 bg-transparent text-right font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none"
+                  title="Verilen tutar / avansı girmek için yazıp Enter'a veya dışına tıklayın"
+                  @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
+                  @blur="savePaidAmount(courier)"
+                  @keyup.enter="savePaidAmount(courier)"
+                />
+                <button
+                  v-if="courierPaidInputs[courier.id] !== undefined && Number(courierPaidInputs[courier.id]) !== (courier.paidAmount || 0)"
+                  type="button"
+                  class="p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0"
+                  title="Kaydet"
+                  @click="savePaidAmount(courier)"
                 >
-                  {{ courier.isActive ? 'Aktif' : 'Pasif' }}
-                </BaseBadge>
-              </button>
+                  <CheckCircle2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </td>
+
+            <!-- 8. Kalan Hakediş (Dinamik Kalan Bakiye) -->
+            <td class="px-4 py-3.5 text-right font-mono">
+              <!-- Fazla ödeme / Borçlu durum (Eksi bakiye) -->
+              <div v-if="getCourierRemainingBalance(courier) < 0" class="inline-flex flex-col items-end">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-mono font-bold text-xs sm:text-sm border border-rose-300 dark:border-rose-800 shadow-xs">
+                  <AlertTriangle class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span>{{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</span>
+                </span>
+                <span class="text-[10px] text-rose-600 dark:text-rose-400 font-sans font-semibold mt-0.5">
+                  Fazla Ödeme (Kurye Borçlu)
+                </span>
+              </div>
+              <!-- Normal / Pozitif bakiye -->
+              <div v-else class="inline-flex flex-col items-end">
+                <span class="inline-flex items-center px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs sm:text-sm border border-emerald-200 dark:border-emerald-800">
+                  {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </span>
+              </div>
             </td>
 
             <!-- 8. İşlemler -->
@@ -1007,12 +1226,16 @@ onMounted(async () => {
         </template>
 
         <template #footer>
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium w-full">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-xs text-slate-600 dark:text-slate-400 font-medium w-full">
             <span>Toplam <strong class="text-slate-900 dark:text-slate-200 font-bold">{{ filteredCouriers.length }}</strong> kurye listelendi</span>
-            <div class="flex items-center gap-3 text-xs">
-              <span>Toplam Paket: <strong class="text-slate-900 dark:text-slate-200 font-mono font-bold">{{ totalPackagesAcrossCouriers }} Adet</strong></span>
+            <div class="flex flex-wrap items-center gap-3 text-xs">
+              <span>Seçilen Gün: <strong class="text-slate-900 dark:text-slate-200 font-mono font-bold">{{ totalPackagesAcrossCouriers }} Paket ({{ totalAmountAcrossCouriers.toFixed(2) }} ₺)</strong></span>
               <span class="text-slate-300 dark:text-slate-700">|</span>
-              <span>Toplam Hakediş: <strong class="text-emerald-700 dark:text-emerald-400 font-mono font-bold">{{ totalAmountAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
+              <span>Toplam Hakediş: <strong class="text-slate-900 dark:text-slate-100 font-mono font-bold">{{ totalCumulativeEarningsAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
+              <span class="text-slate-300 dark:text-slate-700">|</span>
+              <span>Ödenen Avans: <strong class="text-amber-700 dark:text-amber-400 font-mono font-bold">{{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
+              <span class="text-slate-300 dark:text-slate-700">|</span>
+              <span>Kalan Bakiye: <strong :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'text-emerald-700 dark:text-emerald-400 font-mono font-bold'">{{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
             </div>
           </div>
         </template>
@@ -1287,6 +1510,7 @@ onMounted(async () => {
                     <th class="px-3 py-2.5 text-right">Paket</th>
                     <th class="px-3 py-2.5 text-right">Birim Fiyat</th>
                     <th class="px-3 py-2.5 text-right">Hakediş</th>
+                    <th class="px-3 py-2.5 text-right">İşlemler</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1317,6 +1541,26 @@ onMounted(async () => {
                     </td>
                     <td class="px-3 py-2 text-right font-bold text-emerald-700 dark:text-emerald-400">
                       {{ Number(rec.totalAmount).toFixed(2) }} ₺
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <div class="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors"
+                          title="Paket Sayısını / Fiyatını Düzenle"
+                          @click="openEditDeliveryModal(rec)"
+                        >
+                          <Edit2 class="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          class="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-600 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition-colors"
+                          title="Paket Kaydını Sil"
+                          @click="openDeleteDeliveryConfirm(rec)"
+                        >
+                          <Trash2 class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -1373,7 +1617,7 @@ onMounted(async () => {
     <BaseModal
       v-model="isQuickDeliveryModalOpen"
       :title="`Paket Girişi & Hakediş — ${quickDeliveryCourier?.name || 'Kurye Seçiniz'}`"
-      description="Tarih, kurye ve teslimat tipine göre (İç ve Dış Paket) birim fiyat ve paket sayılarını girerek anında hakediş hesaplayın."
+      description="Tarih ve teslimat tipine göre (İç ve Dış Paket) birim fiyat ve paket sayılarını girerek anında hakediş hesaplayın."
     >
       <form class="space-y-4" @submit.prevent="handleQuickDeliverySubmit">
         <!-- Genel Hata Bildirimi -->
@@ -1381,24 +1625,14 @@ onMounted(async () => {
           {{ quickDeliveryErrors.general }}
         </div>
 
-        <!-- 1. Tarih ve Kurye Seçimi -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- 1. Tarih Seçimi -->
+        <div class="grid grid-cols-1 gap-3">
           <BaseInput
             v-model="quickDeliveryForm.date"
             label="Tarih"
             type="date"
             :error="quickDeliveryErrors.date"
             required
-          />
-
-          <BaseSelect
-            v-model="quickDeliveryForm.courierId"
-            label="Kurye"
-            :options="activeCouriersList.map(c => ({ value: c.id, label: c.name }))"
-            :error="quickDeliveryErrors.courierId"
-            placeholder="Kurye seçiniz..."
-            required
-            @update:model-value="onQuickCourierChange"
           />
         </div>
 
@@ -1571,6 +1805,18 @@ onMounted(async () => {
               hint="Kuryeye ödenecek standart dış paket ücreti"
             />
           </div>
+
+          <div class="pt-1">
+            <BaseInput
+              v-model="formData.paidAmount"
+              label="Verilen Tutar / Avans (Ödenen) (₺)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Örn: 3000.00"
+              hint="Kuryeye ödenen avans tutarı. Kalan hakediş bu tutar düşülerek hesaplanır."
+            />
+          </div>
         </div>
 
         <!-- Aktif / Pasif Seçimi -->
@@ -1679,7 +1925,7 @@ onMounted(async () => {
       </form>
     </BaseModal>
 
-    <!-- 5. SİLME ONAY MODAL -->
+    <!-- 5. KURYE SİLME ONAY MODAL -->
     <BaseConfirmDialog
       v-model="isConfirmDeleteOpen"
       title="Kuryeyi Sil"
@@ -1688,6 +1934,115 @@ onMounted(async () => {
       variant="danger"
       :loading="loading"
       @confirm="handleConfirmDelete"
+    />
+
+    <!-- 6. GEÇMİŞ PAKET KAYDINI DÜZENLEME MODALI -->
+    <BaseModal
+      v-model="isEditDeliveryModalOpen"
+      title="Geçmiş Paket Kaydını Düzenle"
+      description="Kuryeye ait geçmiş tarihteki paket sayısını veya birim hakediş fiyatını güncelleyin. Toplam hakediş ve raporlar anında yeniden hesaplanacaktır."
+    >
+      <form class="space-y-4" @submit.prevent="handleEditDeliverySubmit">
+        <!-- Hata bildirimi -->
+        <div v-if="editDeliveryErrors.general" class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-300 text-xs font-medium">
+          {{ editDeliveryErrors.general }}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <BaseInput
+            v-model="editDeliveryForm.date"
+            label="Kayıt Tarihi"
+            type="date"
+            :error="editDeliveryErrors.date"
+            required
+          />
+
+          <div>
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Teslimat Tipi
+            </label>
+            <BaseSelect
+              v-model="editDeliveryForm.deliveryType"
+              :options="[
+                { value: 'INDOOR', label: 'İç Mekan Teslimatı' },
+                { value: 'OUTDOOR', label: 'Dış Mekan Teslimatı' }
+              ]"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <BaseInput
+            v-model="editDeliveryForm.packageCount"
+            label="Paket Sayısı (Adet)"
+            type="number"
+            min="1"
+            step="1"
+            required
+            :error="editDeliveryErrors.packageCount"
+            hint="Teslim edilen paket adedi"
+          />
+
+          <BaseInput
+            v-model="editDeliveryForm.courierUnitPrice"
+            label="Birim Hakediş Fiyatı (₺)"
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            :error="editDeliveryErrors.courierUnitPrice"
+            hint="Paket başı ödenecek hakediş tutarı"
+          />
+        </div>
+
+        <!-- Canlı Yeniden Hesaplanan Tutar Kartı -->
+        <div class="p-3.5 rounded-xl bg-slate-900 text-white space-y-1.5 border border-slate-800">
+          <div class="flex items-center justify-between text-xs text-slate-300">
+            <span>Hesaplama Detayı:</span>
+            <span class="font-mono text-white">
+              {{ editDeliveryForm.packageCount || 0 }} Adet × {{ Number(editDeliveryForm.courierUnitPrice || 0).toFixed(2) }} ₺
+            </span>
+          </div>
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-emerald-400">Güncel Kayıt Hakedişi:</span>
+            <span class="text-lg font-bold font-mono text-emerald-400">
+              {{ editDeliveryCalculatedTotal.toFixed(2) }} ₺
+            </span>
+          </div>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2.5">
+          <BaseButton
+            variant="outline"
+            size="sm"
+            type="button"
+            :disabled="editDeliveryLoading"
+            @click="isEditDeliveryModalOpen = false"
+          >
+            Vazgeç
+          </BaseButton>
+          <BaseButton
+            variant="primary"
+            size="sm"
+            type="submit"
+            :loading="editDeliveryLoading"
+            class="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-bold"
+          >
+            Değişiklikleri Kaydet
+          </BaseButton>
+        </div>
+      </form>
+    </BaseModal>
+
+    <!-- 7. GEÇMİŞ PAKET KAYDINI SİLME ONAY DİYALOĞU -->
+    <BaseConfirmDialog
+      v-model="isConfirmDeleteDeliveryOpen"
+      title="Geçmiş Paket Kaydını Sil"
+      :message="deliveryToDelete ? `&quot;${deliveryToDelete.dateFormatted}&quot; tarihli, ${deliveryToDelete.packageCount} adet ${deliveryToDelete.deliveryTypeLabel} teslimat kaydını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve kuryenin toplam hakedişi ile raporları otomatik olarak güncellenecektir.` : 'Paket kaydını silmek istediğinizden emin misiniz?'"
+      confirm-text="Kayıt ve Hakedişi Sil"
+      variant="danger"
+      :loading="deleteDeliveryLoading"
+      @confirm="handleConfirmDeleteDelivery"
     />
   </div>
 </template>

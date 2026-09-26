@@ -5,6 +5,7 @@ export interface CourierItem {
   isActive: boolean
   indoorPrice?: number
   outdoorPrice?: number
+  paidAmount?: number
   hasRecords?: boolean
   deliveryCount?: number
   customPriceCount?: number
@@ -15,6 +16,10 @@ export interface CourierItem {
   todayIndoorAmount?: number
   todayOutdoorAmount?: number
   todayTotalAmount?: number
+  cumulativeTotalPackages?: number
+  cumulativeTotalAmount?: number
+  totalEarnings?: number
+  remainingBalance?: number
   createdAt?: string
   updatedAt?: string
 }
@@ -41,6 +46,7 @@ export interface CourierFormData {
   phone: string
   indoorPrice?: number | string
   outdoorPrice?: number | string
+  paidAmount?: number | string
   isActive: boolean
 }
 
@@ -293,6 +299,32 @@ export const useCouriers = () => {
     }
   }
 
+  const updateCourierPaidAmount = async (courierId: string, paidAmount: number) => {
+    try {
+      const response = await $fetch<{ success: boolean; data: CourierItem; message: string }>(`/api/couriers/${courierId}`, {
+        method: 'PUT',
+        body: { paidAmount }
+      })
+
+      if (response.success) {
+        toast.success('Verilen tutar / avans başarıyla güncellendi.', 'Güncellendi')
+        // Optimistically or reactively update in local state as well
+        const found = couriers.value.find(c => c.id === courierId)
+        if (found) {
+          found.paidAmount = paidAmount
+          const tot = found.cumulativeTotalAmount || found.totalEarnings || 0
+          found.remainingBalance = Number((tot - paidAmount).toFixed(2))
+        }
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error('Update courier paid amount error:', err)
+      toast.error(err?.data?.statusMessage || 'Verilen tutar güncellenirken bir hata oluştu.', 'Hata')
+      return false
+    }
+  }
+
   return {
     couriers: readonly(couriers),
     currentCourier: readonly(currentCourier),
@@ -308,6 +340,7 @@ export const useCouriers = () => {
     deleteCourierPrice,
     createCourier,
     updateCourier,
+    updateCourierPaidAmount,
     toggleCourierStatus,
     deleteCourier,
     createTransaction

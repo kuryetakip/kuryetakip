@@ -168,6 +168,8 @@ export default defineEventHandler(async (event) => {
 
       return {
         id: rec.id,
+        courierId: rec.courierId,
+        venueId: rec.venueId,
         date: dateKey,
         dateFormatted,
         time: rec.createdAt ? new Date(rec.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—',
@@ -176,6 +178,7 @@ export default defineEventHandler(async (event) => {
         deliveryTypeLabel: rec.deliveryType === 'INDOOR' ? 'İç Mekan' : 'Dış Mekan',
         packageCount: recordCount,
         unitPriceSnapshot: unitPrice,
+        courierPriceSnapshot: unitPrice,
         totalAmount: recordAmount
       }
     })
