@@ -1,5 +1,7 @@
 {
   "name": "kuryetakip",
+  "version": "1.0.0",
+  "homepage": "https://kuryetakip-five.vercel.app",
   "type": "module",
   "private": true,
   "scripts": {
