@@ -5,14 +5,14 @@ export type ThemeMode = 'light' | 'dark' | 'system'
 const THEME_STORAGE_KEY = 'theme_preference'
 
 export function useTheme() {
-  // Global state across components
-  const themePreference = useState<ThemeMode>('app-theme-preference', () => 'system')
-  const systemIsDark = useState<boolean>('app-system-is-dark', () => false)
+  // Global state across components (Default to dark)
+  const themePreference = useState<ThemeMode>('app-theme-preference', () => 'dark')
+  const systemIsDark = useState<boolean>('app-system-is-dark', () => true)
 
   // Computed whether the current active theme is effectively dark
   const isDark = computed(() => {
-    if (themePreference.value === 'dark') return true
     if (themePreference.value === 'light') return false
+    if (themePreference.value === 'dark') return true
     return systemIsDark.value
   })
 
@@ -59,13 +59,13 @@ export function useTheme() {
     if (import.meta.client) {
       try {
         const stored = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null
-        if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        if (stored === 'light' || stored === 'dark') {
           themePreference.value = stored
         } else {
-          themePreference.value = 'system'
+          themePreference.value = 'dark'
         }
       } catch (e) {
-        themePreference.value = 'system'
+        themePreference.value = 'dark'
       }
 
       // Check system preference

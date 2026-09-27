@@ -11,6 +11,10 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'KuryeTakip — Kurye & Operasyon Yönetim Sistemi',
+      htmlAttrs: {
+        class: 'dark',
+        lang: 'tr'
+      },
       meta: [
         { name: 'description', content: 'Kurye paket, mekan, hakediş ve operasyon yönetim platformu' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' }
@@ -24,12 +28,14 @@ export default defineNuxtConfig({
         {
           children: `(function() {
             try {
-              var theme = localStorage.getItem('theme_preference') || 'system';
-              var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              var theme = localStorage.getItem('theme_preference') || 'dark';
+              var isDark = theme !== 'light';
               if (isDark) {
                 document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
               } else {
                 document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
               }
             } catch (e) {}
           })()`,

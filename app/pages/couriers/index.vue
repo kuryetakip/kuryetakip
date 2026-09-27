@@ -1362,17 +1362,6 @@ onUnmounted(() => {
                     <span class="hidden xl:inline">Detay</span>
                   </button>
 
-                  <!-- Ödeme Yap (Hakediş Tahsilatı & Kapatma) -->
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all active:scale-95"
-                    title="Kuryeye Hakediş Ödemesi / Tahsilat Yap ve Dönemi Kapat"
-                    @click="openSettleModal(courier)"
-                  >
-                    <Wallet class="w-3.5 h-3.5" />
-                    <span class="hidden 2xl:inline">Ödeme Yap</span>
-                  </button>
-
                   <!-- Diğer İşlemler Menüsü (Dropdown) -->
                   <div class="relative">
                     <button
@@ -1788,44 +1777,33 @@ onUnmounted(() => {
           </div>
 
           <!-- Card Footer Actions -->
-          <div class="space-y-2 pt-1">
+          <div class="grid grid-cols-3 gap-2 pt-1">
             <button
               type="button"
-              class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors active:scale-98"
-              @click="openSettleModal(courier)"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
+              @click="openQuickDeliveryModal(courier)"
             >
-              <Wallet class="w-3.5 h-3.5" />
-              <span>Hakediş Ödemesi Yap / Tahsilat</span>
+              <Plus class="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Paket Gir</span>
             </button>
 
-            <div class="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
-                @click="openQuickDeliveryModal(courier)"
-              >
-                <Plus class="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Paket Gir</span>
-              </button>
+            <button
+              type="button"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
+              @click="openDetailModal(courier)"
+            >
+              <Eye class="w-3.5 h-3.5 text-slate-500" />
+              <span>Detay</span>
+            </button>
 
-              <button
-                type="button"
-                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
-                @click="openDetailModal(courier)"
-              >
-                <Eye class="w-3.5 h-3.5 text-slate-500" />
-                <span>Detay</span>
-              </button>
-
-              <button
-                type="button"
-                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-colors"
-                @click="openWhatsAppModal(courier)"
-              >
-                <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>WhatsApp</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-colors"
+              @click="openWhatsAppModal(courier)"
+            >
+              <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>WhatsApp</span>
+            </button>
           </div>
         </div>
 
