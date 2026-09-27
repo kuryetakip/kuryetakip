@@ -77,7 +77,7 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
       'Verilen Avans:',
       `${formattedAdvance} ${currency}`,
       '',
-      'Kalan Hakediş:',
+      remainingBalance < 0 ? 'Kalan Hakediş (Kurye Borçlu / Fazla Ödeme):' : 'Kalan Hakediş (Ödenecek Tutar):',
       `${formattedRemaining} ${currency}`
     ]
 

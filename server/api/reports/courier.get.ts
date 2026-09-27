@@ -223,7 +223,15 @@ export default defineEventHandler(async (event) => {
     })
     const weeklyTotalAdvance = Number(weeklyAdvanceAgg._sum.amount || 0)
 
-    const remainingBalance = Number((totalAmount - totalAdvance).toFixed(2))
+    const courierPaidAmount = Number(courier.paidAmount || 0)
+    const courierCumulativeTotal = Number(courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0)
+    const courierOverallRemaining = Number((courierCumulativeTotal - courierPaidAmount).toFixed(2))
+
+    // Use period advance if available, otherwise fallback to courier's active advance for daily views
+    const effectiveAdvance = totalAdvance > 0 ? totalAdvance : courierPaidAmount
+    const remainingBalance = Number((totalAmount - effectiveAdvance).toFixed(2))
+
+    const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
 
     return {
       success: true,
@@ -232,7 +240,10 @@ export default defineEventHandler(async (event) => {
           id: courier.id,
           name: courier.name,
           phone: courier.phone,
-          isActive: courier.isActive
+          isActive: courier.isActive,
+          paidAmount: courierPaidAmount,
+          cumulativeTotalAmount: courierCumulativeTotal,
+          remainingBalance: courierOverallRemaining
         },
         startDate: startDateStr,
         endDate: endDateStr,
@@ -244,9 +255,12 @@ export default defineEventHandler(async (event) => {
         indoorAmount: Number(indoorAmount.toFixed(2)),
         outdoorAmount: Number(outdoorAmount.toFixed(2)),
         totalAmount: Number(totalAmount.toFixed(2)),
-        totalAdvance: Number(totalAdvance.toFixed(2)),
+        totalAdvance: Number(effectiveAdvance.toFixed(2)),
+        periodAdvance: Number(totalAdvance.toFixed(2)),
+        overallAdvance: courierPaidAmount,
         remainingBalance,
-        weeklyTotalAdvance: Number(weeklyTotalAdvance.toFixed(2)),
+        overallRemainingBalance: courierOverallRemaining,
+        weeklyTotalAdvance: Number((weeklyTotalAdvance > 0 ? weeklyTotalAdvance : courierPaidAmount).toFixed(2)),
         advances: periodAdvances.map(adv => ({
           id: adv.id,
           amount: Number(adv.amount),

@@ -524,13 +524,22 @@ const openWhatsAppModal = (courier: CourierItem) => {
   const dParts = targetDate.split('-')
   const dateFormatted = dParts.length === 3 ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : targetDate
 
+  const earnings = courier.todayTotalAmount || 0
+  const advance = courier.todayAdvanceAmount !== undefined && courier.todayAdvanceAmount > 0
+    ? courier.todayAdvanceAmount
+    : (courier.paidAmount || 0)
+  const remaining = Number((earnings - advance).toFixed(2))
+
   whatsAppPayload.value = {
     recipientName: courier.name,
     recipientPhone: courier.phone || '',
     startDate: dateFormatted,
     endDate: dateFormatted,
     totalPackages: courier.todayTotalPackages || 0,
-    totalAmount: courier.todayTotalAmount || 0,
+    totalAmount: earnings,
+    totalAdvance: advance,
+    remainingBalance: remaining,
+    weeklyAdvance: courier.paidAmount || 0,
     currency: 'TL',
     records: []
   }
@@ -542,13 +551,24 @@ const openWhatsAppFromDetail = () => {
   if (!detailReportData.value || !detailCourier.value) return
 
   const rep = detailReportData.value
+  const advance = rep.totalAdvance !== undefined
+    ? Number(rep.totalAdvance)
+    : Number(detailCourier.value.paidAmount || 0)
+  const earnings = Number(rep.totalAmount || 0)
+  const remaining = rep.remainingBalance !== undefined
+    ? Number(rep.remainingBalance)
+    : Number((earnings - advance).toFixed(2))
+
   whatsAppPayload.value = {
     recipientName: rep.courier?.name || detailCourier.value.name,
     recipientPhone: rep.courier?.phone || detailCourier.value.phone || '',
     startDate: rep.startDateFormatted || rep.startDate,
     endDate: rep.endDateFormatted || rep.endDate,
     totalPackages: rep.totalPackageCount || 0,
-    totalAmount: rep.totalAmount || 0,
+    totalAmount: earnings,
+    totalAdvance: advance,
+    remainingBalance: remaining,
+    weeklyAdvance: rep.weeklyTotalAdvance || Number(detailCourier.value.paidAmount || 0),
     currency: 'TL',
     records: (rep.records || []).map((r: any) => ({
       date: r.dateFormatted || r.date,
@@ -1887,52 +1907,111 @@ onUnmounted(() => {
 
         <!-- Rapor Sonuçları -->
         <div v-else-if="detailReportData" class="space-y-4">
-          <!-- 3'lü KPI Özet Kartı (İç Mekan, Dış Mekan, Genel Toplam) -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Paket Dağılımı Kartları (İç Mekan, Dış Mekan) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <!-- İç Mekan -->
-            <div class="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col justify-between">
+            <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between">
               <div>
-                <div class="text-xs font-bold text-emerald-950 dark:text-emerald-300 uppercase tracking-wider flex items-center justify-between">
-                  <span>İç Mekan</span>
+                <div class="text-[11px] font-bold text-emerald-950 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>İç Mekan</span>
                 </div>
-                <div class="text-xl font-bold text-emerald-800 dark:text-emerald-400 font-mono mt-1">
+                <div class="text-lg font-bold text-emerald-800 dark:text-emerald-400 font-mono mt-0.5">
                   {{ (detailReportData.indoorAmount || 0).toFixed(2) }} ₺
                 </div>
               </div>
-              <div class="text-[11px] text-emerald-700 dark:text-emerald-400/90 font-medium mt-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/60 font-mono">
-                Paket: <strong>{{ detailReportData.indoorPackages || 0 }} Adet</strong>
+              <div class="text-right text-xs font-mono text-emerald-700 dark:text-emerald-400 font-bold bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60">
+                {{ detailReportData.indoorPackages || 0 }} Paket
               </div>
             </div>
 
             <!-- Dış Mekan -->
-            <div class="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex flex-col justify-between">
+            <div class="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 flex items-center justify-between">
               <div>
-                <div class="text-xs font-bold text-sky-950 dark:text-sky-300 uppercase tracking-wider flex items-center justify-between">
-                  <span>Dış Mekan</span>
+                <div class="text-[11px] font-bold text-sky-950 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-sky-500" />
+                  <span>Dış Mekan</span>
                 </div>
-                <div class="text-xl font-bold text-sky-800 dark:text-sky-400 font-mono mt-1">
+                <div class="text-lg font-bold text-sky-800 dark:text-sky-400 font-mono mt-0.5">
                   {{ (detailReportData.outdoorAmount || 0).toFixed(2) }} ₺
                 </div>
               </div>
-              <div class="text-[11px] text-sky-700 dark:text-sky-400/90 font-medium mt-2 pt-1 border-t border-sky-200/60 dark:border-sky-800/60 font-mono">
-                Paket: <strong>{{ detailReportData.outdoorPackages || 0 }} Adet</strong>
+              <div class="text-right text-xs font-mono text-sky-700 dark:text-sky-400 font-bold bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-sky-200/60 dark:border-sky-800/60">
+                {{ detailReportData.outdoorPackages || 0 }} Paket
+              </div>
+            </div>
+          </div>
+
+          <!-- Finansal Mutabakat & Avans Kartları (Hakediş, Avans, Net Bakiye) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- 1. Toplam Hakediş -->
+            <div class="p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex flex-col justify-between border border-slate-800 dark:border-slate-700">
+              <div>
+                <div class="text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Toplam Hakediş</span>
+                  <span class="w-2 h-2 rounded-full bg-slate-400" />
+                </div>
+                <div class="text-xl font-extrabold text-white font-mono mt-1">
+                  {{ (detailReportData.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-400 font-medium mt-2 pt-1 border-t border-slate-800 font-mono">
+                Toplam: <strong class="text-white">{{ detailReportData.totalPackageCount || 0 }} Paket</strong>
               </div>
             </div>
 
-            <!-- Genel Toplam -->
-            <div class="p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex flex-col justify-between border border-slate-800 dark:border-slate-700">
+            <!-- 2. Verilen Avans -->
+            <div class="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex flex-col justify-between">
               <div>
-                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                  Toplam Hakediş
+                <div class="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Verilen Avans</span>
+                  <span class="w-2 h-2 rounded-full bg-amber-500" />
                 </div>
-                <div class="text-xl font-extrabold text-emerald-400 font-mono mt-1">
-                  {{ (detailReportData.totalAmount || 0).toFixed(2) }} ₺
+                <div class="text-xl font-bold text-amber-800 dark:text-amber-400 font-mono mt-1">
+                  {{ (detailReportData.totalAdvance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </div>
               </div>
-              <div class="text-[11px] text-slate-300 dark:text-slate-400 font-medium mt-2 pt-1 border-t border-slate-800 dark:border-slate-700 font-mono">
-                Toplam: <strong class="text-white">{{ detailReportData.totalPackageCount || 0 }} Paket</strong>
+              <div class="text-[11px] text-amber-700 dark:text-amber-400/90 font-medium mt-2 pt-1 border-t border-amber-200/60 dark:border-amber-800/60 font-mono">
+                <span v-if="detailReportData.weeklyTotalAdvance">Haftalık: <strong>{{ detailReportData.weeklyTotalAdvance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong></span>
+                <span v-else>Genel Toplam: <strong>{{ (detailReportData.overallAdvance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong></span>
+              </div>
+            </div>
+
+            <!-- 3. Kalan Hakediş (Net Durum) -->
+            <div
+              :class="[
+                'p-3.5 rounded-xl flex flex-col justify-between border transition-all',
+                detailReportData.remainingBalance < 0
+                  ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100'
+              ]"
+            >
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider flex items-center justify-between">
+                  <span :class="detailReportData.remainingBalance < 0 ? 'text-rose-800 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'">
+                    Kalan Hakediş
+                  </span>
+                  <AlertTriangle v-if="detailReportData.remainingBalance < 0" class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span v-else class="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+                <div
+                  :class="[
+                    'text-xl font-extrabold font-mono mt-1',
+                    detailReportData.remainingBalance < 0 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'
+                  ]"
+                >
+                  {{ detailReportData.remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </div>
+              </div>
+              <div
+                :class="[
+                  'text-[11px] font-semibold mt-2 pt-1 border-t font-sans',
+                  detailReportData.remainingBalance < 0
+                    ? 'text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/80'
+                    : 'text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/80'
+                ]"
+              >
+                {{ detailReportData.remainingBalance < 0 ? 'Fazla Ödeme (Kurye Borçlu)' : 'Kuryeye Ödenecek Net Tutar' }}
               </div>
             </div>
           </div>
@@ -2069,6 +2148,65 @@ onUnmounted(() => {
               Seçilen tarih aralığında bu kuryeye ait paket teslimat kaydı bulunmuyor.
             </div>
           </div>
+
+          <!-- Dönem İçi Verilen Avanslar Tablosu -->
+          <div v-if="detailReportData.advances && detailReportData.advances.length > 0" class="space-y-2">
+            <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <Clock class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Bu Dönemde Verilen Avanslar ({{ detailReportData.advances.length }} Kayıt)</span>
+              </span>
+              <span class="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
+                Toplam Avans: {{ detailReportData.totalAdvance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+              </span>
+            </div>
+
+            <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-amber-50/60 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold">
+                  <tr>
+                    <th class="px-3 py-2">Tarih</th>
+                    <th class="px-3 py-2">Saat</th>
+                    <th class="px-3 py-2">Açıklama</th>
+                    <th class="px-3 py-2 text-center">Durum</th>
+                    <th class="px-3 py-2 text-right">Miktar</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                  <tr
+                    v-for="adv in detailReportData.advances"
+                    :key="adv.id"
+                    class="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    <td class="px-3 py-2 font-sans text-slate-700 dark:text-slate-300 font-medium">
+                      {{ adv.date }}
+                    </td>
+                    <td class="px-3 py-2 text-slate-500 dark:text-slate-400">
+                      {{ adv.time || '—' }}
+                    </td>
+                    <td class="px-3 py-2 font-sans text-slate-600 dark:text-slate-400">
+                      {{ adv.description || 'Avans Ödemesi' }}
+                    </td>
+                    <td class="px-3 py-2 text-center font-sans">
+                      <span
+                        :class="[
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold',
+                          adv.status === 'CLOSED'
+                            ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        ]"
+                      >
+                        {{ adv.status === 'CLOSED' ? 'Dönem Kapatıldı' : 'Aktif Bakiye' }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 text-right font-bold text-amber-700 dark:text-amber-400">
+                      +{{ Number(adv.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- Modal Alt Aksiyon Barı -->
@@ -2098,7 +2236,7 @@ onUnmounted(() => {
               variant="primary"
               size="sm"
               class="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-sm"
-              :disabled="!detailReportData || (detailReportData.records || []).length === 0"
+              :disabled="!detailReportData"
               @click="openWhatsAppFromDetail"
             >
               <template #leading>
