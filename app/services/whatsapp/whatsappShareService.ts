@@ -57,36 +57,41 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
       maximumFractionDigits: 2
     })
 
-    const isDaily = payload.startDate === payload.endDate
-    const title = isDaily ? '📦 KURYE GÜN SONU RAPORU' : '📦 KURYE HAKEDİŞ RAPORU'
+    const isDaily = payload.startDate === payload.endDate || !payload.endDate
+    const title = '📦 KURYE HAKEDİŞ FATURASI / MUTABAKAT'
+
+    const dateLine = isDaily && payload.startDate
+      ? `Tarih: ${payload.startDate}`
+      : `Tarih Aralığı: ${payload.startDate} - ${payload.endDate}`
 
     const lines: string[] = [
       title,
       '',
       `Kurye: ${payload.recipientName || 'Kurye'}`,
       '',
-      'Tarih Aralığı:',
-      `${payload.startDate} - ${payload.endDate}`,
+      dateLine,
       '',
-      'Toplam Paket:',
-      `${payload.totalPackages}`,
+      `Toplam Paket: ${payload.totalPackages} Adet`,
       '',
-      'Hakediş:',
-      `${formattedGrandTotal} ${currency}`,
+      `Toplam Hakediş: ${formattedGrandTotal} ${currency}`,
       '',
-      'Verilen Avans:',
-      `${formattedAdvance} ${currency}`,
+      `Verilen Avans: ${formattedAdvance} ${currency}`,
       '',
-      remainingBalance < 0 ? 'Kalan Hakediş (Kurye Borçlu / Fazla Ödeme):' : 'Kalan Hakediş (Ödenecek Tutar):',
-      `${formattedRemaining} ${currency}`
+      remainingBalance < 0
+        ? `Kalan Hakediş (Kurye Borçlu / Fazla Ödeme): ${formattedRemaining} ${currency}`
+        : `Kalan Hakediş (Ödenecek Tutar): ${formattedRemaining} ${currency}`
     ]
 
-    if (payload.weeklyAdvance !== undefined && payload.weeklyAdvance > 0) {
+    if (payload.weeklyAdvance !== undefined && payload.weeklyAdvance > 0 && payload.weeklyAdvance !== totalAdvance) {
       const formattedWeekly = payload.weeklyAdvance.toLocaleString('tr-TR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })
-      lines.push('', '----------------------------', '📊 HAFTALIK AVANS:', `Bu hafta verilen toplam avans: ${formattedWeekly} ${currency}`)
+      lines.push('', '----------------------------', '📊 TOPLAM AVANS:', `Kayıtlı toplam avans: ${formattedWeekly} ${currency}`)
+    }
+
+    if (payload.note) {
+      lines.push('', '----------------------------', `ℹ️ ${payload.note}`)
     }
 
     // If detailed records are available, format line items

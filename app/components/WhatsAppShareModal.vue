@@ -26,6 +26,7 @@ const emit = defineEmits<{
 const toast = useToast()
 const isCopied = ref(false)
 const localPhone = ref('')
+const selectedScope = ref<'table' | 'daily'>('table')
 
 watch(
   () => props.payload.recipientPhone,
@@ -35,18 +36,47 @@ watch(
   { immediate: true }
 )
 
+// Active payload computed according to selectedScope
+const activePayload = computed<WhatsAppMessagePayload>(() => {
+  const p = props.payload
+  if (selectedScope.value === 'daily' && p.dailyAmount !== undefined) {
+    const dailyAdv = p.dailyAdvance !== undefined ? p.dailyAdvance : 0
+    return {
+      ...p,
+      recipientPhone: localPhone.value,
+      totalAmount: p.dailyAmount,
+      totalPackages: p.dailyPackages ?? 0,
+      totalAdvance: dailyAdv,
+      remainingBalance: p.dailyRemaining ?? Number(((p.dailyAmount || 0) - dailyAdv).toFixed(2)),
+      note: ''
+    }
+  }
+
+  // Default: Table total (Tablodaki Toplam Hakediş & Kalan Hakediş)
+  const tableAmount = p.tableAmount !== undefined ? p.tableAmount : p.totalAmount
+  const tablePackages = p.tablePackages !== undefined ? p.tablePackages : p.totalPackages
+  const tableAdvance = p.tableAdvance !== undefined ? p.tableAdvance : (p.totalAdvance ?? 0)
+  const tableRemaining = p.tableRemaining !== undefined ? p.tableRemaining : (p.remainingBalance ?? Number((tableAmount - tableAdvance).toFixed(2)))
+
+  return {
+    ...p,
+    recipientPhone: localPhone.value,
+    totalAmount: tableAmount,
+    totalPackages: tablePackages,
+    totalAdvance: tableAdvance,
+    remainingBalance: tableRemaining
+  }
+})
+
 const onPhoneChange = () => {
   emit('update:payload', {
-    ...props.payload,
+    ...activePayload.value,
     recipientPhone: localPhone.value
   })
 }
 
 const formattedMessage = computed(() => {
-  return whatsAppShareService.formatMessage({
-    ...props.payload,
-    recipientPhone: localPhone.value
-  })
+  return whatsAppShareService.formatMessage(activePayload.value)
 })
 
 const normalizedPhone = computed(() => {
@@ -54,10 +84,7 @@ const normalizedPhone = computed(() => {
 })
 
 const shareUrl = computed(() => {
-  return whatsAppShareService.generateShareUrl({
-    ...props.payload,
-    recipientPhone: localPhone.value
-  })
+  return whatsAppShareService.generateShareUrl(activePayload.value)
 })
 
 const close = () => {
@@ -91,30 +118,82 @@ const handleOpenWhatsApp = () => {
 <template>
   <BaseModal
     :model-value="modelValue"
-    title="WhatsApp ile Hakediş Paylaş"
+    title="WhatsApp ile Hakediş Faturası Paylaş"
     size="md"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="space-y-4 text-slate-900 dark:text-slate-100">
-      <!-- Target Courier Info -->
-      <div class="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
-            <User class="w-4 h-4" />
-          </div>
-          <div>
-            <div class="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Alıcı Kurye</div>
-            <div class="text-sm font-bold text-slate-900 dark:text-slate-100">
-              {{ payload.recipientName || 'Kurye Belirtilmedi' }}
+      <!-- Target Courier Info & Financial Summary Bar -->
+      <div class="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/60 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+              <User class="w-4 h-4" />
             </div>
+            <div>
+              <div class="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Alıcı Kurye</div>
+              <div class="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {{ payload.recipientName || 'Kurye Belirtilmedi' }}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-right text-xs">
+            <span class="text-slate-400 dark:text-slate-500 block font-medium">Fatura Hakedişi</span>
+            <span class="font-bold font-mono text-emerald-700 dark:text-emerald-400 text-base">
+              {{ Number(activePayload.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
           </div>
         </div>
 
-        <div class="text-right text-xs">
-          <span class="text-slate-400 dark:text-slate-500 block font-medium">Toplam Hakediş</span>
-          <span class="font-bold font-mono text-emerald-700 dark:text-emerald-400 text-sm">
-            {{ Number(payload.totalAmount || 0).toFixed(2) }} ₺
-          </span>
+        <!-- 3'lü Canlı Finansal Özet Kartı (Toplam Hakediş, Verilen Avans, Kalan Hakediş) -->
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100 dark:border-emerald-800/60 font-mono text-center text-xs">
+          <div class="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+            <span class="text-[10px] text-slate-500 dark:text-slate-400 block font-sans">Toplam Hakediş</span>
+            <span class="font-bold text-slate-900 dark:text-slate-100 text-xs">
+              {{ Number(activePayload.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+          </div>
+          <div class="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+            <span class="text-[10px] text-amber-600 dark:text-amber-400 block font-sans">Verilen Avans</span>
+            <span class="font-bold text-amber-700 dark:text-amber-300 text-xs">
+              {{ Number(activePayload.totalAdvance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+          </div>
+          <div class="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 block font-sans">Kalan Hakediş</span>
+            <span class="font-bold text-emerald-700 dark:text-emerald-300 text-xs">
+              {{ Number(activePayload.remainingBalance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+          </div>
+        </div>
+
+        <!-- Opsiyonel Kapsam Seçici (Eğer günlük ve tablo hakedişi farklıysa) -->
+        <div v-if="payload.dailyAmount !== undefined && payload.tableAmount !== undefined && payload.dailyAmount !== payload.tableAmount" class="pt-1 flex items-center gap-1.5 text-xs">
+          <button
+            type="button"
+            :class="[
+              'flex-1 py-1.5 px-2.5 rounded-lg font-semibold transition-all text-center border text-[11px]',
+              selectedScope === 'table'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+            ]"
+            @click="selectedScope = 'table'"
+          >
+            Tablodaki Genel Hakediş ({{ (payload.tableAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
+          </button>
+          <button
+            type="button"
+            :class="[
+              'flex-1 py-1.5 px-2.5 rounded-lg font-semibold transition-all text-center border text-[11px]',
+              selectedScope === 'daily'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+            ]"
+            @click="selectedScope = 'daily'"
+          >
+            Sadece Seçilen Gün ({{ (payload.dailyAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
+          </button>
         </div>
       </div>
 

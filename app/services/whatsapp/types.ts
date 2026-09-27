@@ -20,6 +20,14 @@ export interface WhatsAppMessagePayload {
   currency?: string
   records?: WhatsAppRecordItem[]
   note?: string
+  tableAmount?: number
+  tablePackages?: number
+  tableAdvance?: number
+  tableRemaining?: number
+  dailyAmount?: number
+  dailyPackages?: number
+  dailyAdvance?: number
+  dailyRemaining?: number
 }
 
 export interface ShareResult {

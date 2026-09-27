@@ -544,24 +544,45 @@ const openWhatsAppModal = (courier: CourierItem) => {
   const dParts = targetDate.split('-')
   const dateFormatted = dParts.length === 3 ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : targetDate
 
-  const earnings = courier.todayTotalAmount || 0
-  const advance = courier.todayAdvanceAmount !== undefined && courier.todayAdvanceAmount > 0
-    ? courier.todayAdvanceAmount
-    : (courier.paidAmount || 0)
-  const remaining = Number((earnings - advance).toFixed(2))
+  // Tabloda ne kadar hakediş görülüyorsa o tutar (Kümülatif Toplam Hakediş):
+  const tableEarnings = Number(courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0)
+  const tablePackages = Number(courier.cumulativeTotalPackages ?? courier.totalPackages ?? 0)
+  const tableAdvance = getCourierPaidAmount(courier)
+  const tableRemaining = getCourierRemainingBalance(courier)
+
+  // Seçilen günün değerleri:
+  const dailyEarnings = Number(courier.todayTotalAmount || 0)
+  const dailyPackages = Number(courier.todayTotalPackages || 0)
+  const dailyAdvance = Number(courier.todayAdvanceAmount || 0)
+  const dailyRemaining = Number((dailyEarnings - dailyAdvance).toFixed(2))
+
+  let extraNote = ''
+  if (dailyEarnings > 0 || dailyPackages > 0) {
+    extraNote = `Seçilen Gün (${dateFormatted}): ${dailyPackages} Paket (${dailyEarnings.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL)`
+  }
 
   whatsAppPayload.value = {
     recipientName: courier.name,
     recipientPhone: courier.phone || '',
     startDate: dateFormatted,
     endDate: dateFormatted,
-    totalPackages: courier.todayTotalPackages || 0,
-    totalAmount: earnings,
-    totalAdvance: advance,
-    remainingBalance: remaining,
-    weeklyAdvance: courier.paidAmount || 0,
+    totalPackages: tablePackages,
+    totalAmount: tableEarnings,
+    totalAdvance: tableAdvance,
+    remainingBalance: tableRemaining,
+    weeklyAdvance: tableAdvance,
     currency: 'TL',
-    records: []
+    note: extraNote,
+    records: [],
+    // Tablo ve Günlük Ayrımı:
+    tableAmount: tableEarnings,
+    tablePackages: tablePackages,
+    tableAdvance: tableAdvance,
+    tableRemaining: tableRemaining,
+    dailyAmount: dailyEarnings,
+    dailyPackages: dailyPackages,
+    dailyAdvance: dailyAdvance,
+    dailyRemaining: dailyRemaining
   }
   isWhatsAppModalOpen.value = true
 }
@@ -571,25 +592,41 @@ const openWhatsAppFromDetail = () => {
   if (!detailReportData.value || !detailCourier.value) return
 
   const rep = detailReportData.value
+  const courier = detailCourier.value
+
   const advance = rep.totalAdvance !== undefined
     ? Number(rep.totalAdvance)
-    : Number(detailCourier.value.paidAmount || 0)
+    : Number(courier.paidAmount || 0)
   const earnings = Number(rep.totalAmount || 0)
   const remaining = rep.remainingBalance !== undefined
     ? Number(rep.remainingBalance)
     : Number((earnings - advance).toFixed(2))
 
+  // Tablo kümülatif değerleri
+  const tableEarnings = Number(courier.cumulativeTotalAmount ?? courier.totalEarnings ?? earnings)
+  const tablePackages = Number(courier.cumulativeTotalPackages ?? courier.totalPackages ?? rep.totalPackageCount ?? 0)
+  const tableAdvance = getCourierPaidAmount(courier)
+  const tableRemaining = getCourierRemainingBalance(courier)
+
   whatsAppPayload.value = {
-    recipientName: rep.courier?.name || detailCourier.value.name,
-    recipientPhone: rep.courier?.phone || detailCourier.value.phone || '',
+    recipientName: rep.courier?.name || courier.name,
+    recipientPhone: rep.courier?.phone || courier.phone || '',
     startDate: rep.startDateFormatted || rep.startDate,
     endDate: rep.endDateFormatted || rep.endDate,
     totalPackages: rep.totalPackageCount || 0,
     totalAmount: earnings,
     totalAdvance: advance,
     remainingBalance: remaining,
-    weeklyAdvance: rep.weeklyTotalAdvance || Number(detailCourier.value.paidAmount || 0),
+    weeklyAdvance: rep.weeklyTotalAdvance || Number(courier.paidAmount || 0),
     currency: 'TL',
+    tableAmount: tableEarnings,
+    tablePackages: tablePackages,
+    tableAdvance: tableAdvance,
+    tableRemaining: tableRemaining,
+    dailyAmount: earnings,
+    dailyPackages: rep.totalPackageCount || 0,
+    dailyAdvance: advance,
+    dailyRemaining: remaining,
     records: (rep.records || []).map((r: any) => ({
       date: r.dateFormatted || r.date,
       venueName: r.venueName,
