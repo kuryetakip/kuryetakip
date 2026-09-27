@@ -44,9 +44,19 @@ withDefaults(defineProps<Props>(), {
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-900 dark:text-slate-100">
-          <tr v-if="loading">
-            <td :colspan="columns.length + ($slots.actions ? 1 : 0)" class="px-4 py-12 text-center">
-              <BaseLoading message="Veriler yükleniyor..." />
+          <tr v-if="loading" v-for="i in 5" :key="`skeleton-${i}`" class="animate-pulse">
+            <td
+              v-for="(col, idx) in columns"
+              :key="`skel-col-${idx}`"
+              class="px-4 py-3.5"
+            >
+              <div
+                class="h-4 bg-slate-200/80 dark:bg-slate-800/80 rounded"
+                :class="idx === 0 ? 'w-3/4' : idx === columns.length - 1 ? 'w-1/2 ml-auto' : 'w-2/3 ml-auto'"
+              />
+            </td>
+            <td v-if="$slots.actions" class="px-4 py-3.5 text-right">
+              <div class="h-4 w-16 bg-slate-200/80 dark:bg-slate-800/80 rounded ml-auto" />
             </td>
           </tr>
           <tr v-else-if="empty">

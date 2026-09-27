@@ -6,7 +6,7 @@
   :root {
     --color-bg-page: #f8fafc;
     --color-bg-card: #ffffff;
-    --color-bg-card-hover: #f8fafc;
+    --color-bg-card-hover: #f1f5f9;
     --color-border: #e2e8f0;
     --color-text-primary: #0f172a;
     --color-text-secondary: #475569;
@@ -14,18 +14,24 @@
   }
 
   .dark {
-    --color-bg-page: #030712;
-    --color-bg-card: #111827;
-    --color-bg-card-hover: #1f2937;
-    --color-border: #1f2937;
-    --color-text-primary: #f9fafb;
-    --color-text-secondary: #9ca3af;
-    --color-text-muted: #6b7280;
+    --color-bg-page: #070a12;
+    --color-bg-card: #0b0f19;
+    --color-bg-card-hover: #111827;
+    --color-border: #1e293b;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
     color-scheme: dark;
   }
 
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased font-sans min-h-screen selection:bg-slate-900 selection:text-white dark:selection:bg-emerald-500 dark:selection:text-slate-950 transition-colors duration-200;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans min-h-screen selection:bg-brand-600 selection:text-white dark:selection:bg-emerald-500 dark:selection:text-slate-950 transition-colors duration-150;
   }
 }
 
@@ -41,7 +47,7 @@
 
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -49,9 +55,41 @@
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #1e293b;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #334155;
+}
+
+/* Skeleton Shimmer Keyframes */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.6) 25%,
+    rgba(241, 245, 249, 0.9) 37%,
+    rgba(226, 232, 240, 0.6) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.6) 25%,
+    rgba(51, 65, 85, 0.8) 37%,
+    rgba(30, 41, 59, 0.6) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

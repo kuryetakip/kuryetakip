@@ -3,15 +3,22 @@ interface Props {
   title?: string
   description?: string
   noPadding?: boolean
+  interactive?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
-  noPadding: false
+  noPadding: false,
+  interactive: false
 })
 </script>
 
 <template>
-  <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden transition-colors duration-150">
+  <div
+    :class="[
+      'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800/90 shadow-card overflow-hidden transition-all duration-200',
+      interactive ? 'hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer active:scale-[0.995]' : ''
+    ]"
+  >
     <div
       v-if="title || description || $slots.header || $slots.action"
       class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4"
