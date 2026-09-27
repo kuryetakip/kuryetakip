@@ -22,7 +22,8 @@ import {
   Wallet,
   Clock,
   RotateCcw,
-  Receipt
+  Receipt,
+  Info
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 
@@ -305,31 +306,99 @@ const openAddModal = () => {
 const openEditModal = (venue: VenueItem) => {
   isEditing.value = true
   currentVenueId.value = venue.id
+  const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+  const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
+    ? venue.allDailyBreakdown
+    : (venue.dailyBreakdown || [])
+  const existingDay = allDays.find(d => d.date === targetDate)
+
   formData.value = {
     name: venue.name,
     indoorPrice: venue.indoorPrice,
     outdoorPrice: venue.outdoorPrice,
     isActive: venue.isActive,
-    date: filterDate.value || new Date().toISOString().substring(0, 10),
-    indoorCount: '',
-    outdoorCount: ''
+    date: targetDate,
+    indoorCount: existingDay && existingDay.indoorCount > 0 ? existingDay.indoorCount : '',
+    outdoorCount: existingDay && existingDay.outdoorCount > 0 ? existingDay.outdoorCount : ''
   }
   formErrors.value = {}
   isModalOpen.value = true
 }
 
-const openQuickDelivery = (venue: VenueItem) => {
+const onEditModalDateChange = () => {
+  if (!currentVenueId.value) return
+  const venue = venues.value.find(v => v.id === currentVenueId.value)
+  if (!venue) return
+  const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
+    ? venue.allDailyBreakdown
+    : (venue.dailyBreakdown || [])
+  const existingDay = allDays.find(d => d.date === formData.value.date)
+  if (existingDay) {
+    formData.value.indoorCount = existingDay.indoorCount > 0 ? existingDay.indoorCount : ''
+    formData.value.outdoorCount = existingDay.outdoorCount > 0 ? existingDay.outdoorCount : ''
+  } else {
+    formData.value.indoorCount = ''
+    formData.value.outdoorCount = ''
+  }
+}
+
+const existingDeliveryForEditModal = computed(() => {
+  if (!isEditing.value || !currentVenueId.value || !formData.value.date) return null
+  const venue = venues.value.find(v => v.id === currentVenueId.value)
+  if (!venue) return null
+  const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
+    ? venue.allDailyBreakdown
+    : (venue.dailyBreakdown || [])
+  return allDays.find(d => d.date === formData.value.date) || null
+})
+
+const openQuickDelivery = (venue: VenueItem, dateOverride?: string) => {
   targetVenue.value = venue
+  const selectedDate = dateOverride || filterDate.value || new Date().toISOString().substring(0, 10)
+  const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
+    ? venue.allDailyBreakdown
+    : (venue.dailyBreakdown || [])
+  const existingDay = allDays.find(d => d.date === selectedDate)
+
   quickDeliveryForm.value = {
-    date: filterDate.value || new Date().toISOString().substring(0, 10),
-    indoorCount: '',
-    outdoorCount: '',
+    date: selectedDate,
+    indoorCount: existingDay && existingDay.indoorCount > 0 ? existingDay.indoorCount : '',
+    outdoorCount: existingDay && existingDay.outdoorCount > 0 ? existingDay.outdoorCount : '',
     venueIndoorPrice: venue.indoorPrice,
     venueOutdoorPrice: venue.outdoorPrice,
     courierIndoorPrice: '',
     courierOutdoorPrice: ''
   }
   isQuickDeliveryOpen.value = true
+}
+
+const onQuickDeliveryDateChange = () => {
+  if (!targetVenue.value) return
+  const allDays = targetVenue.value.allDailyBreakdown && targetVenue.value.allDailyBreakdown.length > 0
+    ? targetVenue.value.allDailyBreakdown
+    : (targetVenue.value.dailyBreakdown || [])
+  const existingDay = allDays.find(d => d.date === quickDeliveryForm.value.date)
+  if (existingDay) {
+    quickDeliveryForm.value.indoorCount = existingDay.indoorCount > 0 ? existingDay.indoorCount : ''
+    quickDeliveryForm.value.outdoorCount = existingDay.outdoorCount > 0 ? existingDay.outdoorCount : ''
+  } else {
+    quickDeliveryForm.value.indoorCount = ''
+    quickDeliveryForm.value.outdoorCount = ''
+  }
+}
+
+const existingDeliveryForQuickModal = computed(() => {
+  if (!targetVenue.value || !quickDeliveryForm.value.date) return null
+  const allDays = targetVenue.value.allDailyBreakdown && targetVenue.value.allDailyBreakdown.length > 0
+    ? targetVenue.value.allDailyBreakdown
+    : (targetVenue.value.dailyBreakdown || [])
+  return allDays.find(d => d.date === quickDeliveryForm.value.date) || null
+})
+
+const editDayFromHistory = (date: string) => {
+  if (!historyVenue.value) return
+  const venue = historyVenue.value
+  openQuickDelivery(venue, date)
 }
 
 const openHistoryModal = (venue: VenueItem) => {
@@ -371,7 +440,21 @@ const handleFormSubmit = async () => {
   if (!validateForm()) return
 
   if (isEditing.value && currentVenueId.value) {
-    const success = await updateVenue(currentVenueId.value, formData.value)
+    const payload: VenueFormData = {
+      name: formData.value.name,
+      indoorPrice: formData.value.indoorPrice,
+      outdoorPrice: formData.value.outdoorPrice,
+      isActive: formData.value.isActive,
+      date: formData.value.date
+    }
+    // Only pass count fields if user modified or provided them
+    if (formData.value.indoorCount !== '') {
+      payload.indoorCount = Number(formData.value.indoorCount) || 0
+    }
+    if (formData.value.outdoorCount !== '') {
+      payload.outdoorCount = Number(formData.value.outdoorCount) || 0
+    }
+    const success = await updateVenue(currentVenueId.value, payload)
     if (success) isModalOpen.value = false
   } else {
     const success = await createVenue(formData.value)
@@ -381,9 +464,14 @@ const handleFormSubmit = async () => {
 
 const handleQuickDeliverySubmit = async () => {
   if (!targetVenue.value) return
-  const indoor = Number(quickDeliveryForm.value.indoorCount) || 0
-  const outdoor = Number(quickDeliveryForm.value.outdoorCount) || 0
-  if (indoor <= 0 && outdoor <= 0) return
+  const rawIndoor = quickDeliveryForm.value.indoorCount
+  const rawOutdoor = quickDeliveryForm.value.outdoorCount
+  
+  const indoor = rawIndoor === '' ? 0 : Number(rawIndoor)
+  const outdoor = rawOutdoor === '' ? 0 : Number(rawOutdoor)
+
+  if (indoor < 0 || outdoor < 0) return
+  if (indoor === 0 && outdoor === 0 && !existingDeliveryForQuickModal.value) return
 
   const payload: VenueFormData = {
     name: targetVenue.value.name,
@@ -400,7 +488,7 @@ const handleQuickDeliverySubmit = async () => {
   const success = await updateVenue(targetVenue.value.id, payload)
   if (success) {
     isQuickDeliveryOpen.value = false
-    // Girilen ve hesaplanan değerleri sıfırla
+    const venueId = targetVenue.value.id
     quickDeliveryForm.value = {
       date: new Date().toISOString().substring(0, 10),
       indoorCount: '',
@@ -409,6 +497,10 @@ const handleQuickDeliverySubmit = async () => {
       venueOutdoorPrice: '',
       courierIndoorPrice: '',
       courierOutdoorPrice: ''
+    }
+    if (historyVenue.value && historyVenue.value.id === venueId) {
+      const refreshed = venues.value.find(v => v.id === venueId)
+      if (refreshed) historyVenue.value = refreshed
     }
   }
 }
@@ -975,7 +1067,16 @@ onMounted(() => {
               v-model="formData.date"
               label="Teslimat Tarihi"
               type="date"
+              @change="onEditModalDateChange"
             />
+          </div>
+
+          <div
+            v-if="existingDeliveryForEditModal && (existingDeliveryForEditModal.indoorCount > 0 || existingDeliveryForEditModal.outdoorCount > 0)"
+            class="p-2.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-2"
+          >
+            <Info class="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            <span>Bu tarihte kayıtlı: <strong>{{ existingDeliveryForEditModal.indoorCount }} İç</strong>, <strong>{{ existingDeliveryForEditModal.outdoorCount }} Dış</strong> paket var. Değiştirdiğinizde eski sayıların üzerine eklenmez, doğrudan güncellenir.</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1076,7 +1177,17 @@ onMounted(() => {
           label="Teslimat Tarihi"
           type="date"
           required
+          @change="onQuickDeliveryDateChange"
         />
+
+        <!-- Mevcut Kayıt Bilgilendirme / Güncelleme Bildirimi -->
+        <div
+          v-if="existingDeliveryForQuickModal && (existingDeliveryForQuickModal.indoorCount > 0 || existingDeliveryForQuickModal.outdoorCount > 0)"
+          class="p-2.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-2"
+        >
+          <Info class="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+          <span>Bu tarih için kayıtlı: <strong>{{ existingDeliveryForQuickModal.indoorCount }} İç</strong>, <strong>{{ existingDeliveryForQuickModal.outdoorCount }} Dış</strong> paket var. Girdiğiniz yeni sayılar eski sayıların üzerine eklenmez, doğrudan güncellenir.</span>
+        </div>
 
         <!-- Paket Sayıları -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -1199,7 +1310,7 @@ onMounted(() => {
             type="submit"
             :loading="loading"
           >
-            Paket Kaydını Ekle
+            {{ (existingDeliveryForQuickModal && (existingDeliveryForQuickModal.indoorCount > 0 || existingDeliveryForQuickModal.outdoorCount > 0)) ? 'Paket Sayılarını Güncelle' : 'Paket Kaydını Ekle' }}
           </BaseButton>
         </div>
       </form>
@@ -1313,6 +1424,7 @@ onMounted(() => {
                 <th class="px-3 py-2.5 text-right">Toplam Paket</th>
                 <th class="px-3 py-2.5 text-right text-slate-900 dark:text-slate-100">Toplam Tutar</th>
                 <th class="px-3 py-2.5 text-center">Durum</th>
+                <th class="px-3 py-2.5 text-center">İşlem</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1354,6 +1466,24 @@ onMounted(() => {
                     Bekliyor
                   </span>
                 </td>
+                <td class="px-3 py-2.5 text-center font-sans">
+                  <button
+                    v-if="!day.isSettled"
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs cursor-pointer"
+                    title="Bu tarihteki paket sayılarını güncelle"
+                    @click="editDayFromHistory(day.date)"
+                  >
+                    <Edit2 class="w-3 h-3" />
+                    <span>Güncelle</span>
+                  </button>
+                  <span
+                    v-else
+                    class="text-[10px] text-slate-400 font-sans italic"
+                  >
+                    Kilitli
+                  </span>
+                </td>
               </tr>
             </tbody>
             <tfoot class="bg-slate-900 text-white font-mono text-xs">
@@ -1375,6 +1505,9 @@ onMounted(() => {
                 </td>
                 <td class="px-3 py-2.5 text-center text-[10px] font-sans text-slate-400">
                   Genel Kayıt
+                </td>
+                <td class="px-3 py-2.5 text-center text-[10px] font-sans text-slate-400">
+                  —
                 </td>
               </tr>
             </tfoot>

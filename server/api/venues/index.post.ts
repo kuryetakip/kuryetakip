@@ -71,6 +71,8 @@ export default defineEventHandler(async (event) => {
             venueId: venue.id,
             deliveryType: DeliveryType.INDOOR,
             packageCount: indoorCount,
+            venuePriceSnapshot: new Prisma.Decimal(indoorPriceNum.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(total.toFixed(2)),
             unitPriceSnapshot: new Prisma.Decimal(indoorPriceNum.toFixed(2)),
             totalAmount: new Prisma.Decimal(total.toFixed(2))
           }
@@ -86,6 +88,8 @@ export default defineEventHandler(async (event) => {
             venueId: venue.id,
             deliveryType: DeliveryType.OUTDOOR,
             packageCount: outdoorCount,
+            venuePriceSnapshot: new Prisma.Decimal(outdoorPriceNum.toFixed(2)),
+            venueTotalAmount: new Prisma.Decimal(total.toFixed(2)),
             unitPriceSnapshot: new Prisma.Decimal(outdoorPriceNum.toFixed(2)),
             totalAmount: new Prisma.Decimal(total.toFixed(2))
           }
