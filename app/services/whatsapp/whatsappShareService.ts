@@ -43,8 +43,25 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
       maximumFractionDigits: 2
     })
 
+    const totalAdvance = payload.totalAdvance !== undefined ? payload.totalAdvance : 0
+    const remainingBalance = payload.remainingBalance !== undefined
+      ? payload.remainingBalance
+      : Number((Number(payload.totalAmount || 0) - totalAdvance).toFixed(2))
+
+    const formattedAdvance = totalAdvance.toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+    const formattedRemaining = remainingBalance.toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+
+    const isDaily = payload.startDate === payload.endDate
+    const title = isDaily ? '📦 KURYE GÜN SONU RAPORU' : '📦 KURYE HAKEDİŞ RAPORU'
+
     const lines: string[] = [
-      'HAKEDİŞ BİLGİSİ',
+      title,
       '',
       `Kurye: ${payload.recipientName || 'Kurye'}`,
       '',
@@ -54,9 +71,23 @@ export class WhatsAppDirectLinkShareService implements IWhatsAppShareService {
       'Toplam Paket:',
       `${payload.totalPackages}`,
       '',
-      'Toplam Hakediş:',
-      `${formattedGrandTotal} ${currency}`
+      'Hakediş:',
+      `${formattedGrandTotal} ${currency}`,
+      '',
+      'Verilen Avans:',
+      `${formattedAdvance} ${currency}`,
+      '',
+      'Kalan Hakediş:',
+      `${formattedRemaining} ${currency}`
     ]
+
+    if (payload.weeklyAdvance !== undefined && payload.weeklyAdvance > 0) {
+      const formattedWeekly = payload.weeklyAdvance.toLocaleString('tr-TR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+      lines.push('', '----------------------------', '📊 HAFTALIK AVANS:', `Bu hafta verilen toplam avans: ${formattedWeekly} ${currency}`)
+    }
 
     // If detailed records are available, format line items
     if (payload.records && payload.records.length > 0) {

@@ -54,6 +54,9 @@ const {
   createCourier,
   updateCourier,
   updateCourierPaidAmount,
+  createCourierAdvance,
+  fetchCourierAdvances,
+  deleteCourierAdvance,
   toggleCourierStatus,
   deleteCourier,
   createTransaction
@@ -65,16 +68,22 @@ const { createDelivery, updateDelivery, deleteDelivery } = useDeliveries()
 // Inline Paid Amount (Avans / Ödenen) State
 const courierPaidInputs = ref<Record<string, string | number>>({})
 const savingPaidCourierId = ref<string | null>(null)
+const advanceFeedbackMap = ref<Record<string, string>>({})
+
+// Courier Advance History Modal State
+const isAdvanceHistoryModalOpen = ref(false)
+const advanceHistoryCourier = ref<CourierItem | null>(null)
+
+const openAdvanceHistoryModal = (courier: CourierItem) => {
+  advanceHistoryCourier.value = courier
+  isAdvanceHistoryModalOpen.value = true
+}
 
 const onPaidAmountInput = (courierId: string, val: string) => {
   courierPaidInputs.value[courierId] = val
 }
 
 const getCourierPaidAmount = (courier: CourierItem) => {
-  if (courierPaidInputs.value[courier.id] !== undefined) {
-    const val = Number(courierPaidInputs.value[courier.id])
-    return isNaN(val) ? 0 : val
-  }
   return Number(courier.paidAmount || 0)
 }
 
@@ -86,23 +95,30 @@ const getCourierRemainingBalance = (courier: CourierItem) => {
 
 const savePaidAmount = async (courier: CourierItem) => {
   const inputVal = courierPaidInputs.value[courier.id]
-  if (inputVal === undefined) return
-  const num = Number(inputVal)
-  if (isNaN(num) || num < 0) {
-    toast.error('Geçerli bir verilen tutar giriniz.', 'Hata')
-    return
-  }
-  if (num === (courier.paidAmount || 0)) {
-    delete courierPaidInputs.value[courier.id]
+  if (inputVal === undefined || inputVal === '') return
+  const cleanStr = String(inputVal).trim().replace(',', '.')
+  const num = parseFloat(cleanStr)
+
+  if (isNaN(num) || num <= 0) {
+    toast.error('Lütfen 0\'dan büyük geçerli bir avans tutarı giriniz.', 'Hata')
     return
   }
 
   savingPaidCourierId.value = courier.id
   try {
-    const success = await updateCourierPaidAmount(courier.id, num)
-    if (success) {
+    const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+    const result = await createCourierAdvance(courier.id, {
+      amount: num,
+      date: targetDate
+    })
+
+    if (result) {
       delete courierPaidInputs.value[courier.id]
-      await fetchCouriers()
+      const formattedNum = num.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+      advanceFeedbackMap.value[courier.id] = `+${formattedNum} TL Avans`
+      setTimeout(() => {
+        delete advanceFeedbackMap.value[courier.id]
+      }, 3500)
     }
   } finally {
     savingPaidCourierId.value = null
@@ -1152,29 +1168,65 @@ onUnmounted(() => {
 
               <!-- 6. Verilen Avans (₺) -->
               <td class="px-4 py-3 text-center">
-                <div class="inline-flex items-center bg-slate-50 dark:bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
-                  <span class="text-xs font-semibold text-slate-400 shrink-0">₺</span>
-                  <input
-                    :value="courierPaidInputs[courier.id] !== undefined ? courierPaidInputs[courier.id] : (courier.paidAmount || 0)"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    class="w-20 bg-transparent text-right font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none ml-1"
-                    title="Verilen avans / ödenen tutar (Enter veya dışına tıkla kaydeder)"
-                    @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
-                    @blur="savePaidAmount(courier)"
-                    @keyup.enter="savePaidAmount(courier)"
-                  />
-                  <button
-                    v-if="courierPaidInputs[courier.id] !== undefined && Number(courierPaidInputs[courier.id]) !== (courier.paidAmount || 0)"
-                    type="button"
-                    class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0"
-                    title="Kaydet"
-                    @click="savePaidAmount(courier)"
+                <div class="flex flex-col items-center gap-1">
+                  <!-- Visual Feedback Badge (Micro-animation) -->
+                  <div
+                    v-if="advanceFeedbackMap[courier.id]"
+                    class="animate-bounce inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-600 text-white shadow-xs"
                   >
-                    <CheckCircle2 class="w-3.5 h-3.5" />
-                  </button>
+                    <CheckCircle2 class="w-3 h-3" />
+                    <span>{{ advanceFeedbackMap[courier.id] }}</span>
+                  </div>
+
+                  <div class="inline-flex items-center gap-1">
+                    <!-- Current Active Paid Amount & Input -->
+                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
+                      <span class="text-xs font-semibold text-slate-400 shrink-0">₺</span>
+                      <input
+                        :value="courierPaidInputs[courier.id] !== undefined ? courierPaidInputs[courier.id] : ''"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        :placeholder="(courier.paidAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"
+                        class="w-20 bg-transparent text-right font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-700 dark:placeholder:text-slate-300 focus:outline-none ml-1"
+                        title="Yeni avans miktarı girip Enter'a basınız"
+                        @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
+                        @blur="savePaidAmount(courier)"
+                        @keyup.enter="savePaidAmount(courier)"
+                      />
+                      <button
+                        v-if="courierPaidInputs[courier.id]"
+                        type="button"
+                        :disabled="savingPaidCourierId === courier.id"
+                        class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 disabled:opacity-50"
+                        title="Avansı Kaydet"
+                        @click="savePaidAmount(courier)"
+                      >
+                        <span v-if="savingPaidCourierId === courier.id" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin block"></span>
+                        <CheckCircle2 v-else class="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <!-- Avans Geçmişi Butonu (Clock / History Icon) -->
+                    <button
+                      type="button"
+                      class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 transition-colors shadow-2xs shrink-0"
+                      title="Avans Geçmişi & Detayları"
+                      @click="openAdvanceHistoryModal(courier)"
+                    >
+                      <Clock class="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <!-- Small subtext for today / count -->
+                  <div class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <span v-if="courier.todayAdvanceAmount && courier.todayAdvanceAmount > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
+                      Bugün: {{ courier.todayAdvanceAmount.toFixed(2) }} ₺
+                    </span>
+                    <span v-else>
+                      Toplam Avans: {{ (courier.paidAmount || 0).toFixed(2) }} ₺
+                    </span>
+                  </div>
                 </div>
               </td>
 
@@ -1259,6 +1311,15 @@ onUnmounted(() => {
                       >
                         <Plus class="w-3.5 h-3.5" />
                         <span>Para Girişi (Tahsilat)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors"
+                        @click="closeAllDropdowns(); openAdvanceHistoryModal(courier)"
+                      >
+                        <Clock class="w-3.5 h-3.5" />
+                        <span>Avans Geçmişi & Ekle</span>
                       </button>
 
                       <button
@@ -1514,28 +1575,47 @@ onUnmounted(() => {
             </div>
 
             <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800">
-              <span class="text-slate-500 dark:text-slate-400 font-medium">Verilen Avans:</span>
-              <div class="inline-flex items-center bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500">
-                <span class="text-xs font-semibold text-slate-400">₺</span>
-                <input
-                  :value="courierPaidInputs[courier.id] !== undefined ? courierPaidInputs[courier.id] : (courier.paidAmount || 0)"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-24 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 focus:outline-none ml-1"
-                  @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
-                  @blur="savePaidAmount(courier)"
-                  @keyup.enter="savePaidAmount(courier)"
-                />
-                <button
-                  v-if="courierPaidInputs[courier.id] !== undefined && Number(courierPaidInputs[courier.id]) !== (courier.paidAmount || 0)"
-                  type="button"
-                  class="ml-1 p-0.5 rounded bg-emerald-600 text-white"
-                  title="Kaydet"
-                  @click="savePaidAmount(courier)"
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Verilen Avans:</span>
+                <span
+                  v-if="advanceFeedbackMap[courier.id]"
+                  class="animate-bounce text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 px-1.5 py-0.5 rounded"
                 >
-                  <CheckCircle2 class="w-3 h-3" />
+                  {{ advanceFeedbackMap[courier.id] }}
+                </span>
+              </div>
+              <div class="flex items-center gap-1">
+                <div class="inline-flex items-center bg-white dark:bg-slate-900 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500">
+                  <span class="text-xs font-semibold text-slate-400">₺</span>
+                  <input
+                    :value="courierPaidInputs[courier.id] !== undefined ? courierPaidInputs[courier.id] : ''"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    :placeholder="(courier.paidAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"
+                    class="w-20 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-700 dark:placeholder:text-slate-300 focus:outline-none ml-1"
+                    @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
+                    @blur="savePaidAmount(courier)"
+                    @keyup.enter="savePaidAmount(courier)"
+                  />
+                  <button
+                    v-if="courierPaidInputs[courier.id]"
+                    type="button"
+                    :disabled="savingPaidCourierId === courier.id"
+                    class="ml-1 p-0.5 rounded bg-emerald-600 text-white"
+                    title="Kaydet"
+                    @click="savePaidAmount(courier)"
+                  >
+                    <CheckCircle2 class="w-3 h-3" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shrink-0"
+                  title="Avans Geçmişi"
+                  @click="openAdvanceHistoryModal(courier)"
+                >
+                  <Clock class="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -2415,6 +2495,14 @@ onUnmounted(() => {
       variant="danger"
       :loading="deleteDeliveryLoading"
       @confirm="handleConfirmDeleteDelivery"
+    />
+
+    <!-- 8. KURYE AVANS GEÇMİŞİ VE İŞLEM MODALI -->
+    <CourierAdvanceHistoryModal
+      :is-open="isAdvanceHistoryModalOpen"
+      :courier="advanceHistoryCourier"
+      @close="isAdvanceHistoryModalOpen = false"
+      @updated="fetchCouriers()"
     />
   </div>
 </template>

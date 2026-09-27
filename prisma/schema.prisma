@@ -57,6 +57,8 @@ model Courier {
   courierVenuePrices CourierVenuePrice[]
   deliveryRecords    DeliveryRecord[]
   transactions       CourierTransaction[]
+  advances           CourierAdvance[]
+  settlementPeriods  SettlementPeriod[]
 
   @@index([name])
   @@index([isActive])
@@ -126,3 +128,57 @@ model CourierTransaction {
   @@index([courierId, entryDate])
   @@map("courier_transactions")
 }
+
+model CourierAdvance {
+  id          String    @id @default(uuid())
+  courierId   String    @map("courier_id")
+  amount      Decimal   @db.Decimal(10, 2)
+  date        DateTime  @db.Date
+  time        String?
+  week        String?
+  periodId    String?   @map("period_id")
+  description String?
+  status      String    @default("ACTIVE")
+  closedAt    DateTime? @map("closed_at")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  courier Courier           @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  period  SettlementPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+
+  @@index([courierId])
+  @@index([date])
+  @@index([week])
+  @@index([status])
+  @@index([periodId])
+  @@index([courierId, date])
+  @@index([courierId, status])
+  @@map("courier_advances")
+}
+
+model SettlementPeriod {
+  id               String    @id @default(uuid())
+  type             String    @default("WEEKLY")
+  courierId        String?   @map("courier_id")
+  week             String?
+  startDate        DateTime  @db.Date @map("start_date")
+  endDate          DateTime  @db.Date @map("end_date")
+  totalPackages    Int       @default(0) @map("total_packages")
+  totalEarnings    Decimal   @default(0) @db.Decimal(10, 2) @map("total_earnings")
+  totalAdvance     Decimal   @default(0) @db.Decimal(10, 2) @map("total_advance")
+  remainingBalance Decimal   @default(0) @db.Decimal(10, 2) @map("remaining_balance")
+  closedAt         DateTime  @default(now()) @map("closed_at")
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  courier  Courier?         @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  advances CourierAdvance[]
+
+  @@index([courierId])
+  @@index([week])
+  @@index([startDate, endDate])
+  @@map("settlement_periods")
+}
+

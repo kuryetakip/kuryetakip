@@ -27,6 +27,17 @@ export interface CourierReportData {
   indoorAmount: number
   outdoorAmount: number
   totalAmount: number
+  totalAdvance?: number
+  remainingBalance?: number
+  weeklyTotalAdvance?: number
+  advances?: Array<{
+    id: string
+    amount: number
+    date: string
+    time?: string
+    description?: string
+    status: string
+  }>
   records: CourierReportRecord[]
 }
 

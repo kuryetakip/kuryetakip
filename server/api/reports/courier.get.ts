@@ -183,7 +183,47 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+    // 3.1 Fetch advances in this date range
+    const periodAdvances = await prisma.courierAdvance.findMany({
+      where: {
+        courierId: courier.id,
+        date: {
+          gte: fromDate,
+          lte: toDate
+        }
+      },
+      orderBy: [
+        { date: 'asc' },
+        { createdAt: 'asc' }
+      ]
+    })
+
+    let totalAdvance = 0
+    for (const adv of periodAdvances) {
+      totalAdvance += Number(adv.amount)
+    }
+
+    // 3.2 Calculate Current Week's Total Advance for WhatsApp weekly summary
+    const todayUTC = new Date()
+    const dayOfWeek = todayUTC.getUTCDay() || 7
+    const currentWeekMonday = new Date(todayUTC.getTime() - (dayOfWeek - 1) * 86400000)
+    currentWeekMonday.setUTCHours(0, 0, 0, 0)
+    const currentWeekSunday = new Date(currentWeekMonday.getTime() + 6 * 86400000)
+    currentWeekSunday.setUTCHours(23, 59, 59, 999)
+
+    const weeklyAdvanceAgg = await prisma.courierAdvance.aggregate({
+      where: {
+        courierId: courier.id,
+        date: {
+          gte: currentWeekMonday,
+          lte: currentWeekSunday
+        }
+      },
+      _sum: { amount: true }
+    })
+    const weeklyTotalAdvance = Number(weeklyAdvanceAgg._sum.amount || 0)
+
+    const remainingBalance = Number((totalAmount - totalAdvance).toFixed(2))
 
     return {
       success: true,
@@ -204,6 +244,17 @@ export default defineEventHandler(async (event) => {
         indoorAmount: Number(indoorAmount.toFixed(2)),
         outdoorAmount: Number(outdoorAmount.toFixed(2)),
         totalAmount: Number(totalAmount.toFixed(2)),
+        totalAdvance: Number(totalAdvance.toFixed(2)),
+        remainingBalance,
+        weeklyTotalAdvance: Number(weeklyTotalAdvance.toFixed(2)),
+        advances: periodAdvances.map(adv => ({
+          id: adv.id,
+          amount: Number(adv.amount),
+          date: adv.date instanceof Date ? adv.date.toISOString().substring(0, 10) : String(adv.date).substring(0, 10),
+          time: adv.time || '—',
+          description: adv.description,
+          status: adv.status
+        })),
         records: formattedRecords,
         dailyBreakdown
       }

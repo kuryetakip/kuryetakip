@@ -31,7 +31,8 @@ export default defineEventHandler(async (event) => {
         _count: {
           select: {
             deliveryRecords: true,
-            courierVenuePrices: true
+            courierVenuePrices: true,
+            advances: true
           }
         },
         deliveryRecords: {
@@ -45,6 +46,21 @@ export default defineEventHandler(async (event) => {
             courierPriceSnapshot: true,
             unitPriceSnapshot: true
           }
+        },
+        advances: {
+          select: {
+            id: true,
+            amount: true,
+            date: true,
+            time: true,
+            status: true,
+            description: true,
+            createdAt: true
+          },
+          orderBy: [
+            { date: 'desc' },
+            { createdAt: 'desc' }
+          ]
         }
       }
     })
@@ -94,12 +110,36 @@ export default defineEventHandler(async (event) => {
         }
       }
 
+      // Calculate Advance totals
+      let todayAdvanceAmount = 0
+      let activeAdvanceAmount = 0
+      let totalAdvanceAmount = 0
+
+      for (const adv of c.advances) {
+        const advAmt = Number(adv.amount || 0)
+        totalAdvanceAmount += advAmt
+
+        if (adv.status === 'ACTIVE') {
+          activeAdvanceAmount += advAmt
+        }
+
+        const advDateStr = adv.date instanceof Date
+          ? adv.date.toISOString().substring(0, 10)
+          : String(adv.date).substring(0, 10)
+
+        if (advDateStr === dateStr) {
+          todayAdvanceAmount += advAmt
+        }
+      }
+
       const todayTotalPackages = todayIndoorPackages + todayOutdoorPackages
       const todayTotalAmount = Number((todayIndoorAmount + todayOutdoorAmount).toFixed(2))
 
       const cumulativeTotalPackages = totalIndoorPackages + totalOutdoorPackages
       const cumulativeTotalAmount = Number(totalEarnings.toFixed(2))
-      const paidAmount = Number(c.paidAmount || 0)
+
+      // Use active advances total if records exist, otherwise fallback to c.paidAmount
+      const paidAmount = c.advances.length > 0 ? Number(activeAdvanceAmount.toFixed(2)) : Number(c.paidAmount || 0)
       const remainingBalance = Number((cumulativeTotalAmount - paidAmount).toFixed(2))
 
       return {
@@ -109,6 +149,18 @@ export default defineEventHandler(async (event) => {
         indoorPrice: Number(c.indoorPrice || 0),
         outdoorPrice: Number(c.outdoorPrice || 0),
         paidAmount,
+        todayAdvanceAmount: Number(todayAdvanceAmount.toFixed(2)),
+        activeAdvanceAmount: Number(activeAdvanceAmount.toFixed(2)),
+        totalAdvanceAmount: Number(totalAdvanceAmount.toFixed(2)),
+        advanceCount: c._count.advances,
+        recentAdvances: c.advances.slice(0, 5).map(adv => ({
+          id: adv.id,
+          amount: Number(adv.amount),
+          date: adv.date instanceof Date ? adv.date.toISOString().substring(0, 10) : String(adv.date).substring(0, 10),
+          time: adv.time || (adv.createdAt ? new Date(adv.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'),
+          description: adv.description,
+          status: adv.status
+        })),
         isActive: c.isActive,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,

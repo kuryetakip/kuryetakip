@@ -14,6 +14,9 @@ export interface WhatsAppMessagePayload {
   endDate: string
   totalPackages: number
   totalAmount: number
+  totalAdvance?: number
+  remainingBalance?: number
+  weeklyAdvance?: number
   currency?: string
   records?: WhatsAppRecordItem[]
   note?: string

@@ -16,16 +16,30 @@ import {
   Sparkles,
   Phone,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Wallet,
+  Lock,
+  Plus,
+  Search,
+  History,
+  CheckCircle2,
+  Trash2,
+  ShieldCheck,
+  Archive,
+  DollarSign
 } from 'lucide-vue-next'
 import { useReports, type CourierReportRecord } from '~/composables/useReports'
-import { useCouriers } from '~/composables/useCouriers'
+import { useCouriers, type CourierItem } from '~/composables/useCouriers'
+import { useAdvanceReports } from '~/composables/useAdvanceReports'
 import { whatsAppShareService } from '~/services/whatsapp/whatsappShareService'
 import { useToast } from '~/composables/useToast'
 
 useHead({
-  title: 'Hakediş Raporları & WhatsApp Faturası — KuryeTakip'
+  title: 'Hakediş & Avans Raporları — KuryeTakip'
 })
+
+// Tab Navigation: 'advances' (Avans Raporları), 'settlement' (Kurye Hakediş & WhatsApp), 'periods' (Kapatılan Dönemler)
+const activeTab = ref<'advances' | 'settlement' | 'periods'>('advances')
 
 const {
   reportData,
@@ -38,8 +52,40 @@ const {
   setQuickDateRange
 } = useReports()
 
-const { couriers, fetchCouriers } = useCouriers()
+const { couriers, fetchCouriers, deleteCourierAdvance } = useCouriers()
 const toast = useToast()
+
+// Advance Reports Composable
+const {
+  loading: advanceLoading,
+  settlementLoading,
+  reportData: advanceReportData,
+  settlementPeriods,
+  period: advancePeriod,
+  startDate: advanceStartDate,
+  endDate: advanceEndDate,
+  selectedCourierId: advanceCourierFilter,
+  statusFilter: advanceStatusFilter,
+  minAmount: advanceMinAmount,
+  maxAmount: advanceMaxAmount,
+  fetchAdvanceReports,
+  fetchSettlementPeriods,
+  closeWeek,
+  setQuickFilter: setAdvanceQuickFilter
+} = useAdvanceReports()
+
+// Close Week Modal & History Modal State
+const isCloseWeekModalOpen = ref(false)
+const isAdvanceHistoryModalOpen = ref(false)
+const selectedCourierForHistory = ref<CourierItem | null>(null)
+
+const openHistoryForCourier = (courierId: string) => {
+  const found = couriers.value.find(c => c.id === courierId) || null
+  if (found) {
+    selectedCourierForHistory.value = found
+    isAdvanceHistoryModalOpen.value = true
+  }
+}
 
 const activeCouriers = computed(() => couriers.value.filter(c => c.isActive))
 
@@ -81,6 +127,11 @@ const whatsAppPayload = computed(() => {
     endDate: reportData.value.endDateFormatted,
     totalPackages: reportData.value.totalPackageCount,
     totalAmount: reportData.value.totalAmount,
+    totalAdvance: reportData.value.totalAdvance || 0,
+    remainingBalance: reportData.value.remainingBalance !== undefined
+      ? reportData.value.remainingBalance
+      : Number(((reportData.value.totalAmount || 0) - (reportData.value.totalAdvance || 0)).toFixed(2)),
+    weeklyAdvance: reportData.value.weeklyTotalAdvance || 0,
     currency: 'TL',
     records: mappedRecords
   }
@@ -94,10 +145,27 @@ const formattedInvoiceText = computed(() => {
 
 // Trigger fetch when courier or dates change
 watch([selectedCourierId, startDate, endDate], ([newCourierId, newStart, newEnd], [oldCourierId, oldStart, oldEnd]) => {
-  if (newCourierId && newStart && newEnd && newStart <= newEnd) {
+  if (activeTab.value === 'settlement' && newCourierId && newStart && newEnd && newStart <= newEnd) {
     if (newCourierId !== oldCourierId || newStart !== oldStart || newEnd !== oldEnd) {
       fetchCourierReport()
     }
+  }
+})
+
+// Trigger fetch when advance filters change
+watch([advancePeriod, advanceStartDate, advanceEndDate, advanceCourierFilter, advanceStatusFilter, advanceMinAmount, advanceMaxAmount], () => {
+  if (activeTab.value === 'advances') {
+    fetchAdvanceReports()
+  }
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'advances') {
+    fetchAdvanceReports()
+  } else if (tab === 'settlement') {
+    if (selectedCourierId.value) fetchCourierReport()
+  } else if (tab === 'periods') {
+    fetchSettlementPeriods()
   }
 })
 
@@ -137,378 +205,736 @@ const openPreview = () => {
   isPreviewModalOpen.value = true
 }
 
+const handleDeleteAdvanceRecord = async (rec: any) => {
+  if (!confirm(`${rec.dateFormatted} tarihli ${rec.formattedAmount} ₺ tutarındaki avansı silmek istediğinize emin misiniz?`)) {
+    return
+  }
+  const success = await deleteCourierAdvance(rec.courierId, rec.id)
+  if (success) {
+    await fetchAdvanceReports()
+  }
+}
+
 onMounted(async () => {
   await fetchCouriers()
+  await fetchAdvanceReports()
   // Select first active courier by default if available
   if (activeCouriers.value.length > 0 && !selectedCourierId.value) {
     selectedCourierId.value = activeCouriers.value[0].id
   }
 })
-
 </script>
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">
+    <!-- Page Header & Tab Navigation -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
       <div>
         <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
           <FileText class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-          <span>Raporlar</span>
+          <span>Finans & Raporlama</span>
         </h1>
         <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Kurye hakediş raporunu görüntüleyin, detayları inceleyin ve WhatsApp üzerinden hakediş faturasını iletin.
+          Avans raporları, kurye hakedişleri, haftalık kapatma ve WhatsApp dökümleri.
         </p>
       </div>
 
-      <div v-if="reportData && reportData.records.length > 0" class="flex items-center gap-2.5">
-        <BaseButton
-          variant="outline"
-          size="md"
-          @click="openPreview"
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- Close Week Button (Always accessible) -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors shadow-2xs"
+          @click="isCloseWeekModalOpen = true"
         >
-          <template #leading>
-            <FileText class="w-4 h-4 text-slate-600 dark:text-slate-400" />
-          </template>
-          Fatura Önizle
-        </BaseButton>
+          <Lock class="w-3.5 h-3.5" />
+          <span>Haftayı Kapat</span>
+        </button>
 
-        <BaseButton
-          variant="primary"
-          size="md"
-          class="!bg-emerald-600 hover:!bg-emerald-700 !text-white"
-          :disabled="!hasValidPhone"
-          :title="!hasValidPhone ? 'Telefon numarası eksik' : 'WhatsApp\'tan Gönder'"
-          @click="handleSendWhatsApp"
-        >
-          <template #leading>
-            <MessageCircle class="w-4 h-4" />
-          </template>
-          WhatsApp'tan Gönder
-        </BaseButton>
+        <div v-if="activeTab === 'settlement' && reportData && reportData.records.length > 0" class="flex items-center gap-2">
+          <BaseButton
+            variant="outline"
+            size="md"
+            @click="openPreview"
+          >
+            <template #leading>
+              <FileText class="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            </template>
+            Fatura Önizle
+          </BaseButton>
+
+          <BaseButton
+            variant="primary"
+            size="md"
+            class="!bg-emerald-600 hover:!bg-emerald-700 !text-white"
+            :disabled="!hasValidPhone"
+            :title="!hasValidPhone ? 'Telefon numarası eksik' : 'WhatsApp\'tan Gönder'"
+            @click="handleSendWhatsApp"
+          >
+            <template #leading>
+              <MessageCircle class="w-4 h-4" />
+            </template>
+            WhatsApp'tan Gönder
+          </BaseButton>
+        </div>
       </div>
     </div>
 
-    <!-- Filter & Date Selection Bar -->
-    <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <!-- 1. Kurye Seçimi (Zorunlu) -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-            Kurye <span class="text-rose-500">*</span>
-          </label>
-          <BaseSelect
-            v-model="selectedCourierId"
-            :options="[
-              { value: '', label: 'Kurye Seçiniz...' },
-              ...couriers.map(c => ({
-                value: c.id,
-                label: `${c.name} ${!c.isActive ? '(Pasif)' : ''} ${c.phone ? '— ' + c.phone : '— (No Tel)'}`
-              }))
-            ]"
-            placeholder="Kurye seçiniz..."
-          />
-        </div>
-
-        <!-- 2. Başlangıç Tarihi -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-            Başlangıç Tarihi <span class="text-rose-500">*</span>
-          </label>
-          <BaseInput
-            v-model="startDate"
-            type="date"
-            @blur="selectedCourierId && fetchCourierReport()"
-          />
-        </div>
-
-        <!-- 3. Bitiş Tarihi -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-            Bitiş Tarihi <span class="text-rose-500">*</span>
-          </label>
-          <BaseInput
-            v-model="endDate"
-            type="date"
-            @blur="selectedCourierId && fetchCourierReport()"
-          />
-        </div>
-      </div>
-
-      <!-- Hızlı Tarih Seçim Butonları & Yenile -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-        <div class="flex flex-wrap items-center gap-1.5 text-slate-600 dark:text-slate-400">
-          <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mr-1">Hızlı Tarih:</span>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
-            @click="setQuickDateRange('this_month')"
-          >
-            Bu Ay
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
-            @click="setQuickDateRange('last_month')"
-          >
-            Geçen Ay
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
-            @click="setQuickDateRange('last_7_days')"
-          >
-            Son 7 Gün
-          </button>
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
-            @click="setQuickDateRange('today')"
-          >
-            Bugün
-          </button>
-        </div>
-
-        <BaseButton
-          variant="outline"
-          size="sm"
-          :disabled="!selectedCourierId || loading"
-          @click="fetchCourierReport"
-        >
-          <template #leading>
-            <RefreshCw :class="['w-3.5 h-3.5', loading ? 'animate-spin' : '']" />
-          </template>
-          Raporu Getir
-        </BaseButton>
-      </div>
-    </div>
-
-    <!-- DURUM 1: Kurye Seçilmemiş -->
-    <div v-if="!selectedCourierId" class="bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center space-y-3">
-      <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 mx-auto flex items-center justify-center">
-        <Bike class="w-6 h-6 stroke-[1.5]" />
-      </div>
-      <h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">Lütfen bir kurye seçin</h3>
-      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-        Kuryenin belirlenen tarih aralığındaki toplam paket ve hakedişini hesaplamak için yukarıdaki kurye listesinden bir seçim yapınız.
-      </p>
-    </div>
-
-    <!-- DURUM 2: Yükleniyor -->
-    <div v-else-if="loading" class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
-      <RefreshCw class="w-8 h-8 text-emerald-600 dark:text-emerald-400 animate-spin mx-auto" />
-      <div class="text-sm font-semibold text-slate-700 dark:text-slate-200">Kurye hakediş raporu hesaplanıyor...</div>
-      <div class="text-xs text-slate-400 dark:text-slate-500">Veritabanındaki anlık fiyat ve toplam tutarlar derleniyor.</div>
-    </div>
-
-    <!-- DURUM 3: Kurye Seçili & Rapor Verisi Var -->
-    <div v-else-if="reportData" class="space-y-6">
-      <!-- Telefon Numarası Eksik Uyarısı -->
-      <div
-        v-if="!hasValidPhone"
-        class="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-start gap-3 text-amber-800 dark:text-amber-300 text-xs sm:text-sm"
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+        :class="activeTab === 'advances' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-100'"
+        @click="activeTab = 'advances'"
       >
-        <AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-        <div>
-          <strong class="font-bold block">Kurye Telefon Numarası Eksik</strong>
-          Bu kurye için telefon numarası kayıtlı değil. Lütfen önce kurye bilgilerine telefon numarası ekleyin.
-          (Yine de faturayı önizleyebilir ve metin olarak kopyalayabilirsiniz.)
+        <Wallet class="w-4 h-4" />
+        <span>Avans Raporları</span>
+      </button>
+
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+        :class="activeTab === 'settlement' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-100'"
+        @click="activeTab = 'settlement'"
+      >
+        <FileText class="w-4 h-4" />
+        <span>Kurye Hakediş & WhatsApp</span>
+      </button>
+
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+        :class="activeTab === 'periods' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-100'"
+        @click="activeTab = 'periods'"
+      >
+        <Archive class="w-4 h-4" />
+        <span>Kapatılan Haftalar ({{ settlementPeriods.length }})</span>
+      </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: AVANS RAPORLARI (YENİ SİSTEM)       -->
+    <!-- ========================================== -->
+    <div v-if="activeTab === 'advances'" class="space-y-6">
+      <!-- Filtreler & Hızlı Butonlar -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <!-- Hızlı Filtre Butonları -->
+        <div class="flex items-center justify-between flex-wrap gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">Dönem:</span>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              :class="advancePeriod === 'today' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+              @click="setAdvanceQuickFilter('today')"
+            >
+              Bugün
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              :class="advancePeriod === 'week' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+              @click="setAdvanceQuickFilter('week')"
+            >
+              Bu Hafta
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              :class="advancePeriod === 'lastWeek' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+              @click="setAdvanceQuickFilter('lastWeek')"
+            >
+              Geçen Hafta
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              :class="advancePeriod === 'month' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+              @click="setAdvanceQuickFilter('month')"
+            >
+              Bu Ay
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              :class="advancePeriod === 'custom' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+              @click="advancePeriod = 'custom'"
+            >
+              Özel Tarih
+            </button>
+          </div>
+
+          <div class="text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
+            {{ advanceReportData?.startDateFormatted }} - {{ advanceReportData?.endDateFormatted }}
+          </div>
+        </div>
+
+        <!-- Ekstra Filtreler (Kurye, Min/Max Tutar, Durum) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Kurye Seçimi -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+              Kurye Filtresi
+            </label>
+            <select
+              v-model="advanceCourierFilter"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            >
+              <option value="all">Tüm Kuryeler</option>
+              <option v-for="c in couriers" :key="c.id" :value="c.id">
+                {{ c.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Durum -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+              Durum
+            </label>
+            <select
+              v-model="advanceStatusFilter"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            >
+              <option value="all">Tümü (Aktif + Kapatılmış)</option>
+              <option value="ACTIVE">Yalnızca Aktif Avanslar</option>
+              <option value="CLOSED">Kapatılmış / Arşivlenmiş</option>
+            </select>
+          </div>
+
+          <!-- Min Tutar -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+              Min Avans (₺)
+            </label>
+            <input
+              v-model="advanceMinAmount"
+              type="number"
+              placeholder="0"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <!-- Maks Tutar -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+              Maks Avans (₺)
+            </label>
+            <input
+              v-model="advanceMaxAmount"
+              type="number"
+              placeholder="Limitsiz"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <!-- Özel Tarih Seçimi (Yalnızca custom seçildiğinde açılır) -->
+        <div v-if="advancePeriod === 'custom'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Başlangıç Tarihi</label>
+            <input
+              v-model="advanceStartDate"
+              type="date"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Bitiş Tarihi</label>
+            <input
+              v-model="advanceEndDate"
+              type="date"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- 1. RAPOR ÖZETİ (KPI Cards) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Kurye & Tarih Kartı -->
-        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Kurye Bilgisi
-            </div>
-            <div class="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 flex items-center gap-2">
-              <Bike class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <span>{{ reportData.courier.name }}</span>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-              <Phone class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-              <span>{{ reportData.courier.phone || 'Telefon Kayıtlı Değil' }}</span>
-            </div>
-          </div>
+      <!-- Loading State -->
+      <div v-if="advanceLoading" class="py-12 text-center">
+        <div class="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p class="text-xs text-slate-400">Avans rapor verileri hesaplanıyor...</p>
+      </div>
 
-          <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-            <span class="text-slate-400 dark:text-slate-500 font-medium">Tarih Aralığı:</span>
-            <span class="font-mono font-semibold">{{ reportData.startDateFormatted }} — {{ reportData.endDateFormatted }}</span>
-          </div>
-        </div>
-
-        <!-- Toplam Paket Kartı -->
-        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Toplam Paket Sayısı
-            </div>
-            <div class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 mt-1 font-mono">
-              {{ reportData.totalPackageCount }}
-            </div>
-          </div>
-
-          <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
-            <div class="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>{{ reportData.indoorPackages }} İç Mekan</span>
-            </div>
-            <div class="text-sky-700 dark:text-sky-400 font-medium flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-sky-500" />
-              <span>{{ reportData.outdoorPackages }} Dış Mekan</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- TOPLAM HAKEDİŞ KARTI (Ana Vurgulu Kart) -->
-        <div class="bg-slate-950 dark:bg-slate-900 p-5 rounded-xl border border-slate-800 dark:border-slate-700 shadow-sm text-white flex flex-col justify-between relative overflow-hidden">
-          <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-          <div>
+      <div v-else-if="advanceReportData" class="space-y-6">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Toplam Avans -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                TOPLAM HAKEDİŞ
-              </span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Net Tutar
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam Avans</span>
+              <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Wallet class="w-4 h-4" />
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="text-2xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
+                {{ advanceReportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
               </span>
             </div>
-            <div class="text-3xl sm:text-4xl font-black text-emerald-400 mt-2 font-mono tracking-tight">
-              {{ reportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            <div class="text-[11px] text-slate-400 mt-1">
+              Seçili dönemde ödenen toplam
             </div>
           </div>
 
-          <div class="pt-3 mt-3 border-t border-slate-800/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
-            <span>{{ reportData.records.length }} Teslimat Kaydı</span>
-            <span class="text-slate-300 font-medium">Birim Snapshot Esaslı</span>
+          <!-- Toplam İşlem Sayısı -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Sayısı</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Layers class="w-4 h-4" />
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                {{ advanceReportData.totalCount }}
+              </span>
+              <span class="text-xs font-medium text-slate-400 ml-1">kayıt</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1">
+              Farklı zamanlarda girilen işlemler
+            </div>
+          </div>
+
+          <!-- Ortalama Avans Tutarı -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Ortalaması</span>
+              <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <TrendingUp class="w-4 h-4" />
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                {{ advanceReportData.averageAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+              </span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1">
+              İşlem başına düşen ortalama
+            </div>
+          </div>
+
+          <!-- Avans Alan Kurye Sayısı -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avans Alan Kurye</span>
+              <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <Bike class="w-4 h-4" />
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                {{ advanceReportData.courierBreakdown.length }}
+              </span>
+              <span class="text-xs font-medium text-slate-400 ml-1">kurye</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1">
+              Bu periyotta avans alanlar
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- DURUM 3.1: Kayıt Yoksa -->
-      <div
-        v-if="reportData.records.length === 0"
-        class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-2"
-      >
-        <div class="text-sm font-semibold text-slate-700 dark:text-slate-300">Bu tarih aralığında seçilen kurye için hakediş kaydı bulunamadı.</div>
-        <p class="text-xs text-slate-400 dark:text-slate-500">
-          {{ reportData.startDateFormatted }} ile {{ reportData.endDateFormatted }} tarihleri arasında girilmiş paket kaydı yoktur.
-        </p>
-      </div>
+        <!-- 2 Kolonlu Özet Grid: Kurye Bazlı Avans Özeti & Günlük Avans Özeti -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- 1. Kurye Bazlı Avans Özeti Tablosu -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs flex flex-col">
+            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/50 flex items-center justify-between">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Bike class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Kurye Bazlı Avans Toplamları</span>
+              </h3>
+              <span class="text-xs text-slate-400 font-mono">{{ advanceReportData.courierBreakdown.length }} kurye</span>
+            </div>
 
-      <!-- DURUM 3.2: Kayıtlar Tablosu & Fatura Önizleme -->
-      <div v-else class="space-y-6">
-        <!-- Detaylı Hakediş Tablosu -->
-        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60 dark:bg-slate-850">
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
+                  <tr>
+                    <th class="px-4 py-2.5">Kurye</th>
+                    <th class="px-4 py-2.5 text-center">İşlem</th>
+                    <th class="px-4 py-2.5 text-right">Toplam Avans</th>
+                    <th class="px-4 py-2.5 text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tr v-if="advanceReportData.courierBreakdown.length === 0">
+                    <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                      Bu dönemde avans işlemi bulunmuyor.
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="cb in advanceReportData.courierBreakdown"
+                    :key="cb.courierId"
+                    class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td class="px-4 py-2.5 font-semibold text-slate-900 dark:text-slate-100">
+                      {{ cb.courierName }}
+                    </td>
+                    <td class="px-4 py-2.5 text-center font-mono text-slate-500">
+                      {{ cb.count }} adet
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {{ cb.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                    </td>
+                    <td class="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        class="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800"
+                        title="Avans Geçmişini Gör"
+                        @click="openHistoryForCourier(cb.courierId)"
+                      >
+                        <Clock class="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="bg-slate-50/90 dark:bg-slate-850 font-bold border-t border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <td class="px-4 py-2.5 text-slate-700 dark:text-slate-300">GENEL TOPLAM</td>
+                    <td class="px-4 py-2.5 text-center font-mono">{{ advanceReportData.totalCount }} adet</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400 text-sm">
+                      {{ advanceReportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- 2. Günlük Avans Özeti Tablosu -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs flex flex-col">
+            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/50 flex items-center justify-between">
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Calendar class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Günlük Avans Toplamları</span>
+              </h3>
+              <span class="text-xs text-slate-400 font-mono">{{ advanceReportData.dailyBreakdown.length }} gün</span>
+            </div>
+
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
+                  <tr>
+                    <th class="px-4 py-2.5">Tarih</th>
+                    <th class="px-4 py-2.5">Gün</th>
+                    <th class="px-4 py-2.5 text-center">İşlem</th>
+                    <th class="px-4 py-2.5 text-right">Günlük Toplam Avans</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tr v-if="advanceReportData.dailyBreakdown.length === 0">
+                    <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                      Bu dönemde günlük avans kaydı bulunmuyor.
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="db in advanceReportData.dailyBreakdown"
+                    :key="db.date"
+                    class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td class="px-4 py-2.5 font-bold text-slate-900 dark:text-slate-100 font-mono">
+                      {{ db.dateFormatted }}
+                    </td>
+                    <td class="px-4 py-2.5 text-slate-500">
+                      {{ db.dayName }}
+                    </td>
+                    <td class="px-4 py-2.5 text-center font-mono text-slate-500">
+                      {{ db.count }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {{ db.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="bg-slate-50/90 dark:bg-slate-850 font-bold border-t border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <td colspan="2" class="px-4 py-2.5 text-slate-700 dark:text-slate-300">GÜNLÜK TOPLAMLAR</td>
+                    <td class="px-4 py-2.5 text-center font-mono">{{ advanceReportData.totalCount }} adet</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400 text-sm">
+                      {{ advanceReportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Detaylı Avans İşlem Geçmişi Tablosu -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">
-                Hakediş Detay Tablosu
-              </h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                Kayıtların snapshot birim fiyatı ve hesaplanmış toplam hakediş tutarları listelenmektedir.
+              <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <History class="w-4 h-4 text-emerald-600" />
+                <span>Detaylı Avans İşlem Dökümü</span>
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Her bir avans işleminin tarihi, saati, kuryesi ve işlem tutarı
               </p>
             </div>
-
-            <div class="flex items-center gap-2">
-              <BaseButton
-                variant="outline"
-                size="sm"
-                @click="openPreview"
-              >
-                <template #leading>
-                  <FileText class="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-                </template>
-                Fatura Metnini Gör
-              </BaseButton>
-
-              <BaseButton
-                variant="primary"
-                size="sm"
-                class="!bg-emerald-600 hover:!bg-emerald-700 !text-white"
-                :disabled="!hasValidPhone"
-                @click="handleSendWhatsApp"
-              >
-                <template #leading>
-                  <MessageCircle class="w-3.5 h-3.5" />
-                </template>
-                WhatsApp'tan Gönder
-              </BaseButton>
-            </div>
+            <span class="text-xs font-mono text-slate-400 font-semibold">{{ advanceReportData.records.length }} İşlem</span>
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs sm:text-sm">
-              <thead class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>
-                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Tarih</th>
-                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">Mekan</th>
-                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-center">Tür</th>
-                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Paket</th>
-                  <th class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right">Birim Fiyat</th>
-                  <th class="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 text-right">Hakediş</th>
+                  <th class="px-4 py-3">Tarih & Saat</th>
+                  <th class="px-4 py-3">Kurye</th>
+                  <th class="px-4 py-3">Açıklama / Not</th>
+                  <th class="px-4 py-3 text-center">Dönem Kodu</th>
+                  <th class="px-4 py-3 text-center">Durum</th>
+                  <th class="px-4 py-3 text-right">Avans Tutarı</th>
+                  <th class="px-4 py-3 text-right">İşlem</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr v-if="advanceReportData.records.length === 0">
+                  <td colspan="7" class="px-4 py-12 text-center text-slate-400">
+                    Kayıtlı avans işlemi bulunamadı.
+                  </td>
+                </tr>
                 <tr
-                  v-for="item in reportData.records"
-                  :key="item.id"
-                  class="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors"
+                  v-for="rec in advanceReportData.records"
+                  :key="rec.id"
+                  class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                 >
-                  <!-- Tarih -->
-                  <td class="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">
-                    {{ item.dateFormatted }}
+                  <td class="px-4 py-3 font-mono font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                    {{ rec.dateFormatted }} <span class="text-slate-400 ml-1 text-[11px]">{{ rec.time }}</span>
                   </td>
-
-                  <!-- Mekan -->
-                  <td class="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium">
-                    <div class="flex items-center gap-1.5">
-                      <Store class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                      <span>{{ item.venueName }}</span>
-                    </div>
+                  <td class="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                    {{ rec.courierName }}
                   </td>
-
-                  <!-- Tür -->
-                  <td class="px-4 py-3 text-center">
-                    <BaseBadge
-                      :variant="item.deliveryType === 'INDOOR' ? 'success' : 'brand'"
-                      dot
+                  <td class="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                    {{ rec.description || '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-center font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                    {{ rec.week || '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-center whitespace-nowrap">
+                    <span
+                      class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                      :class="rec.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400'"
                     >
-                      {{ item.deliveryTypeLabel }}
-                    </BaseBadge>
+                      {{ rec.status === 'ACTIVE' ? 'Aktif' : 'Arşiv / Kapatıldı' }}
+                    </span>
                   </td>
-
-                  <!-- Paket Sayısı -->
-                  <td class="px-4 py-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">
-                    {{ item.packageCount }}
+                  <td class="px-4 py-3 text-right font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    {{ rec.formattedAmount }} ₺
                   </td>
-
-                  <!-- Birim Fiyat Snapshot -->
-                  <td class="px-4 py-3 text-right font-mono text-slate-600 dark:text-slate-400">
-                    {{ item.unitPriceSnapshot.toFixed(2) }} ₺
-                  </td>
-
-                  <!-- Hakediş (totalAmount) -->
-                  <td class="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-400 font-mono">
-                    {{ item.totalAmount.toFixed(2) }} ₺
+                  <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      class="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Avans kaydını sil"
+                      @click="handleDeleteAdvanceRecord(rec)"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
                   </td>
                 </tr>
               </tbody>
-              <tfoot class="bg-slate-900 dark:bg-slate-950 text-white font-bold border-t-2 border-slate-800 dark:border-slate-800">
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: KURYE HAKEDİŞ & WHATSAPP FATURASI   -->
+    <!-- ========================================== -->
+    <div v-else-if="activeTab === 'settlement'" class="space-y-6">
+      <!-- Filter & Date Selection Bar -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- 1. Kurye Seçimi -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Kurye <span class="text-rose-500">*</span>
+            </label>
+            <BaseSelect
+              v-model="selectedCourierId"
+              :options="[
+                { value: '', label: 'Kurye Seçiniz...' },
+                ...couriers.map(c => ({
+                  value: c.id,
+                  label: `${c.name} ${!c.isActive ? '(Pasif)' : ''} ${c.phone ? '— ' + c.phone : '— (No Tel)'}`
+                }))
+              ]"
+              placeholder="Kurye seçiniz..."
+            />
+          </div>
+
+          <!-- 2. Başlangıç Tarihi -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Başlangıç Tarihi
+            </label>
+            <BaseInput
+              v-model="startDate"
+              type="date"
+            />
+          </div>
+
+          <!-- 3. Bitiş Tarihi -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Bitiş Tarihi
+            </label>
+            <BaseInput
+              v-model="endDate"
+              type="date"
+            />
+          </div>
+        </div>
+
+        <!-- Hızlı Tarih Seçim Butonları -->
+        <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-slate-500 font-medium mr-1">Hızlı Seçim:</span>
+            <BaseButton
+              variant="outline"
+              size="sm"
+              @click="setQuickDateRange('today')"
+            >
+              Bugün
+            </BaseButton>
+            <BaseButton
+              variant="outline"
+              size="sm"
+              @click="setQuickDateRange('last_7_days')"
+            >
+              Son 7 Gün
+            </BaseButton>
+            <BaseButton
+              variant="outline"
+              size="sm"
+              @click="setQuickDateRange('this_month')"
+            >
+              Bu Ay
+            </BaseButton>
+            <BaseButton
+              variant="outline"
+              size="sm"
+              @click="setQuickDateRange('last_month')"
+            >
+              Geçen Ay
+            </BaseButton>
+          </div>
+
+          <BaseButton
+            variant="outline"
+            size="sm"
+            :loading="loading"
+            @click="fetchCourierReport"
+          >
+            <template #leading>
+              <RefreshCw class="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+            </template>
+            Raporu Yenile
+          </BaseButton>
+        </div>
+      </div>
+
+      <!-- Error Alert -->
+      <div v-if="errorMessage" class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-sm flex items-center gap-3">
+        <AlertTriangle class="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+        <p>{{ errorMessage }}</p>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="py-16 text-center">
+        <div class="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+        <p class="text-xs text-slate-400">Kurye hakediş raporu hesaplanıyor...</p>
+      </div>
+
+      <!-- Report Content -->
+      <div v-else-if="reportData" class="space-y-6">
+        <!-- KPI Cards Grid (Hakediş, Avans, Kalan Hakediş) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Toplam Paket -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Toplam Paket</span>
+            <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
+              {{ reportData.totalPackageCount }}
+            </span>
+            <div class="text-[11px] text-slate-400 mt-1">İç: {{ reportData.indoorPackages }} | Dış: {{ reportData.outdoorPackages }}</div>
+          </div>
+
+          <!-- Toplam Hakediş -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Toplam Hakediş</span>
+            <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
+              {{ reportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+            <div class="text-[11px] text-slate-400 mt-1">Dönem içi paket kazancı</div>
+          </div>
+
+          <!-- Verilen Avans -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Verilen Avans</span>
+            <span class="text-2xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400 block mt-2">
+              {{ (reportData.totalAdvance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+            <div class="text-[11px] text-slate-400 mt-1">Dönem içi kayıtlı avanslar</div>
+          </div>
+
+          <!-- Kalan Hakediş -->
+          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Kalan Hakediş</span>
+            <span
+              class="text-2xl font-mono font-extrabold block mt-2"
+              :class="(reportData.remainingBalance ?? 0) < 0 ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'"
+            >
+              {{ (reportData.remainingBalance ?? (reportData.totalAmount - (reportData.totalAdvance || 0))).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            </span>
+            <div class="text-[11px] text-slate-400 mt-1">Hakediş - Avans Tutarı</div>
+          </div>
+        </div>
+
+        <!-- Detaylı Teslimat Kayıtları Tablosu -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Layers class="w-4 h-4 text-emerald-600" />
+              <span>Dönem Teslimat Kayıtları ({{ reportData.records.length }})</span>
+            </h3>
+            <span class="text-xs font-mono text-slate-400">{{ reportData.startDateFormatted }} - {{ reportData.endDateFormatted }}</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>
-                  <td colspan="3" class="px-4 py-3.5 text-slate-300">
-                    GENEL TOPLAM
+                  <th class="px-4 py-3">Tarih</th>
+                  <th class="px-4 py-3">Mekan</th>
+                  <th class="px-4 py-3 text-center">Tür</th>
+                  <th class="px-4 py-3 text-right">Paket</th>
+                  <th class="px-4 py-3 text-right">Birim Fiyat</th>
+                  <th class="px-4 py-3 text-right">Hakediş</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr v-for="item in reportData.records" :key="item.id" class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                  <td class="px-4 py-3 font-mono font-medium">{{ item.dateFormatted }}</td>
+                  <td class="px-4 py-3 font-semibold">{{ item.venueName }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="item.deliveryType === 'INDOOR' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'">
+                      {{ item.deliveryTypeLabel }}
+                    </span>
                   </td>
-                  <td class="px-4 py-3.5 text-right font-mono text-white text-base">
-                    {{ reportData.totalPackageCount }} Adet
-                  </td>
-                  <td class="px-4 py-3.5 text-right text-slate-400 text-xs">
-                    —
-                  </td>
-                  <td class="px-4 py-3.5 text-right font-mono text-emerald-400 text-base">
+                  <td class="px-4 py-3 text-right font-mono font-bold">{{ item.packageCount }}</td>
+                  <td class="px-4 py-3 text-right font-mono">{{ item.unitPriceSnapshot.toFixed(2) }} ₺</td>
+                  <td class="px-4 py-3 text-right font-mono font-bold text-emerald-600">{{ item.totalAmount.toFixed(2) }} ₺</td>
+                </tr>
+              </tbody>
+              <tfoot class="bg-slate-900 text-white font-bold">
+                <tr>
+                  <td colspan="3" class="px-4 py-3 text-slate-300">GENEL TOPLAM</td>
+                  <td class="px-4 py-3 text-right font-mono">{{ reportData.totalPackageCount }} Adet</td>
+                  <td></td>
+                  <td class="px-4 py-3 text-right font-mono text-emerald-400 text-sm">
                     {{ reportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </td>
                 </tr>
@@ -517,28 +943,24 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Hakediş Belgesi Önizleme Kartı (Sayfa Altı Doğrudan Önizleme) -->
+        <!-- Hakediş Belgesi Önizleme Kartı -->
         <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <FileText class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Hakediş Belgesi / Fatura Önizleme</span>
+                <span>WhatsApp Faturası & Avans Entegrasyonu</span>
               </h3>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                WhatsApp üzerinden gönderilecek metnin birebir önizlemesidir.
+                WhatsApp metnine verilen avans, kalan hakediş ve haftalık avans toplamı otomatik dahil edilmiştir.
               </p>
             </div>
 
             <div class="flex items-center gap-2">
-              <BaseButton
-                variant="outline"
-                size="sm"
-                @click="handleCopyInvoice"
-              >
+              <BaseButton variant="outline" size="sm" @click="handleCopyInvoice">
                 <template #leading>
-                  <Check v-if="copied" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <Copy v-else class="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                  <Check v-if="copied" class="w-3.5 h-3.5 text-emerald-600" />
+                  <Copy v-else class="w-3.5 h-3.5 text-slate-600" />
                 </template>
                 {{ copied ? 'Kopyalandı' : 'Metni Kopyala' }}
               </BaseButton>
@@ -558,10 +980,96 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Invoice Content Card -->
-          <div class="bg-slate-50 dark:bg-slate-950 p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed select-all">
+          <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed select-all">
             {{ formattedInvoiceText }}
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: KAPATILAN HAFTALAR VE DÖNEMLER     -->
+    <!-- ========================================== -->
+    <div v-else-if="activeTab === 'periods'" class="space-y-6">
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Archive class="w-4 h-4 text-emerald-600" />
+              <span>Kapatılmış Hafta Dönemleri ve Arşiv</span>
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Haftalık hesap kapatma geçmişi. Arşivlenen dönemlerdeki avanslar raporlarda korunur ancak aktif hesaplamalara tekrar dahil edilmez.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 shadow-xs transition-colors"
+            @click="isCloseWeekModalOpen = true"
+          >
+            <Lock class="w-3.5 h-3.5" />
+            <span>Yeni Hafta Kapat</span>
+          </button>
+        </div>
+
+        <div v-if="settlementLoading" class="py-12 text-center">
+          <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p class="text-xs text-slate-400">Dönem kayıtları yükleniyor...</p>
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-500 border-b border-slate-200 dark:border-slate-800 font-semibold">
+              <tr>
+                <th class="px-4 py-3">Hafta Kodu</th>
+                <th class="px-4 py-3">Tarih Aralığı</th>
+                <th class="px-4 py-3 text-right">Toplam Paket</th>
+                <th class="px-4 py-3 text-right">Toplam Hakediş</th>
+                <th class="px-4 py-3 text-right">Kapatılan Avans</th>
+                <th class="px-4 py-3 text-right">Kalan Hakediş</th>
+                <th class="px-4 py-3">Kapatılma Zamanı</th>
+                <th class="px-4 py-3">Not</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tr v-if="settlementPeriods.length === 0">
+                <td colspan="8" class="px-4 py-12 text-center text-slate-400">
+                  Henüz kapatılmış bir hafta dönemi bulunmuyor. "Haftayı Kapat" butonunu kullanarak ilk haftayı arşivleyebilirsiniz.
+                </td>
+              </tr>
+              <tr
+                v-for="sp in settlementPeriods"
+                :key="sp.id"
+                class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+              >
+                <td class="px-4 py-3 font-mono font-bold text-slate-900 dark:text-slate-100">
+                  {{ sp.week || '—' }}
+                </td>
+                <td class="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">
+                  {{ sp.startDateFormatted }} - {{ sp.endDateFormatted }}
+                </td>
+                <td class="px-4 py-3 text-right font-mono font-bold">
+                  {{ sp.totalPackages }} Adet
+                </td>
+                <td class="px-4 py-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                  {{ sp.totalEarnings.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </td>
+                <td class="px-4 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {{ sp.totalAdvance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </td>
+                <td class="px-4 py-3 text-right font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                  {{ sp.remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                </td>
+                <td class="px-4 py-3 font-mono text-[11px] text-slate-500">
+                  {{ sp.closedAtFormatted }}
+                </td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                  {{ sp.note || '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -619,5 +1127,20 @@ onMounted(async () => {
         </div>
       </div>
     </BaseModal>
+
+    <!-- HAFTAYI KAPAT MODAL -->
+    <CloseWeekModal
+      :is-open="isCloseWeekModalOpen"
+      @close="isCloseWeekModalOpen = false"
+      @closed="fetchAdvanceReports(); fetchSettlementPeriods()"
+    />
+
+    <!-- KURYE AVANS GEÇMİŞİ MODAL -->
+    <CourierAdvanceHistoryModal
+      :is-open="isAdvanceHistoryModalOpen"
+      :courier="selectedCourierForHistory"
+      @close="isAdvanceHistoryModalOpen = false"
+      @updated="fetchAdvanceReports()"
+    />
   </div>
 </template>

@@ -6,6 +6,18 @@ export interface CourierItem {
   indoorPrice?: number
   outdoorPrice?: number
   paidAmount?: number
+  todayAdvanceAmount?: number
+  activeAdvanceAmount?: number
+  totalAdvanceAmount?: number
+  advanceCount?: number
+  recentAdvances?: Array<{
+    id: string
+    amount: number
+    date: string
+    time?: string
+    description?: string
+    status: string
+  }>
   hasRecords?: boolean
   deliveryCount?: number
   customPriceCount?: number
@@ -325,6 +337,86 @@ export const useCouriers = () => {
     }
   }
 
+  const createCourierAdvance = async (courierId: string, payload: {
+    amount: number | string
+    date?: string
+    time?: string
+    description?: string
+  }) => {
+    try {
+      const response = await $fetch<{
+        success: boolean
+        data: any
+        message: string
+      }>(`/api/couriers/${courierId}/advances`, {
+        method: 'POST',
+        body: payload
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Avans kaydedildi.', 'Başarılı')
+        await fetchCouriers()
+        return response.data
+      }
+      return null
+    } catch (err: any) {
+      console.error('Create courier advance error:', err)
+      const msg = err?.data?.statusMessage || err?.data?.message || 'Avans kaydedilirken bir hata oluştu.'
+      toast.error(msg, 'Hata')
+      return null
+    }
+  }
+
+  const fetchCourierAdvances = async (courierId: string, queryParams?: {
+    status?: string
+    startDate?: string
+    endDate?: string
+  }) => {
+    try {
+      const response = await $fetch<{
+        success: boolean
+        data: {
+          courier: any
+          totalAmount: number
+          activeAmount: number
+          closedAmount: number
+          count: number
+          advances: any[]
+        }
+      }>(`/api/couriers/${courierId}/advances`, {
+        query: queryParams
+      })
+
+      if (response.success) {
+        return response.data
+      }
+      return null
+    } catch (err: any) {
+      console.error('Fetch courier advances error:', err)
+      toast.error(err?.data?.statusMessage || 'Avans geçmişi yüklenemedi.', 'Hata')
+      return null
+    }
+  }
+
+  const deleteCourierAdvance = async (courierId: string, advanceId: string) => {
+    try {
+      const response = await $fetch<{ success: boolean; message: string }>(`/api/couriers/${courierId}/advances/${advanceId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Avans kaydı silindi.', 'Silindi')
+        await fetchCouriers()
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error('Delete courier advance error:', err)
+      toast.error(err?.data?.statusMessage || 'Avans kaydı silinirken bir hata oluştu.', 'Hata')
+      return false
+    }
+  }
+
   return {
     couriers: readonly(couriers),
     currentCourier: readonly(currentCourier),
@@ -341,6 +433,9 @@ export const useCouriers = () => {
     createCourier,
     updateCourier,
     updateCourierPaidAmount,
+    createCourierAdvance,
+    fetchCourierAdvances,
+    deleteCourierAdvance,
     toggleCourierStatus,
     deleteCourier,
     createTransaction
