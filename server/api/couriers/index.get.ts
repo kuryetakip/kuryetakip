@@ -44,7 +44,9 @@ export default defineEventHandler(async (event) => {
             courierTotalAmount: true,
             deliveryType: true,
             courierPriceSnapshot: true,
-            unitPriceSnapshot: true
+            unitPriceSnapshot: true,
+            isCourierSettled: true,
+            courierSettledAt: true
           }
         },
         advances: {
@@ -71,11 +73,11 @@ export default defineEventHandler(async (event) => {
       let todayIndoorAmount = 0
       let todayOutdoorAmount = 0
 
-      let totalIndoorPackages = 0
-      let totalOutdoorPackages = 0
-      let totalIndoorAmount = 0
-      let totalOutdoorAmount = 0
-      let totalEarnings = 0
+      let cycleIndoorPackages = 0
+      let cycleOutdoorPackages = 0
+      let cycleIndoorAmount = 0
+      let cycleOutdoorAmount = 0
+      let cycleEarnings = 0
 
       for (const rec of c.deliveryRecords) {
         const count = rec.packageCount || 0
@@ -84,14 +86,16 @@ export default defineEventHandler(async (event) => {
           ? Number(rec.courierTotalAmount)
           : Number(rec.totalAmount || 0)
 
-        // Cumulative sum for courier across all records
-        totalEarnings += amount
-        if (rec.deliveryType === 'INDOOR') {
-          totalIndoorPackages += count
-          totalIndoorAmount += amount
-        } else {
-          totalOutdoorPackages += count
-          totalOutdoorAmount += amount
+        // Only unsettled records count towards the current active cycle (Day 1..7)
+        if (!rec.isCourierSettled) {
+          cycleEarnings += amount
+          if (rec.deliveryType === 'INDOOR') {
+            cycleIndoorPackages += count
+            cycleIndoorAmount += amount
+          } else {
+            cycleOutdoorPackages += count
+            cycleOutdoorAmount += amount
+          }
         }
 
         // Daily filter match for the selected dateStr
@@ -135,10 +139,12 @@ export default defineEventHandler(async (event) => {
       const todayTotalPackages = todayIndoorPackages + todayOutdoorPackages
       const todayTotalAmount = Number((todayIndoorAmount + todayOutdoorAmount).toFixed(2))
 
-      const cumulativeTotalPackages = totalIndoorPackages + totalOutdoorPackages
-      const cumulativeTotalAmount = Number(totalEarnings.toFixed(2))
+      const cumulativeTotalPackages = cycleIndoorPackages + cycleOutdoorPackages
+      const carriedBalance = Number(c.carriedBalance || 0)
+      // Toplam Hakediş = Aktif Dönem Hakedişi + Önceki Dönemden Devreden Bakiye
+      const cumulativeTotalAmount = Number((cycleEarnings + carriedBalance).toFixed(2))
 
-      // Use active advances total if records exist, otherwise fallback to c.paidAmount
+      // Aktif avanslar: kuryeye verilen avans girildikçe düşer
       const paidAmount = c.advances.length > 0 ? Number(activeAdvanceAmount.toFixed(2)) : Number(c.paidAmount || 0)
       const remainingBalance = Number((cumulativeTotalAmount - paidAmount).toFixed(2))
 
@@ -149,6 +155,9 @@ export default defineEventHandler(async (event) => {
         indoorPrice: Number(c.indoorPrice || 0),
         outdoorPrice: Number(c.outdoorPrice || 0),
         paidAmount,
+        carriedBalance: Number(carriedBalance.toFixed(2)),
+        lastSettledAt: c.lastSettledAt,
+        lastSettledAmount: Number(c.lastSettledAmount || 0),
         todayAdvanceAmount: Number(todayAdvanceAmount.toFixed(2)),
         activeAdvanceAmount: Number(activeAdvanceAmount.toFixed(2)),
         totalAdvanceAmount: Number(totalAdvanceAmount.toFixed(2)),
@@ -174,6 +183,9 @@ export default defineEventHandler(async (event) => {
         todayIndoorAmount: Number(todayIndoorAmount.toFixed(2)),
         todayOutdoorAmount: Number(todayOutdoorAmount.toFixed(2)),
         todayTotalAmount,
+        cycleIndoorPackages,
+        cycleOutdoorPackages,
+        cycleEarnings: Number(cycleEarnings.toFixed(2)),
         cumulativeTotalPackages,
         cumulativeTotalAmount,
         totalEarnings: cumulativeTotalAmount,

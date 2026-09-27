@@ -114,6 +114,15 @@ export default defineEventHandler(async (event) => {
         }
       })
 
+      // Update delivery records for the closed period
+      await tx.deliveryRecord.updateMany({
+        where: deliveryWhere,
+        data: {
+          isCourierSettled: true,
+          courierSettledAt: now
+        }
+      })
+
       // Update all active advances to CLOSED and link to this settlement period
       if (activeAdvances.length > 0) {
         await tx.courierAdvance.updateMany({

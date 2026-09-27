@@ -6,6 +6,12 @@ export interface CourierItem {
   indoorPrice?: number
   outdoorPrice?: number
   paidAmount?: number
+  carriedBalance?: number
+  lastSettledAt?: string | null
+  lastSettledAmount?: number
+  cycleEarnings?: number
+  cycleIndoorPackages?: number
+  cycleOutdoorPackages?: number
   todayAdvanceAmount?: number
   activeAdvanceAmount?: number
   totalAdvanceAmount?: number
@@ -417,6 +423,38 @@ export const useCouriers = () => {
     }
   }
 
+  const settleCourier = async (courierId: string, payload?: {
+    payoutAmount?: number
+    note?: string
+    action?: 'settle' | 'undo'
+  }) => {
+    loading.value = true
+    try {
+      const response = await $fetch<{
+        success: boolean
+        message: string
+        data: any
+      }>(`/api/couriers/${courierId}/settle`, {
+        method: 'POST',
+        body: payload || {}
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Kurye hakediş işlemi başarıyla tamamlandı.', 'Başarılı')
+        await fetchCouriers()
+        return response.data
+      }
+      return null
+    } catch (err: any) {
+      console.error('Settle courier error:', err)
+      const msg = err?.data?.statusMessage || err?.data?.message || 'Hakediş ödemesi kaydedilirken hata oluştu.'
+      toast.error(msg, 'Hata')
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     couriers: readonly(couriers),
     currentCourier: readonly(currentCourier),
@@ -436,6 +474,7 @@ export const useCouriers = () => {
     createCourierAdvance,
     fetchCourierAdvances,
     deleteCourierAdvance,
+    settleCourier,
     toggleCourierStatus,
     deleteCourier,
     createTransaction

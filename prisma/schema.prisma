@@ -54,6 +54,9 @@ model Courier {
   indoorPrice  Decimal  @default(0) @db.Decimal(10, 2)
   outdoorPrice Decimal  @default(0) @db.Decimal(10, 2)
   paidAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  carriedBalance Decimal @default(0) @db.Decimal(10, 2)
+  lastSettledAt  DateTime?
+  lastSettledAmount Decimal @default(0) @db.Decimal(10, 2)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -101,6 +104,8 @@ model DeliveryRecord {
   totalAmount          Decimal      @default(0) @db.Decimal(10, 2)
   isSettled            Boolean      @default(false)
   settledAt            DateTime?
+  isCourierSettled     Boolean      @default(false)
+  courierSettledAt     DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 
@@ -111,6 +116,7 @@ model DeliveryRecord {
   @@index([courierId])
   @@index([venueId])
   @@index([venueId, isSettled])
+  @@index([courierId, isCourierSettled])
   @@index([courierId, date])
   @@index([venueId, date])
   @@index([date, deliveryType])
@@ -173,6 +179,7 @@ model SettlementPeriod {
   totalPackages    Int       @default(0) @map("total_packages")
   totalEarnings    Decimal   @default(0) @db.Decimal(10, 2) @map("total_earnings")
   totalAdvance     Decimal   @default(0) @db.Decimal(10, 2) @map("total_advance")
+  paidAmount       Decimal   @default(0) @db.Decimal(10, 2) @map("paid_amount")
   remainingBalance Decimal   @default(0) @db.Decimal(10, 2) @map("remaining_balance")
   closedAt         DateTime  @default(now()) @map("closed_at")
   note             String?

@@ -27,6 +27,7 @@ import {
   Tag,
   AlertTriangle,
   Wallet,
+  RotateCcw,
   MoreHorizontal,
   MoreVertical,
   LayoutGrid,
@@ -57,6 +58,7 @@ const {
   createCourierAdvance,
   fetchCourierAdvances,
   deleteCourierAdvance,
+  settleCourier,
   toggleCourierStatus,
   deleteCourier,
   createTransaction
@@ -385,11 +387,29 @@ const columns = [
   { key: 'courier', label: 'Kurye Bilgisi', align: 'left' as const },
   { key: 'indoor', label: 'İç Mekan', align: 'right' as const },
   { key: 'outdoor', label: 'Dış Mekan', align: 'right' as const },
-  { key: 'totalPackages', label: 'Toplam Paket', align: 'center' as const },
   { key: 'totalEarnings', label: 'Toplam Hakediş', align: 'right' as const },
   { key: 'paidAmount', label: 'Verilen Avans', align: 'center' as const },
   { key: 'remainingBalance', label: 'Kalan Hakediş', align: 'right' as const }
 ]
+
+// Courier Settlement / Payout Modal State
+const isSettleModalOpen = ref(false)
+const settleTargetCourier = ref<CourierItem | null>(null)
+
+const openSettleModal = (courier: CourierItem) => {
+  settleTargetCourier.value = courier
+  isSettleModalOpen.value = true
+}
+
+const undoCourierSettle = async (courier: CourierItem) => {
+  if (!confirm(`${courier.name} için son yapılan hakediş ödemesini geri alıp önceki döneme ait paketleri ve avansları geri yüklemek istediğinize emin misiniz?`)) {
+    return
+  }
+  const result = await settleCourier(courier.id, { action: 'undo' })
+  if (result) {
+    await fetchCouriers()
+  }
+}
 
 // KPI calculations across all filtered couriers for the selected date & overall
 const totalCouriersCount = computed(() => couriers.value.length)
@@ -1192,24 +1212,38 @@ onUnmounted(() => {
                 </div>
               </td>
 
-              <!-- 4. Toplam Paket -->
-              <td
-                class="px-4 py-3 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
-                title="Hızlı paket girmek için tıklayın"
-                @click="openQuickDeliveryModal(courier)"
-              >
-                <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono font-bold text-xs border border-slate-200 dark:border-slate-700 group-hover:border-slate-400 transition-colors">
-                  {{ courier.todayTotalPackages || 0 }}
-                </span>
-              </td>
-
-              <!-- 5. Toplam Hakediş -->
+              <!-- 4. Toplam Hakediş (Kümülatif Hakediş + Paket Sayısı & Devreden Bakiye) -->
               <td class="px-4 py-3 text-right font-mono">
-                <div class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                  {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
-                </div>
-                <div class="text-[10px] text-slate-400 dark:text-slate-500 font-sans mt-0.5">
-                  Seçilen Gün: {{ (courier.todayTotalAmount || 0).toFixed(2) }} ₺
+                <div class="inline-flex flex-col items-end">
+                  <!-- Ana Tutar: Kümülatif Toplam Hakediş -->
+                  <div class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                    {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                  </div>
+
+                  <!-- Alt Rozet / Paket Bilgisi: Kümülatif Paket Sayısı ve Devreden Bakiye -->
+                  <div class="flex items-center justify-end gap-1.5 mt-0.5 flex-wrap">
+                    <span
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans font-bold text-[10px] border border-slate-200/80 dark:border-slate-700/80 cursor-pointer hover:border-emerald-400 transition-colors"
+                      title="Dönem Kümülatif Paket Sayısı (Hızlı paket girmek için tıklayın)"
+                      @click="openQuickDeliveryModal(courier)"
+                    >
+                      <Package class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>{{ courier.cumulativeTotalPackages || 0 }} Paket</span>
+                    </span>
+
+                    <span
+                      v-if="courier.carriedBalance && courier.carriedBalance > 0"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] border border-amber-200/70 dark:border-amber-800/70"
+                      title="Önceki Tahsilattan Devreden Kalan Tutar"
+                    >
+                      +{{ courier.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devir
+                    </span>
+                  </div>
+
+                  <!-- Seçilen Gün Bilgisi -->
+                  <div v-if="courier.todayTotalAmount !== undefined" class="text-[10px] text-slate-400 dark:text-slate-500 font-sans mt-0.5">
+                    Seçilen Gün: {{ (courier.todayTotalAmount || 0).toFixed(2) }} ₺ ({{ courier.todayTotalPackages || 0 }} Pkt)
+                  </div>
                 </div>
               </td>
 
@@ -1328,6 +1362,17 @@ onUnmounted(() => {
                     <span class="hidden xl:inline">Detay</span>
                   </button>
 
+                  <!-- Ödeme Yap (Hakediş Tahsilatı & Kapatma) -->
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all active:scale-95"
+                    title="Kuryeye Hakediş Ödemesi / Tahsilat Yap ve Dönemi Kapat"
+                    @click="openSettleModal(courier)"
+                  >
+                    <Wallet class="w-3.5 h-3.5" />
+                    <span class="hidden 2xl:inline">Ödeme Yap</span>
+                  </button>
+
                   <!-- Diğer İşlemler Menüsü (Dropdown) -->
                   <div class="relative">
                     <button
@@ -1348,6 +1393,25 @@ onUnmounted(() => {
                       class="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs text-slate-700 dark:text-slate-200 text-left animate-in fade-in zoom-in-95 duration-100"
                       @click.stop
                     >
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-medium transition-colors"
+                        @click="closeAllDropdowns(); openSettleModal(courier)"
+                      >
+                        <Wallet class="w-3.5 h-3.5" />
+                        <span>Hakediş Ödemesi Yap</span>
+                      </button>
+
+                      <button
+                        v-if="courier.lastSettledAt"
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-medium transition-colors"
+                        @click="closeAllDropdowns(); undoCourierSettle(courier)"
+                      >
+                        <RotateCcw class="w-3.5 h-3.5" />
+                        <span>Son Ödemeyi Geri Al</span>
+                      </button>
+
                       <button
                         type="button"
                         class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors"
@@ -1519,6 +1583,25 @@ onUnmounted(() => {
               >
                 <button
                   type="button"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-medium transition-colors"
+                  @click="closeAllDropdowns(); openSettleModal(courier)"
+                >
+                  <Wallet class="w-3.5 h-3.5" />
+                  <span>Hakediş Ödemesi Yap</span>
+                </button>
+
+                <button
+                  v-if="courier.lastSettledAt"
+                  type="button"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-medium transition-colors"
+                  @click="closeAllDropdowns(); undoCourierSettle(courier)"
+                >
+                  <RotateCcw class="w-3.5 h-3.5" />
+                  <span>Son Ödemeyi Geri Al</span>
+                </button>
+
+                <button
+                  type="button"
                   class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors"
                   @click="closeAllDropdowns(); openWhatsAppModal(courier)"
                 >
@@ -1598,17 +1681,18 @@ onUnmounted(() => {
               </div>
             </div>
 
+            <!-- Toplam Hakediş (Kümülatif Hakediş ve Toplam Paket) -->
             <div
               class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 transition-colors"
-              title="Hızlı paket girmek için tıklayın"
+              title="Dönem kümülatif hakediş ve paketleri"
               @click="openQuickDeliveryModal(courier)"
             >
-              <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block uppercase">Toplam Paket</span>
+              <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block uppercase">Toplam Hakediş</span>
               <div class="font-mono font-extrabold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
-                {{ courier.todayTotalPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }} ₺
               </div>
-              <div class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                Seçilen Gün
+              <div class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold">
+                {{ courier.cumulativeTotalPackages || 0 }} Paket
               </div>
             </div>
           </div>
@@ -1704,33 +1788,44 @@ onUnmounted(() => {
           </div>
 
           <!-- Card Footer Actions -->
-          <div class="grid grid-cols-3 gap-2 pt-1">
+          <div class="space-y-2 pt-1">
             <button
               type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
-              @click="openQuickDeliveryModal(courier)"
+              class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors active:scale-98"
+              @click="openSettleModal(courier)"
             >
-              <Plus class="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Paket Gir</span>
+              <Wallet class="w-3.5 h-3.5" />
+              <span>Hakediş Ödemesi Yap / Tahsilat</span>
             </button>
 
-            <button
-              type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
-              @click="openDetailModal(courier)"
-            >
-              <Eye class="w-3.5 h-3.5 text-slate-500" />
-              <span>Detay</span>
-            </button>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
+                @click="openQuickDeliveryModal(courier)"
+              >
+                <Plus class="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Paket Gir</span>
+              </button>
 
-            <button
-              type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-colors"
-              @click="openWhatsAppModal(courier)"
-            >
-              <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>WhatsApp</span>
-            </button>
+              <button
+                type="button"
+                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
+                @click="openDetailModal(courier)"
+              >
+                <Eye class="w-3.5 h-3.5 text-slate-500" />
+                <span>Detay</span>
+              </button>
+
+              <button
+                type="button"
+                class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-colors"
+                @click="openWhatsAppModal(courier)"
+              >
+                <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>WhatsApp</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2687,6 +2782,14 @@ onUnmounted(() => {
       :courier="advanceHistoryCourier"
       @close="isAdvanceHistoryModalOpen = false"
       @updated="fetchCouriers()"
+    />
+
+    <!-- 9. KURYE HAKEDİŞ ÖDEMESİ / TAHSİLAT VE DÖNEM KAPATMA MODALI -->
+    <CourierSettleModal
+      :is-open="isSettleModalOpen"
+      :courier="settleTargetCourier"
+      @close="isSettleModalOpen = false"
+      @settled="fetchCouriers()"
     />
   </div>
 </template>
