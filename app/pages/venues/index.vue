@@ -20,7 +20,7 @@ import {
   Filter,
   Bike
 } from 'lucide-vue-next'
-import { useVenues, type VenueItem, type VenueFormData } from '~/composables/useVenues'
+import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 
 useHead({
   title: 'Mekan Yönetimi & Günlük Paket Takibi — KuryeTakip'
@@ -31,6 +31,8 @@ const {
   loading,
   searchQuery,
   filterDate,
+  filterStartDate,
+  filterEndDate,
   fetchVenues,
   createVenue,
   updateVenue,
@@ -48,6 +50,7 @@ const venueToDelete = ref<VenueItem | null>(null)
 // History / Breakdown Modal State
 const isHistoryModalOpen = ref(false)
 const historyVenue = ref<VenueItem | null>(null)
+const historyViewMode = ref<'all' | 'filtered'>('all')
 
 // Quick Daily Delivery Modal
 const isQuickDeliveryOpen = ref(false)
@@ -79,8 +82,7 @@ const columns = [
   { key: 'indoorPrice', label: 'İç Teslimat Fiyatı', align: 'right' as const },
   { key: 'outdoorPrice', label: 'Dış Teslimat Fiyatı', align: 'right' as const },
   { key: 'totalPackages', label: 'Atılan Paket', align: 'right' as const },
-  { key: 'totalAmount', label: 'Toplam Tutar', align: 'right' as const },
-  { key: 'isActive', label: 'Durum', align: 'center' as const }
+  { key: 'totalAmount', label: 'Toplam Tutar', align: 'right' as const }
 ]
 
 // KPI calculations
@@ -160,19 +162,103 @@ const filteredVenues = computed(() => {
   return venues.value.filter(v => v.name.toLowerCase().includes(q))
 })
 
-// Date Quick Filter Handler
-const setDateQuickFilter = (type: 'today' | 'yesterday' | 'all') => {
-  if (type === 'all') {
+// Period & Date Filter Handler (Weekly Reset by Default)
+const currentFilterMode = ref<'thisWeek' | 'today' | 'yesterday' | 'all' | 'custom'>('thisWeek')
+
+const formatShortDate = (dateStr?: string) => {
+  if (!dateStr) return ''
+  const parts = dateStr.split('-')
+  if (parts.length !== 3) return dateStr
+  return `${parts[2]}.${parts[1]}`
+}
+
+const activePeriodLabel = computed(() => {
+  if (currentFilterMode.value === 'thisWeek') {
+    return `Bu Hafta (${formatShortDate(filterStartDate.value)} - ${formatShortDate(filterEndDate.value)})`
+  }
+  if (currentFilterMode.value === 'today') {
+    return `Bugün (${formatShortDate(filterDate.value)})`
+  }
+  if (currentFilterMode.value === 'yesterday') {
+    return `Dün (${formatShortDate(filterDate.value)})`
+  }
+  if (currentFilterMode.value === 'all') {
+    return 'Tüm Zamanlar (Genel Geçmiş)'
+  }
+  return `Filtre: ${filterDate.value || `${formatShortDate(filterStartDate.value)} - ${formatShortDate(filterEndDate.value)}`}`
+})
+
+const setDateQuickFilter = (type: 'thisWeek' | 'today' | 'yesterday' | 'all') => {
+  currentFilterMode.value = type
+  if (type === 'thisWeek') {
+    const range = getThisWeekRange()
     filterDate.value = ''
+    filterStartDate.value = range.start
+    filterEndDate.value = range.end
   } else if (type === 'today') {
     filterDate.value = new Date().toISOString().substring(0, 10)
+    filterStartDate.value = ''
+    filterEndDate.value = ''
   } else if (type === 'yesterday') {
     const d = new Date()
     d.setDate(d.getDate() - 1)
     filterDate.value = d.toISOString().substring(0, 10)
+    filterStartDate.value = ''
+    filterEndDate.value = ''
+  } else if (type === 'all') {
+    filterDate.value = ''
+    filterStartDate.value = ''
+    filterEndDate.value = ''
   }
   fetchVenues()
 }
+
+const onDateInputChange = () => {
+  if (filterDate.value) {
+    currentFilterMode.value = 'custom'
+    filterStartDate.value = ''
+    filterEndDate.value = ''
+  } else {
+    setDateQuickFilter('thisWeek')
+    return
+  }
+  fetchVenues()
+}
+
+// Active History Breakdown for History Modal (Supports both filtered & all historical days)
+const activeHistoryBreakdown = computed(() => {
+  if (!historyVenue.value) return []
+  if (historyViewMode.value === 'filtered') {
+    return historyVenue.value.dailyBreakdown || []
+  }
+  return historyVenue.value.allDailyBreakdown && historyVenue.value.allDailyBreakdown.length > 0
+    ? historyVenue.value.allDailyBreakdown
+    : (historyVenue.value.dailyBreakdown || [])
+})
+
+const activeHistoryTotalCount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.totalCount || 0), 0)
+})
+
+const activeHistoryTotalAmount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.totalAmount || 0), 0)
+})
+
+const activeHistoryIndoorCount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.indoorCount || 0), 0)
+})
+
+const activeHistoryIndoorAmount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.indoorAmount || 0), 0)
+})
+
+const activeHistoryOutdoorCount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.outdoorCount || 0), 0)
+})
+
+const activeHistoryOutdoorAmount = computed(() => {
+  return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.outdoorAmount || 0), 0)
+})
 
 const openAddModal = () => {
   isEditing.value = false
@@ -288,11 +374,22 @@ const handleQuickDeliverySubmit = async () => {
   const success = await updateVenue(targetVenue.value.id, payload)
   if (success) {
     isQuickDeliveryOpen.value = false
+    // Girilen ve hesaplanan değerleri sıfırla
+    quickDeliveryForm.value = {
+      date: new Date().toISOString().substring(0, 10),
+      indoorCount: '',
+      outdoorCount: '',
+      venueIndoorPrice: '',
+      venueOutdoorPrice: '',
+      courierIndoorPrice: '',
+      courierOutdoorPrice: ''
+    }
   }
 }
 
 onMounted(() => {
-  fetchVenues()
+  // Varsayılan olarak haftalık dönemi başlat (Haftalık otomatik sıfırlama)
+  setDateQuickFilter('thisWeek')
 })
 </script>
 
@@ -428,44 +525,76 @@ onMounted(() => {
         <!-- Date Filter Input -->
         <div>
           <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-            Tarihe Göre Paket Hesaplama
+            Belirli Bir Güne Göre Filtrele
           </label>
           <BaseInput
             v-model="filterDate"
             type="date"
-            @blur="fetchVenues()"
+            @change="onDateInputChange"
+            @blur="onDateInputChange"
           />
         </div>
       </div>
 
-      <!-- Quick Date Shortcuts -->
-      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Hızlı Tarih:</span>
+      <!-- Quick Date Shortcuts & Weekly Reset Indicator -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs">
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <Filter class="w-3.5 h-3.5 text-slate-400" />
+            <span>Hesaplama Dönemi:</span>
+          </span>
+
+          <!-- 1. Bu Hafta (Aktif - Haftalık Sıfırlama) -->
           <button
             type="button"
             :class="[
-              'px-2.5 py-1 rounded text-xs font-medium transition-colors',
-              filterDate === new Date().toISOString().substring(0, 10)
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+              'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5',
+              currentFilterMode === 'thisWeek'
+                ? 'bg-emerald-600 text-white shadow-emerald-500/20 ring-2 ring-emerald-500/30 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            ]"
+            @click="setDateQuickFilter('thisWeek')"
+          >
+            <RefreshCw class="w-3 h-3" />
+            <span>Bu Hafta (Haftalık Sıfırlama)</span>
+          </button>
+
+          <!-- 2. Bugün -->
+          <button
+            type="button"
+            :class="[
+              'px-2.5 py-1.5 rounded-lg text-xs transition-colors',
+              currentFilterMode === 'today'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium'
             ]"
             @click="setDateQuickFilter('today')"
           >
             Bugün
           </button>
+
+          <!-- 3. Dün -->
           <button
             type="button"
-            class="px-2.5 py-1 rounded text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
+            :class="[
+              'px-2.5 py-1.5 rounded-lg text-xs transition-colors',
+              currentFilterMode === 'yesterday'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium'
+            ]"
             @click="setDateQuickFilter('yesterday')"
           >
             Dün
           </button>
+
+          <!-- 4. Tüm Zamanlar -->
           <button
             type="button"
             :class="[
-              'px-2.5 py-1 rounded text-xs font-medium transition-colors',
-              !filterDate ? 'bg-slate-900 text-white dark:bg-emerald-600 font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+              'px-2.5 py-1.5 rounded-lg text-xs transition-colors',
+              currentFilterMode === 'all'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium'
             ]"
             @click="setDateQuickFilter('all')"
           >
@@ -473,9 +602,15 @@ onMounted(() => {
           </button>
         </div>
 
-        <div v-if="filterDate" class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 font-mono">
-          <Calendar class="w-3.5 h-3.5" />
-          <span>Filtrelenen Tarih: {{ filterDate }}</span>
+        <!-- Aktif Dönem & Kayıt Bilgisi Rozeti -->
+        <div class="flex items-center gap-2">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold font-mono">
+            <Calendar class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{{ activePeriodLabel }}</span>
+          </div>
+          <span class="text-[11px] text-slate-400 dark:text-slate-500 hidden md:inline">
+            (Haftalık sıfırlanır, tüm kayıtlar veritabanında saklanır)
+          </span>
         </div>
       </div>
     </div>
@@ -596,24 +731,7 @@ onMounted(() => {
               </span>
             </td>
 
-            <!-- 6. Durum (Aktif/Pasif) -->
-            <td class="px-4 py-3.5 text-center">
-              <button
-                type="button"
-                :title="venue.isActive ? 'Pasife al' : 'Aktife al'"
-                class="focus:outline-none"
-                @click="toggleVenueStatus(venue)"
-              >
-                <BaseBadge
-                  :variant="venue.isActive ? 'success' : 'neutral'"
-                  dot
-                >
-                  {{ venue.isActive ? 'Aktif' : 'Pasif' }}
-                </BaseBadge>
-              </button>
-            </td>
-
-            <!-- 7. İşlemler -->
+            <!-- 6. İşlemler -->
             <td class="px-4 py-3.5 text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Günlük Döküm Butonu -->
@@ -1009,8 +1127,38 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- Görünüm Seçimi (Tüm Geçmiş Kayıtlar vs Seçili Dönem) -->
+        <div class="flex items-center justify-between gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
+          <button
+            type="button"
+            :class="[
+              'flex-1 py-1.5 px-3 rounded-md font-semibold transition-all text-center flex items-center justify-center gap-1.5',
+              historyViewMode === 'all'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            ]"
+            @click="historyViewMode = 'all'"
+          >
+            <Calendar class="w-3.5 h-3.5 text-emerald-600" />
+            <span>Tüm Geçmiş Kayıtlar ({{ historyVenue?.allDailyBreakdown?.length || 0 }} Gün)</span>
+          </button>
+          <button
+            type="button"
+            :class="[
+              'flex-1 py-1.5 px-3 rounded-md font-semibold transition-all text-center flex items-center justify-center gap-1.5',
+              historyViewMode === 'filtered'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            ]"
+            @click="historyViewMode = 'filtered'"
+          >
+            <Filter class="w-3.5 h-3.5 text-sky-600" />
+            <span>Seçili Dönem ({{ activePeriodLabel }})</span>
+          </button>
+        </div>
+
         <!-- Günlük Döküm Tablosu -->
-        <div v-if="historyVenue?.dailyBreakdown && historyVenue.dailyBreakdown.length > 0" class="border border-slate-200 rounded-xl overflow-hidden">
+        <div v-if="activeHistoryBreakdown && activeHistoryBreakdown.length > 0" class="border border-slate-200 rounded-xl overflow-hidden">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold">
               <tr>
@@ -1023,7 +1171,7 @@ onMounted(() => {
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr
-                v-for="day in historyVenue.dailyBreakdown"
+                v-for="day in activeHistoryBreakdown"
                 :key="day.date"
                 class="hover:bg-slate-50/80 transition-colors font-mono"
               >
@@ -1048,20 +1196,20 @@ onMounted(() => {
             </tbody>
             <tfoot class="bg-slate-900 text-white font-mono text-xs">
               <tr>
-                <td class="px-3 py-2.5 font-bold font-sans">GENEL TOPLAM</td>
+                <td class="px-3 py-2.5 font-bold font-sans">DÖKÜM TOPLAMI</td>
                 <td class="px-3 py-2.5 text-right text-emerald-400 font-bold">
-                  {{ historyVenue.indoorPackageCount || 0 }} Paket
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ (historyVenue.indoorAmount || 0).toFixed(2) }} ₺)</span>
+                  {{ activeHistoryIndoorCount }} Paket
+                  <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryIndoorAmount.toFixed(2) }} ₺)</span>
                 </td>
                 <td class="px-3 py-2.5 text-right text-sky-400 font-bold">
-                  {{ historyVenue.outdoorPackageCount || 0 }} Paket
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ (historyVenue.outdoorAmount || 0).toFixed(2) }} ₺)</span>
+                  {{ activeHistoryOutdoorCount }} Paket
+                  <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryOutdoorAmount.toFixed(2) }} ₺)</span>
                 </td>
                 <td class="px-3 py-2.5 text-right font-extrabold text-white">
-                  {{ historyVenue.totalPackageCount || 0 }} Adet
+                  {{ activeHistoryTotalCount }} Adet
                 </td>
                 <td class="px-3 py-2.5 text-right font-extrabold text-emerald-400 text-sm">
-                  {{ (historyVenue.totalAmount || 0).toFixed(2) }} ₺
+                  {{ activeHistoryTotalAmount.toFixed(2) }} ₺
                 </td>
               </tr>
             </tfoot>
@@ -1069,7 +1217,7 @@ onMounted(() => {
         </div>
 
         <div v-else class="text-center py-6 text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
-          Bu mekana ait henüz günlük paket teslimat kaydı bulunmuyor.
+          Bu dönem için mekana ait paket teslimat kaydı bulunmuyor.
         </div>
 
         <div class="pt-2 flex items-center justify-between">

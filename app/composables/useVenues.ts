@@ -23,7 +23,10 @@ export interface VenueItem {
   totalAmount?: number
   indoorAmount?: number
   outdoorAmount?: number
+  allTimePackageCount?: number
+  allTimeTotalAmount?: number
   dailyBreakdown?: VenueDailyStat[]
+  allDailyBreakdown?: VenueDailyStat[]
   createdAt?: string
   updatedAt?: string
 }
@@ -39,6 +42,29 @@ export interface VenueFormData {
   courierId?: string
   courierIndoorPrice?: number | string
   courierOutdoorPrice?: number | string
+}
+
+export const getThisWeekRange = () => {
+  const now = new Date()
+  const day = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const toDateStr = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dayStr = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${dayStr}`
+  }
+
+  return {
+    start: toDateStr(monday),
+    end: toDateStr(sunday)
+  }
 }
 
 export const useVenues = () => {

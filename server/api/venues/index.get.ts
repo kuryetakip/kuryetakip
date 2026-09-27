@@ -53,7 +53,6 @@ export default defineEventHandler(async (event) => {
           }
         },
         deliveryRecords: {
-          where: deliveryWhere,
           orderBy: { date: 'desc' },
           select: {
             id: true,
@@ -77,8 +76,22 @@ export default defineEventHandler(async (event) => {
       let indoorAmount = 0
       let outdoorAmount = 0
 
-      // Map day by day breakdown
+      let allTimePackageCount = 0
+      let allTimeTotalAmount = 0
+
+      // Filtered daily breakdown map
       const dailyMap = new Map<string, {
+        date: string
+        indoorCount: number
+        indoorAmount: number
+        outdoorCount: number
+        outdoorAmount: number
+        totalCount: number
+        totalAmount: number
+      }>()
+
+      // All-time daily breakdown map (guarantees all history is preserved)
+      const allDailyMap = new Map<string, {
         date: string
         indoorCount: number
         indoorAmount: number
@@ -95,11 +108,12 @@ export default defineEventHandler(async (event) => {
           : Number(rec.totalAmount || 0)
         const dateKey = rec.date.toISOString().substring(0, 10)
 
-        totalPackageCount += count
-        totalAmount += amount
+        // All-time aggregation
+        allTimePackageCount += count
+        allTimeTotalAmount += amount
 
-        if (!dailyMap.has(dateKey)) {
-          dailyMap.set(dateKey, {
+        if (!allDailyMap.has(dateKey)) {
+          allDailyMap.set(dateKey, {
             date: dateKey,
             indoorCount: 0,
             indoorAmount: 0,
@@ -109,25 +123,63 @@ export default defineEventHandler(async (event) => {
             totalAmount: 0
           })
         }
-
-        const dayEntry = dailyMap.get(dateKey)!
-        dayEntry.totalCount += count
-        dayEntry.totalAmount = Number((dayEntry.totalAmount + amount).toFixed(2))
+        const allDayEntry = allDailyMap.get(dateKey)!
+        allDayEntry.totalCount += count
+        allDayEntry.totalAmount = Number((allDayEntry.totalAmount + amount).toFixed(2))
 
         if (rec.deliveryType === 'INDOOR') {
-          indoorPackageCount += count
-          indoorAmount += amount
-          dayEntry.indoorCount += count
-          dayEntry.indoorAmount = Number((dayEntry.indoorAmount + amount).toFixed(2))
+          allDayEntry.indoorCount += count
+          allDayEntry.indoorAmount = Number((allDayEntry.indoorAmount + amount).toFixed(2))
         } else {
-          outdoorPackageCount += count
-          outdoorAmount += amount
-          dayEntry.outdoorCount += count
-          dayEntry.outdoorAmount = Number((dayEntry.outdoorAmount + amount).toFixed(2))
+          allDayEntry.outdoorCount += count
+          allDayEntry.outdoorAmount = Number((allDayEntry.outdoorAmount + amount).toFixed(2))
+        }
+
+        // Filter evaluation
+        let matchesFilter = true
+        if (dateStr) {
+          matchesFilter = dateKey === dateStr
+        } else if (startDateStr || endDateStr) {
+          if (startDateStr && dateKey < startDateStr) matchesFilter = false
+          if (endDateStr && dateKey > endDateStr) matchesFilter = false
+        }
+
+        if (matchesFilter) {
+          totalPackageCount += count
+          totalAmount += amount
+
+          if (!dailyMap.has(dateKey)) {
+            dailyMap.set(dateKey, {
+              date: dateKey,
+              indoorCount: 0,
+              indoorAmount: 0,
+              outdoorCount: 0,
+              outdoorAmount: 0,
+              totalCount: 0,
+              totalAmount: 0
+            })
+          }
+
+          const dayEntry = dailyMap.get(dateKey)!
+          dayEntry.totalCount += count
+          dayEntry.totalAmount = Number((dayEntry.totalAmount + amount).toFixed(2))
+
+          if (rec.deliveryType === 'INDOOR') {
+            indoorPackageCount += count
+            indoorAmount += amount
+            dayEntry.indoorCount += count
+            dayEntry.indoorAmount = Number((dayEntry.indoorAmount + amount).toFixed(2))
+          } else {
+            outdoorPackageCount += count
+            outdoorAmount += amount
+            dayEntry.outdoorCount += count
+            dayEntry.outdoorAmount = Number((dayEntry.outdoorAmount + amount).toFixed(2))
+          }
         }
       }
 
       const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
+      const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
       return {
         id: v.id,
@@ -139,14 +191,17 @@ export default defineEventHandler(async (event) => {
         updatedAt: v.updatedAt,
         hasRecords: (v._count.deliveryRecords + v._count.courierVenuePrices) > 0,
         recordCount: v._count.deliveryRecords,
-        filteredRecordCount: v.deliveryRecords.length,
+        filteredRecordCount: totalPackageCount,
         totalPackageCount,
         indoorPackageCount,
         outdoorPackageCount,
         totalAmount: Number(totalAmount.toFixed(2)),
         indoorAmount: Number(indoorAmount.toFixed(2)),
         outdoorAmount: Number(outdoorAmount.toFixed(2)),
-        dailyBreakdown
+        allTimePackageCount,
+        allTimeTotalAmount: Number(allTimeTotalAmount.toFixed(2)),
+        dailyBreakdown,
+        allDailyBreakdown
       }
     })
 
