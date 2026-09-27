@@ -6,6 +6,9 @@ export interface VenueDailyStat {
   outdoorAmount: number
   totalCount: number
   totalAmount: number
+  isSettled?: boolean
+  settledAmount?: number
+  pendingAmount?: number
 }
 
 export interface VenueItem {
@@ -17,6 +20,15 @@ export interface VenueItem {
   hasRecords?: boolean
   recordCount?: number
   filteredRecordCount?: number
+  pendingPackageCount?: number
+  pendingIndoorCount?: number
+  pendingOutdoorCount?: number
+  pendingAmount?: number
+  pendingIndoorAmount?: number
+  pendingOutdoorAmount?: number
+  totalCollectedAmount?: number
+  lastSettledAt?: string | null
+  lastSettledAmount?: number | null
   totalPackageCount?: number
   indoorPackageCount?: number
   outdoorPackageCount?: number
@@ -74,6 +86,7 @@ export const useVenues = () => {
   const filterDate = ref('')
   const filterStartDate = ref('')
   const filterEndDate = ref('')
+  const filterScope = ref<'pending' | 'all' | 'custom'>('pending')
   const toast = useToast()
 
   const fetchVenues = async (search?: string) => {
@@ -91,6 +104,9 @@ export const useVenues = () => {
       }
       if (filterEndDate.value) {
         queryParams.endDate = filterEndDate.value
+      }
+      if (filterScope.value && !filterDate.value && !filterStartDate.value && !filterEndDate.value) {
+        queryParams.scope = filterScope.value
       }
 
       const response = await $fetch<{ success: boolean; data: VenueItem[] }>('/api/venues', {
@@ -162,6 +178,29 @@ export const useVenues = () => {
     }
   }
 
+  const settleVenue = async (venueId: string, options?: { action?: 'undo' | 'settle'; notes?: string }) => {
+    loading.value = true
+    try {
+      const response = await $fetch<{ success: boolean; message: string; data: any }>(`/api/venues/${venueId}/settle`, {
+        method: 'POST',
+        body: options || {}
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Tahsilat işlemi kaydedildi ve toplam tutar sıfırlandı.', 'Tahsilat Tamamlandı')
+        await fetchVenues()
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error('Settle venue error:', err)
+      toast.error(err?.data?.statusMessage || err?.data?.message || 'Tahsilat işlemi gerçekleştirilemedi.', 'Hata')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   const deleteVenue = async (id: string) => {
     loading.value = true
     try {
@@ -191,10 +230,12 @@ export const useVenues = () => {
     filterDate,
     filterStartDate,
     filterEndDate,
+    filterScope,
     fetchVenues,
     createVenue,
     updateVenue,
     toggleVenueStatus,
+    settleVenue,
     deleteVenue
   }
 }
