@@ -58,6 +58,60 @@ const venueToDelete = ref<VenueItem | null>(null)
 const isSettleModalOpen = ref(false)
 const venueToSettle = ref<VenueItem | null>(null)
 const settlingVenue = ref(false)
+const settleCollectedAmount = ref<string | number>('')
+const settleRemainingAmount = ref<string | number>('')
+const settleNote = ref('')
+
+const settleTotalDue = computed(() => {
+  return Number(venueToSettle.value?.totalAmount || 0)
+})
+
+const numericCollectedAmount = computed(() => {
+  if (settleCollectedAmount.value === '' || settleCollectedAmount.value === null || settleCollectedAmount.value === undefined) {
+    return 0
+  }
+  const clean = String(settleCollectedAmount.value).trim().replace(',', '.')
+  const num = parseFloat(clean)
+  return isNaN(num) ? 0 : Math.max(0, num)
+})
+
+const numericRemainingAmount = computed(() => {
+  if (settleRemainingAmount.value === '' || settleRemainingAmount.value === null || settleRemainingAmount.value === undefined) {
+    return 0
+  }
+  const clean = String(settleRemainingAmount.value).trim().replace(',', '.')
+  const num = parseFloat(clean)
+  return isNaN(num) ? 0 : Math.max(0, num)
+})
+
+const onCollectedInput = (val: string | number) => {
+  settleCollectedAmount.value = val
+  const clean = String(val).trim().replace(',', '.')
+  const num = parseFloat(clean)
+  if (isNaN(num)) {
+    settleRemainingAmount.value = settleTotalDue.value
+  } else {
+    const rem = Math.max(0, Number((settleTotalDue.value - num).toFixed(2)))
+    settleRemainingAmount.value = rem
+  }
+}
+
+const onRemainingInput = (val: string | number) => {
+  settleRemainingAmount.value = val
+  const clean = String(val).trim().replace(',', '.')
+  const rem = parseFloat(clean)
+  if (isNaN(rem)) {
+    settleCollectedAmount.value = settleTotalDue.value
+  } else {
+    const col = Math.max(0, Number((settleTotalDue.value - rem).toFixed(2)))
+    settleCollectedAmount.value = col
+  }
+}
+
+const setFullSettlement = () => {
+  settleCollectedAmount.value = settleTotalDue.value
+  settleRemainingAmount.value = 0
+}
 
 // History / Breakdown Modal State
 const isHistoryModalOpen = ref(false)
@@ -507,6 +561,10 @@ const handleQuickDeliverySubmit = async () => {
 
 const openSettleModal = (venue: VenueItem) => {
   venueToSettle.value = venue
+  const total = Number(venue.totalAmount || 0)
+  settleCollectedAmount.value = total > 0 ? total : 0
+  settleRemainingAmount.value = 0
+  settleNote.value = ''
   isSettleModalOpen.value = true
 }
 
@@ -514,7 +572,11 @@ const handleConfirmSettle = async () => {
   if (!venueToSettle.value) return
   settlingVenue.value = true
   try {
-    const ok = await settleVenue(venueToSettle.value.id)
+    const ok = await settleVenue(venueToSettle.value.id, {
+      collectedAmount: numericCollectedAmount.value,
+      remainingBalance: numericRemainingAmount.value,
+      notes: settleNote.value
+    })
     if (ok) {
       isSettleModalOpen.value = false
       venueToSettle.value = null
@@ -901,7 +963,14 @@ onMounted(() => {
                 ]">
                   {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
-                <span v-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
+                <span
+                  v-if="venue.carriedBalance && venue.carriedBalance > 0"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] border border-amber-200/70 dark:border-amber-800/70"
+                  title="Önceki Tahsilattan Devreden Kalan Borç"
+                >
+                  +{{ venue.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devir
+                </span>
+                <span v-else-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-0.5">
                   <CheckCircle2 class="w-2.5 h-2.5 text-emerald-500" />
                   <span>Tahsil Edildi (Sıfırlandı)</span>
                 </span>
@@ -1558,7 +1627,7 @@ onMounted(() => {
     <BaseModal
       v-model="isSettleModalOpen"
       :title="`Tahsilat Al & Sıfırla — ${venueToSettle?.name || 'Mekan'}`"
-      description="Mekandan alınan ödemeyi kaydedin ve güncel hesaplanan toplam tutarı sıfırlayın. Tüm geçmiş kayıtlar arşivde saklanır."
+      description="Mekandan alınan ödemeyi kaydedin. Eksik ödeme gelirse tahsil edilen tutarı veya kalan miktarı girerek borcun devretmesini sağlayabilirsiniz."
     >
       <div v-if="venueToSettle" class="space-y-4">
         <!-- Tutar & Paket Özet Kartı -->
@@ -1570,9 +1639,12 @@ onMounted(() => {
 
           <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800 text-center font-mono">
             <div class="p-2.5 rounded-lg bg-slate-800/80">
-              <span class="text-[11px] text-slate-400 font-sans block mb-1">Tahsil Edilecek Tutar</span>
+              <span class="text-[11px] text-slate-400 font-sans block mb-1">Toplam Tahsil Edilecek</span>
               <span class="text-xl font-extrabold text-emerald-400">
-                {{ (venueToSettle.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                {{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+              </span>
+              <span v-if="venueToSettle.carriedBalance && venueToSettle.carriedBalance > 0" class="text-[10px] text-amber-400 font-sans block mt-0.5">
+                ({{ (venueToSettle.pendingDeliveriesAmount || 0).toFixed(2) }} ₺ Paket + {{ venueToSettle.carriedBalance.toFixed(2) }} ₺ Devir)
               </span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-800/80">
@@ -1580,25 +1652,128 @@ onMounted(() => {
               <span class="text-xl font-extrabold text-white">
                 {{ venueToSettle.totalPackageCount || 0 }} Adet
               </span>
+              <span class="text-[10px] text-slate-400 font-sans block mt-0.5">
+                İç: {{ venueToSettle.indoorPackageCount || 0 }} · Dış: {{ venueToSettle.outdoorPackageCount || 0 }}
+              </span>
             </div>
-          </div>
-
-          <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-            <span>İç: {{ venueToSettle.indoorPackageCount || 0 }} Paket ({{ (venueToSettle.indoorAmount || 0).toFixed(2) }} ₺)</span>
-            <span>·</span>
-            <span>Dış: {{ venueToSettle.outdoorPackageCount || 0 }} Paket ({{ (venueToSettle.outdoorAmount || 0).toFixed(2) }} ₺)</span>
           </div>
         </div>
 
-        <!-- Bilgilendirme Uyarısı -->
-        <div class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
+        <!-- Ödeme Giriş Alanları (Gelen Para ve Kalan Miktar) -->
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <Wallet class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Ödeme Detayı & Kalan Bakiye</span>
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                class="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 transition-colors"
+                @click="setFullSettlement"
+              >
+                Tamamı ({{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- 1. Gelen Para / Alınan Tahsilat Tutarı -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Gelen Para (Tahsil Edilen)
+              </label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">₺</span>
+                <input
+                  :value="settleCollectedAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  class="w-full pl-8 pr-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono font-bold text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  @input="onCollectedInput(($event.target as HTMLInputElement).value)"
+                />
+              </div>
+              <span class="text-[10px] text-slate-400 mt-1 block">Mekandan fiilen elinize geçen nakit / havale tutarı</span>
+            </div>
+
+            <!-- 2. Kalan Tutar / Mekanın Devredecek Borcu -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Kalan Miktar (Devredecek Borç)
+              </label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">₺</span>
+                <input
+                  :value="settleRemainingAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  class="w-full pl-8 pr-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono font-bold text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  @input="onRemainingInput(($event.target as HTMLInputElement).value)"
+                />
+              </div>
+              <span class="text-[10px] text-slate-400 mt-1 block">Eksik gelen para sonrası mekanda kalan borç</span>
+            </div>
+          </div>
+
+          <!-- Opsiyonel Not Alanı -->
+          <div class="pt-1">
+            <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+              Tahsilat Notu / Açıklama (İsteğe Bağlı)
+            </label>
+            <input
+              v-model="settleNote"
+              type="text"
+              maxlength="200"
+              placeholder="Örn: 2.500 TL elden alındı, kalan 500 TL haftaya aktarıldı"
+              class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+
+        <!-- Dinamik Canlı Bilgilendirme Durum Kartı -->
+        <!-- Durum 1: Kalan Tutar 0 (Tam Tahsilat & Sıfırlama) -->
+        <div
+          v-if="numericRemainingAmount === 0"
+          class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1"
+        >
           <div class="font-bold flex items-center gap-1.5">
             <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Kayıtlar Korunur, Sadece Aktif Hesap Sıfırlanır</span>
+            <span>Tam Tahsilat: Mekanın Hesabı Sıfırlanacaktır</span>
           </div>
           <p class="text-[11.5px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
-            Tahsilatı onayladığınızda, mekandan bu tutar tahsil edilmiş olarak kaydedilir ve tablodaki güncel hesaplanan toplam tutar <strong>0,00 ₺</strong> olarak sıfırlanır.
-            Önceki günlere ait teslimat adetleri hiçbir şekilde silinmez; <strong>Günlük Döküm</strong> ve kazanç raporlarında saklanmaya devam eder.
+            Mekandan toplam <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tahsil edilmiş olarak kaydedilir ve güncel hesaplanan toplam tutar <strong>0,00 ₺</strong> olarak sıfırlanır.
+          </p>
+        </div>
+
+        <!-- Durum 2: Kalan Tutar > 0 (Kullanıcının İstediği Kısmi Tahsilat ve Devir) -->
+        <div
+          v-else-if="numericRemainingAmount > 0"
+          class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1"
+        >
+          <div class="font-bold flex items-center gap-1.5">
+            <Clock class="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>Kısmi Tahsilat: Kalan Tutar Sıfırlanmayacak, Devredecektir!</span>
+          </div>
+          <p class="text-[11.5px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+            Gelen <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> ana paradan düşülecektir. Kalan <strong>{{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tutar mekanın aktif borcu olarak devredecek ve sıfırlanmayacaktır.
+          </p>
+        </div>
+
+        <!-- Durum 3: Fazla Tahsilat (Gelen para borçtan fazla) -->
+        <div
+          v-else
+          class="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 space-y-1"
+        >
+          <div class="font-bold flex items-center gap-1.5">
+            <Info class="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            <span>Fazla Tahsilat</span>
+          </div>
+          <p class="text-[11.5px] leading-relaxed text-sky-800/90 dark:text-sky-300/90">
+            Mekanın borcundan daha fazla ödeme alındı. Kalan tutar mekanın sonraki paketleri için artı bakiye olarak devredecektir.
           </p>
         </div>
 
@@ -1614,15 +1789,21 @@ onMounted(() => {
             Vazgeç
           </BaseButton>
           <BaseButton
-            variant="success"
+            :variant="numericRemainingAmount > 0 ? 'primary' : 'success'"
             size="md"
             :loading="settlingVenue"
+            :class="numericRemainingAmount > 0 ? '!bg-amber-600 hover:!bg-amber-700 !text-white' : ''"
             @click="handleConfirmSettle"
           >
             <template #leading>
               <Wallet class="w-4 h-4" />
             </template>
-            Tahsilatı Onayla ve Tutarı Sıfırla
+            <span v-if="numericRemainingAmount > 0">
+              Kısmi Tahsilatı Kaydet ({{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devretsin)
+            </span>
+            <span v-else>
+              Tahsilatı Onayla ve Tutarı Sıfırla
+            </span>
           </BaseButton>
         </div>
       </div>

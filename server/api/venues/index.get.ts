@@ -213,9 +213,13 @@ export default defineEventHandler(async (event) => {
       const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
       // When no date filter is active and not explicitly viewing all-time, the primary display
-      // is the pending unsettled amount (the amount to be collected).
+      // is the pending unsettled amount (the amount to be collected) plus any carried balance from previous settlement.
+      const carriedBalance = Number(v.carriedBalance || 0)
+      const pendingDeliveriesAmount = Number(pendingAmount.toFixed(2))
+      const pendingTotalWithCarried = Number((pendingDeliveriesAmount + carriedBalance).toFixed(2))
+
       const hasExplicitDateFilter = !!(dateStr || startDateStr || endDateStr || scope === 'all')
-      const totalAmount = hasExplicitDateFilter ? filteredTotalAmount : pendingAmount
+      const totalAmount = hasExplicitDateFilter ? filteredTotalAmount : pendingTotalWithCarried
       const totalPackageCount = hasExplicitDateFilter ? filteredPackageCount : pendingPackageCount
       const indoorPackageCount = hasExplicitDateFilter ? filteredIndoorPackageCount : pendingIndoorCount
       const outdoorPackageCount = hasExplicitDateFilter ? filteredOutdoorPackageCount : pendingOutdoorCount
@@ -228,13 +232,15 @@ export default defineEventHandler(async (event) => {
         indoorPrice: Number(v.indoorPrice),
         outdoorPrice: Number(v.outdoorPrice),
         isActive: v.isActive,
+        carriedBalance,
         lastSettledAt: v.lastSettledAt ? v.lastSettledAt.toISOString() : null,
         lastSettledAmount: v.lastSettledAmount ? Number(v.lastSettledAmount) : null,
         totalCollectedAmount: Number(v.totalCollectedAmount || 0),
         pendingPackageCount,
         pendingIndoorCount,
         pendingOutdoorCount,
-        pendingAmount: Number(pendingAmount.toFixed(2)),
+        pendingAmount: pendingTotalWithCarried,
+        pendingDeliveriesAmount,
         pendingIndoorAmount: Number(pendingIndoorAmount.toFixed(2)),
         pendingOutdoorAmount: Number(pendingOutdoorAmount.toFixed(2)),
         totalPackageCount,
@@ -247,7 +253,7 @@ export default defineEventHandler(async (event) => {
         allTimeTotalAmount: Number(allTimeTotalAmount.toFixed(2)),
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
-        hasRecords: (v._count.deliveryRecords + v._count.courierVenuePrices) > 0,
+        hasRecords: (v._count.deliveryRecords + v._count.courierVenuePrices) > 0 || carriedBalance > 0,
         recordCount: v._count.deliveryRecords,
         filteredRecordCount: totalPackageCount,
         dailyBreakdown,

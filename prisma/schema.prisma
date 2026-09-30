@@ -32,6 +32,8 @@ model Venue {
   indoorPrice  Decimal  @db.Decimal(10, 2)
   outdoorPrice Decimal  @db.Decimal(10, 2)
   isActive     Boolean  @default(true)
+  carriedBalance       Decimal   @default(0) @db.Decimal(10, 2)
+  prevCarriedBalance   Decimal?  @default(0) @db.Decimal(10, 2)
   lastSettledAt        DateTime?
   lastSettledAmount    Decimal?  @db.Decimal(10, 2)
   totalCollectedAmount Decimal   @default(0) @db.Decimal(10, 2)

@@ -53,27 +53,31 @@ export default defineEventHandler(async (event) => {
 
       const lastAmount = Number(venue.lastSettledAmount || 0)
       const newTotalCollected = Math.max(0, Number(venue.totalCollectedAmount || 0) - lastAmount)
+      const restoredCarriedBalance = Number(venue.prevCarriedBalance || 0)
 
       await prisma.venue.update({
         where: { id },
         data: {
           lastSettledAt: null,
           lastSettledAmount: null,
+          carriedBalance: new Prisma.Decimal(restoredCarriedBalance.toFixed(2)),
+          prevCarriedBalance: new Prisma.Decimal(0),
           totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2))
         }
       })
 
       return {
         success: true,
-        message: `${venue.name} için son tahsilat işlemi geri alındı. Toplam tutar tekrar hesaplamaya dahil edildi.`,
+        message: `${venue.name} için son tahsilat işlemi geri alındı. Tutar ve kayıtlar eski haline döndürüldü.`,
         data: {
           venueId: id,
-          revertedCount: revertedRecords.count
+          revertedCount: revertedRecords.count,
+          carriedBalance: restoredCarriedBalance
         }
       }
     }
 
-    // Normal Tahsilat ve Sıfırlama İşlemi
+    // Normal veya Kısmi Tahsilat ve Sıfırlama İşlemi
     const unsettledRecords = await prisma.deliveryRecord.findMany({
       where: {
         venueId: id,
@@ -89,7 +93,7 @@ export default defineEventHandler(async (event) => {
     })
 
     let totalPackages = 0
-    let totalAmount = 0
+    let deliveriesAmount = 0
     let indoorPackages = 0
     let outdoorPackages = 0
 
@@ -100,7 +104,7 @@ export default defineEventHandler(async (event) => {
         : Number(rec.totalAmount || 0)
 
       totalPackages += count
-      totalAmount += amt
+      deliveriesAmount += amt
       if (rec.deliveryType === 'INDOOR') {
         indoorPackages += count
       } else {
@@ -108,7 +112,25 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    totalAmount = Number(totalAmount.toFixed(2))
+    const currentCarriedBalance = Number(venue.carriedBalance || 0)
+    // Mekanın toplam tahsil edilecek ana tutarı (teslimat tutarları + önceki devir)
+    const totalDue = Number((deliveriesAmount + currentCarriedBalance).toFixed(2))
+
+    // Tahsil edilen tutar ve kalan tutar hesaplaması
+    let collectedAmount = totalDue
+    let remainingBalance = 0
+
+    if (body?.collectedAmount !== undefined && body?.collectedAmount !== null && !isNaN(Number(body.collectedAmount))) {
+      collectedAmount = Math.max(0, Number(body.collectedAmount))
+      remainingBalance = Number((totalDue - collectedAmount).toFixed(2))
+    } else if (body?.remainingBalance !== undefined && body?.remainingBalance !== null && !isNaN(Number(body.remainingBalance))) {
+      remainingBalance = Math.max(0, Number(body.remainingBalance))
+      collectedAmount = Number((totalDue - remainingBalance).toFixed(2))
+    }
+
+    collectedAmount = Number(collectedAmount.toFixed(2))
+    remainingBalance = Number(remainingBalance.toFixed(2))
+
     const now = new Date()
 
     if (unsettledRecords.length > 0) {
@@ -128,19 +150,27 @@ export default defineEventHandler(async (event) => {
       where: { id },
       data: {
         lastSettledAt: now,
-        lastSettledAmount: new Prisma.Decimal(totalAmount.toFixed(2)),
+        lastSettledAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
+        carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
+        prevCarriedBalance: new Prisma.Decimal(currentCarriedBalance.toFixed(2)),
         totalCollectedAmount: {
-          increment: new Prisma.Decimal(totalAmount.toFixed(2))
+          increment: new Prisma.Decimal(collectedAmount.toFixed(2))
         }
       }
     })
 
+    const message = remainingBalance > 0
+      ? `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ tahsilat alındı. Kalan ${remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ borç olarak devredildi.`
+      : `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ tahsilat alındı ve toplam tutar sıfırlandı.`
+
     return {
       success: true,
-      message: `${venue.name} için ${totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ tahsilat alındı ve toplam tutar sıfırlandı.`,
+      message,
       data: {
         venueId: id,
-        settledAmount: totalAmount,
+        settledAmount: collectedAmount,
+        remainingBalance,
+        totalDue,
         settledPackages: totalPackages,
         indoorPackages,
         outdoorPackages,

@@ -17,6 +17,7 @@ export interface VenueItem {
   indoorPrice: number
   outdoorPrice: number
   isActive: boolean
+  carriedBalance?: number
   hasRecords?: boolean
   recordCount?: number
   filteredRecordCount?: number
@@ -24,6 +25,7 @@ export interface VenueItem {
   pendingIndoorCount?: number
   pendingOutdoorCount?: number
   pendingAmount?: number
+  pendingDeliveriesAmount?: number
   pendingIndoorAmount?: number
   pendingOutdoorAmount?: number
   totalCollectedAmount?: number
@@ -178,7 +180,15 @@ export const useVenues = () => {
     }
   }
 
-  const settleVenue = async (venueId: string, options?: { action?: 'undo' | 'settle'; notes?: string }) => {
+  const settleVenue = async (
+    venueId: string,
+    options?: {
+      action?: 'undo' | 'settle'
+      notes?: string
+      collectedAmount?: number
+      remainingBalance?: number
+    }
+  ) => {
     loading.value = true
     try {
       const response = await $fetch<{ success: boolean; message: string; data: any }>(`/api/venues/${venueId}/settle`, {
@@ -187,7 +197,7 @@ export const useVenues = () => {
       })
 
       if (response.success) {
-        toast.success(response.message || 'Tahsilat işlemi kaydedildi ve toplam tutar sıfırlandı.', 'Tahsilat Tamamlandı')
+        toast.success(response.message || 'Tahsilat işlemi kaydedildi.', 'Tahsilat İşlemi')
         await fetchVenues()
         return true
       }
