@@ -1,4 +1,4 @@
-export interface VenueDailyStat {
+  export interface VenueDailyStat {
   date: string
   indoorCount: number
   indoorAmount: number
