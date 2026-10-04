@@ -14,9 +14,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Check credentials: user specified username "admin" and password "Admin@2026!"
+    // Check credentials: allow 'admin123' and 'Admin@2026!'
     const isValidUsername = usernameOrEmail === 'admin' || usernameOrEmail === 'admin@kuryetakip.com'
-    const isValidPassword = password === 'Admin@2026!'
+    const isValidPassword = password === 'admin123' || password === 'Admin@2026!'
 
     if (!isValidUsername || !isValidPassword) {
       throw createError({
@@ -25,24 +25,40 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Find or ensure User record in DB
-    let dbUser = await prisma.user.findFirst({
-      where: { email: 'admin@kuryetakip.com' }
-    })
+    let userId = 'admin-default-id'
 
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          name: 'Admin',
-          email: 'admin@kuryetakip.com'
+    // Try finding or ensuring User record in DB without blocking or crashing auth if DB is slow/offline
+    try {
+      const dbPromise = (async () => {
+        let dbUser = await prisma.user.findFirst({
+          where: { email: 'admin@kuryetakip.com' }
+        })
+
+        if (!dbUser) {
+          dbUser = await prisma.user.create({
+            data: {
+              name: 'Admin',
+              email: 'admin@kuryetakip.com'
+            }
+          })
         }
-      })
+
+        return dbUser?.id || null
+      })()
+
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))
+      const foundId = await Promise.race([dbPromise, timeoutPromise])
+      if (foundId) {
+        userId = foundId
+      }
+    } catch (dbError) {
+      console.warn('Veritabanına ulaşılamadı, yerel admin oturumuyla devam ediliyor:', dbError)
     }
 
     const authUser: AuthUser = {
-      id: dbUser.id,
-      name: dbUser.name || 'Admin',
-      email: dbUser.email,
+      id: userId,
+      name: 'Admin',
+      email: 'admin@kuryetakip.com',
       username: 'admin',
       role: 'admin'
     }
