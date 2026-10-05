@@ -241,6 +241,7 @@ onMounted(async () => {
         </p>
       </div>
 
+      <div class="flex items-center gap-2 flex-wrap">
         <!-- Gün Sonu Raporu Al Button -->
         <button
           type="button"
