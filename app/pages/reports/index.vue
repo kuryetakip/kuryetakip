@@ -26,7 +26,8 @@ import {
   Trash2,
   ShieldCheck,
   Archive,
-  DollarSign
+  DollarSign,
+  FileSpreadsheet
 } from 'lucide-vue-next'
 import { useReports, type CourierReportRecord } from '~/composables/useReports'
 import { useCouriers, type CourierItem } from '~/composables/useCouriers'
@@ -76,6 +77,7 @@ const {
 
 // Close Week Modal & History Modal State
 const isCloseWeekModalOpen = ref(false)
+const isDailyReportModalOpen = ref(false)
 const isAdvanceHistoryModalOpen = ref(false)
 const selectedCourierForHistory = ref<CourierItem | null>(null)
 
@@ -239,7 +241,16 @@ onMounted(async () => {
         </p>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap">
+        <!-- Gün Sonu Raporu Al Button -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 transition-colors shadow-2xs"
+          @click="isDailyReportModalOpen = true"
+        >
+          <FileSpreadsheet class="w-3.5 h-3.5 text-emerald-400 dark:text-white" />
+          <span>Gün Sonu Raporu Al</span>
+        </button>
+
         <!-- Close Week Button (Always accessible) -->
         <button
           type="button"
@@ -1141,6 +1152,11 @@ onMounted(async () => {
       :courier="selectedCourierForHistory"
       @close="isAdvanceHistoryModalOpen = false"
       @updated="fetchAdvanceReports()"
+    />
+
+    <!-- GÜN SONU RAPORU DIŞA AKTARMA (PDF & EXCEL) MODALI -->
+    <DailyReportExportModal
+      v-model="isDailyReportModalOpen"
     />
   </div>
 </template>
