@@ -1,7 +1,19 @@
+import { fileURLToPath } from 'node:url'
+
 // Nuxt configuration with Supabase PgBouncer Pooler
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  alias: {
+    '#app-manifest': fileURLToPath(new URL('./app/utils/empty-manifest.ts', import.meta.url))
+  },
+  vite: {
+    resolve: {
+      alias: {
+        '#app-manifest': fileURLToPath(new URL('./app/utils/empty-manifest.ts', import.meta.url))
+      }
+    }
+  },
   modules: [
     '@nuxtjs/tailwindcss'
   ],

@@ -36,7 +36,12 @@ model Venue {
   prevCarriedBalance   Decimal?  @default(0) @db.Decimal(10, 2)
   lastSettledAt        DateTime?
   lastSettledAmount    Decimal?  @db.Decimal(10, 2)
+  lastPaymentMethod    String?
+  lastCashAmount       Decimal?  @db.Decimal(10, 2)
+  lastTransferAmount   Decimal?  @db.Decimal(10, 2)
   totalCollectedAmount Decimal   @default(0) @db.Decimal(10, 2)
+  totalCashAmount      Decimal   @default(0) @db.Decimal(10, 2)
+  totalTransferAmount  Decimal   @default(0) @db.Decimal(10, 2)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

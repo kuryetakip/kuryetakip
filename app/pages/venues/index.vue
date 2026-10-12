@@ -24,7 +24,9 @@ import {
   RotateCcw,
   Receipt,
   Info,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CreditCard,
+  Banknote
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 
@@ -62,6 +64,9 @@ const venueToSettle = ref<VenueItem | null>(null)
 const settlingVenue = ref(false)
 const settleCollectedAmount = ref<string | number>('')
 const settleRemainingAmount = ref<string | number>('')
+const settlePaymentMethod = ref<'CASH' | 'TRANSFER' | 'SPLIT'>('CASH')
+const settleCashAmount = ref<string | number>('')
+const settleTransferAmount = ref<string | number>('')
 const settleNote = ref('')
 
 const settleTotalDue = computed(() => {
@@ -86,6 +91,27 @@ const numericRemainingAmount = computed(() => {
   return isNaN(num) ? 0 : Math.max(0, num)
 })
 
+const selectPaymentMethod = (method: 'CASH' | 'TRANSFER' | 'SPLIT') => {
+  settlePaymentMethod.value = method
+  const total = numericCollectedAmount.value
+  if (method === 'CASH') {
+    settleCashAmount.value = total > 0 ? total : ''
+    settleTransferAmount.value = ''
+  } else if (method === 'TRANSFER') {
+    settleTransferAmount.value = total > 0 ? total : ''
+    settleCashAmount.value = ''
+  } else {
+    // Karma (Split)
+    if (total > 0) {
+      settleCashAmount.value = (total / 2).toFixed(2)
+      settleTransferAmount.value = (total / 2).toFixed(2)
+    } else {
+      settleCashAmount.value = ''
+      settleTransferAmount.value = ''
+    }
+  }
+}
+
 const onCollectedInput = (val: string | number) => {
   settleCollectedAmount.value = val
   const clean = String(val).trim().replace(',', '.')
@@ -95,6 +121,19 @@ const onCollectedInput = (val: string | number) => {
   } else {
     const rem = Math.max(0, Number((settleTotalDue.value - num).toFixed(2)))
     settleRemainingAmount.value = rem
+  }
+
+  // Ödeme yöntemi dağılımını güncelle
+  const total = isNaN(num) ? 0 : Math.max(0, num)
+  if (settlePaymentMethod.value === 'CASH') {
+    settleCashAmount.value = total > 0 ? total : ''
+    settleTransferAmount.value = ''
+  } else if (settlePaymentMethod.value === 'TRANSFER') {
+    settleTransferAmount.value = total > 0 ? total : ''
+    settleCashAmount.value = ''
+  } else if (settlePaymentMethod.value === 'SPLIT') {
+    settleCashAmount.value = total > 0 ? (total / 2).toFixed(2) : ''
+    settleTransferAmount.value = total > 0 ? (total / 2).toFixed(2) : ''
   }
 }
 
@@ -108,11 +147,46 @@ const onRemainingInput = (val: string | number) => {
     const col = Math.max(0, Number((settleTotalDue.value - rem).toFixed(2)))
     settleCollectedAmount.value = col
   }
+
+  const colNum = parseFloat(String(settleCollectedAmount.value)) || 0
+  if (settlePaymentMethod.value === 'CASH') {
+    settleCashAmount.value = colNum > 0 ? colNum : ''
+  } else if (settlePaymentMethod.value === 'TRANSFER') {
+    settleTransferAmount.value = colNum > 0 ? colNum : ''
+  }
+}
+
+const onSplitCashInput = (val: string | number) => {
+  settleCashAmount.value = val
+  const clean = String(val).trim().replace(',', '.')
+  const cashVal = parseFloat(clean) || 0
+  const total = numericCollectedAmount.value
+  const trRem = Math.max(0, Number((total - cashVal).toFixed(2)))
+  settleTransferAmount.value = trRem
+}
+
+const onSplitTransferInput = (val: string | number) => {
+  settleTransferAmount.value = val
+  const clean = String(val).trim().replace(',', '.')
+  const trVal = parseFloat(clean) || 0
+  const total = numericCollectedAmount.value
+  const cashRem = Math.max(0, Number((total - trVal).toFixed(2)))
+  settleCashAmount.value = cashRem
 }
 
 const setFullSettlement = () => {
   settleCollectedAmount.value = settleTotalDue.value
   settleRemainingAmount.value = 0
+  if (settlePaymentMethod.value === 'CASH') {
+    settleCashAmount.value = settleTotalDue.value
+    settleTransferAmount.value = ''
+  } else if (settlePaymentMethod.value === 'TRANSFER') {
+    settleTransferAmount.value = settleTotalDue.value
+    settleCashAmount.value = ''
+  } else if (settlePaymentMethod.value === 'SPLIT') {
+    settleCashAmount.value = (settleTotalDue.value / 2).toFixed(2)
+    settleTransferAmount.value = (settleTotalDue.value / 2).toFixed(2)
+  }
 }
 
 // History / Breakdown Modal State
@@ -566,6 +640,9 @@ const openSettleModal = (venue: VenueItem) => {
   const total = Number(venue.totalAmount || 0)
   settleCollectedAmount.value = total > 0 ? total : 0
   settleRemainingAmount.value = 0
+  settlePaymentMethod.value = 'CASH'
+  settleCashAmount.value = total > 0 ? total : ''
+  settleTransferAmount.value = ''
   settleNote.value = ''
   isSettleModalOpen.value = true
 }
@@ -574,9 +651,25 @@ const handleConfirmSettle = async () => {
   if (!venueToSettle.value) return
   settlingVenue.value = true
   try {
+    let finalCash = 0
+    let finalTransfer = 0
+    if (settlePaymentMethod.value === 'CASH') {
+      finalCash = numericCollectedAmount.value
+      finalTransfer = 0
+    } else if (settlePaymentMethod.value === 'TRANSFER') {
+      finalCash = 0
+      finalTransfer = numericCollectedAmount.value
+    } else {
+      finalCash = parseFloat(String(settleCashAmount.value).trim().replace(',', '.')) || 0
+      finalTransfer = parseFloat(String(settleTransferAmount.value).trim().replace(',', '.')) || 0
+    }
+
     const ok = await settleVenue(venueToSettle.value.id, {
       collectedAmount: numericCollectedAmount.value,
       remainingBalance: numericRemainingAmount.value,
+      paymentMethod: settlePaymentMethod.value,
+      cashAmount: finalCash,
+      transferAmount: finalTransfer,
       notes: settleNote.value
     })
     if (ok) {
@@ -1039,6 +1132,7 @@ onMounted(() => {
             <!-- 5. Toplam Tutar / Hakediş -->
             <td class="px-5 py-4 text-right">
               <div class="flex flex-col items-end gap-1">
+                <!-- Üst Tutar Kutusu -->
                 <span :class="[
                   'inline-flex items-center px-3 py-1 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-shadow',
                   (venue.totalAmount || 0) > 0
@@ -1047,6 +1141,8 @@ onMounted(() => {
                 ]">
                   {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
+
+                <!-- Kalan Borç Rozeti (Borç devam ediyorsa) -->
                 <span
                   v-if="venue.carriedBalance && venue.carriedBalance > 0"
                   class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] border border-amber-200/80 dark:border-amber-800/80 shadow-2xs"
@@ -1054,10 +1150,61 @@ onMounted(() => {
                 >
                   Kalan Borç: {{ venue.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
                 </span>
-                <span v-else-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60">
+
+                <!-- Borcun Tamamı Tahsil Edildi (Sıfırlandı) Rozeti -->
+                <span
+                  v-else-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60"
+                >
                   <CheckCircle2 class="w-3 h-3 text-emerald-500" />
                   <span>Tahsil Edildi (Sıfırlandı)</span>
                 </span>
+
+                <!-- Ödeme Yöntemi Bilgisi: Nakit mi Havale mi? -->
+                <!-- 1. Nakit Rozeti -->
+                <span
+                  v-if="venue.lastPaymentMethod === 'CASH' && (venue.lastCashAmount || venue.lastSettledAmount || 0) > 0"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
+                  :title="`Son tahsilat elden nakit alındı: ${(venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                >
+                  <Banknote class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Nakit: {{ (venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+                </span>
+
+                <!-- 2. Havale Rozeti -->
+                <span
+                  v-else-if="venue.lastPaymentMethod === 'TRANSFER' && (venue.lastTransferAmount || venue.lastSettledAmount || 0) > 0"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 font-mono text-[10px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
+                  :title="`Son tahsilat havale / EFT ile alındı: ${(venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                >
+                  <CreditCard class="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                  <span>Havale: {{ (venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+                </span>
+
+                <!-- 3. Karma (Nakit + Havale) Rozeti -->
+                <div
+                  v-else-if="venue.lastPaymentMethod === 'SPLIT'"
+                  class="inline-flex items-center gap-1 text-[10px] font-mono font-bold"
+                >
+                  <span
+                    v-if="(venue.lastCashAmount || 0) > 0"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
+                    :title="`Nakit: ${(venue.lastCashAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                  >
+                    <Banknote class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>{{ (venue.lastCashAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                  </span>
+                  <span
+                    v-if="(venue.lastTransferAmount || 0) > 0"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80"
+                    :title="`Havale: ${(venue.lastTransferAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                  >
+                    <CreditCard class="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
+                    <span>{{ (venue.lastTransferAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                  </span>
+                </div>
+
+                <!-- Eski kayıtlar için ödeme yöntemi yoksa ödenen toplam tutar -->
                 <span v-else-if="venue.totalCollectedAmount && venue.totalCollectedAmount > 0" class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
                   Ödenen: {{ venue.totalCollectedAmount.toFixed(0) }} ₺
                 </span>
@@ -1752,7 +1899,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Ödeme Giriş Alanları (Gelen Para ve Kalan Miktar) -->
+        <!-- Ödeme Giriş Alanları (Gelen Para, Ödeme Yöntemi ve Kalan Miktar) -->
         <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
@@ -1762,7 +1909,7 @@ onMounted(() => {
             <div class="flex items-center gap-1.5">
               <button
                 type="button"
-                class="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 transition-colors"
+                class="px-2.5 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 transition-colors shadow-2xs"
                 @click="setFullSettlement"
               >
                 Tamamı ({{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
@@ -1770,11 +1917,62 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- Ödeme Yöntemi Seçici (Nakit / Havale / Karma) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Ödeme Şekli
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                :class="[
+                  'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold border transition-all',
+                  settlePaymentMethod === 'CASH'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ]"
+                @click="selectPaymentMethod('CASH')"
+              >
+                <Banknote class="w-3.5 h-3.5" />
+                <span>Nakit</span>
+              </button>
+
+              <button
+                type="button"
+                :class="[
+                  'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold border transition-all',
+                  settlePaymentMethod === 'TRANSFER'
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ]"
+                @click="selectPaymentMethod('TRANSFER')"
+              >
+                <CreditCard class="w-3.5 h-3.5" />
+                <span>Havale / EFT</span>
+              </button>
+
+              <button
+                type="button"
+                :class="[
+                  'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold border transition-all',
+                  settlePaymentMethod === 'SPLIT'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ]"
+                @click="selectPaymentMethod('SPLIT')"
+              >
+                <Layers class="w-3.5 h-3.5" />
+                <span>Karma (İkisi)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Gelen Para ve Kalan Miktar Alanları -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <!-- 1. Gelen Para / Alınan Tahsilat Tutarı -->
             <div>
               <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Gelen Para (Tahsil Edilen)
+                Gelen Toplam Tutar (Tahsil Edilen)
               </label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">₺</span>
@@ -1788,7 +1986,7 @@ onMounted(() => {
                   @input="onCollectedInput(($event.target as HTMLInputElement).value)"
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-1 block">Mekandan fiilen elinize geçen nakit / havale tutarı</span>
+              <span class="text-[10px] text-slate-400 mt-1 block">Mekandan fiilen elinize geçen toplam tutar</span>
             </div>
 
             <!-- 2. Kalan Tutar / Mekanın Devredecek Borcu -->
@@ -1808,7 +2006,52 @@ onMounted(() => {
                   @input="onRemainingInput(($event.target as HTMLInputElement).value)"
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-1 block">Eksik gelen para sonrası mekanda kalan borç</span>
+              <span class="text-[10px] text-slate-400 mt-1 block">Eksik tahsilat sonrası mekanda kalan borç</span>
+            </div>
+          </div>
+
+          <!-- Karma (Split) Seçildiyse: Nakit ve Havale Ayrımı Girişi -->
+          <div v-if="settlePaymentMethod === 'SPLIT'" class="p-3 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 space-y-2">
+            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 block">
+              Karma Ödeme Detayı (Nakit & Havale Dağılımı)
+            </span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <Banknote class="w-3 h-3 text-emerald-600" />
+                  <span>Nakit Kısmı</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₺</span>
+                  <input
+                    :value="settleCashAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    class="w-full pl-7 pr-2.5 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    @input="onSplitCashInput(($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <CreditCard class="w-3 h-3 text-sky-600" />
+                  <span>Havale Kısmı</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₺</span>
+                  <input
+                    :value="settleTransferAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    class="w-full pl-7 pr-2.5 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono text-sm font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    @input="onSplitTransferInput(($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1838,7 +2081,11 @@ onMounted(() => {
             <span>Tam Tahsilat: Mekanın Hesabı Sıfırlanacaktır</span>
           </div>
           <p class="text-[11.5px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
-            Mekandan toplam <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tahsil edilmiş olarak kaydedilir ve güncel hesaplanan toplam tutar <strong>0,00 ₺</strong> olarak sıfırlanır.
+            Mekandan toplam <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
+            <span class="font-semibold text-emerald-700 dark:text-emerald-300">
+              ({{ settlePaymentMethod === 'TRANSFER' ? 'Havale/EFT ile' : settlePaymentMethod === 'SPLIT' ? `${(parseFloat(String(settleCashAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${(parseFloat(String(settleTransferAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale` : 'Nakit olarak' }})
+            </span>
+            tahsil edilmiş olarak kaydedilir ve güncel hesaplanan toplam borç <strong>0,00 ₺</strong> olarak sıfırlanır. Kalan borç etiketi tamamen kalkar.
           </p>
         </div>
 
@@ -1852,7 +2099,11 @@ onMounted(() => {
             <span>Kısmi Tahsilat: Ana Paradan Düşülecek</span>
           </div>
           <p class="text-[11.5px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
-            Tahsil edilen <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> ana paradan düşülür. Kalan <strong>{{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tutar mekanın borcu olarak kalmaya devam eder ve sıfırlanmaz.
+            Tahsil edilen <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
+            <span class="font-semibold text-amber-700 dark:text-amber-300">
+              ({{ settlePaymentMethod === 'TRANSFER' ? 'Havale/EFT ile' : settlePaymentMethod === 'SPLIT' ? `${(parseFloat(String(settleCashAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${(parseFloat(String(settleTransferAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale` : 'Nakit olarak' }})
+            </span>
+            ana paradan düşülür. Kalan <strong>{{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tutar mekanın borcu olarak kalmaya devam eder.
           </p>
         </div>
 

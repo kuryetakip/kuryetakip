@@ -55,14 +55,24 @@ export default defineEventHandler(async (event) => {
       const newTotalCollected = Math.max(0, Number(venue.totalCollectedAmount || 0) - lastAmount)
       const restoredCarriedBalance = Number(venue.prevCarriedBalance || 0)
 
+      const lastCash = Number((venue as any).lastCashAmount || 0)
+      const lastTransfer = Number((venue as any).lastTransferAmount || 0)
+      const newTotalCash = Math.max(0, Number((venue as any).totalCashAmount || 0) - lastCash)
+      const newTotalTransfer = Math.max(0, Number((venue as any).totalTransferAmount || 0) - lastTransfer)
+
       await prisma.venue.update({
         where: { id },
         data: {
           lastSettledAt: null,
           lastSettledAmount: null,
+          lastPaymentMethod: null,
+          lastCashAmount: null,
+          lastTransferAmount: null,
           carriedBalance: new Prisma.Decimal(restoredCarriedBalance.toFixed(2)),
           prevCarriedBalance: new Prisma.Decimal(0),
-          totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2))
+          totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
+          totalCashAmount: new Prisma.Decimal(newTotalCash.toFixed(2)),
+          totalTransferAmount: new Prisma.Decimal(newTotalTransfer.toFixed(2))
         }
       })
 
@@ -131,6 +141,30 @@ export default defineEventHandler(async (event) => {
     collectedAmount = Number(collectedAmount.toFixed(2))
     remainingBalance = Number(remainingBalance.toFixed(2))
 
+    // Ödeme Yöntemi Belirleme (CASH, TRANSFER, SPLIT)
+    let paymentMethod: string = body?.paymentMethod || 'CASH'
+    let cashAmount = 0
+    let transferAmount = 0
+
+    if (paymentMethod === 'TRANSFER') {
+      transferAmount = collectedAmount
+      cashAmount = 0
+    } else if (paymentMethod === 'SPLIT') {
+      cashAmount = Number(body?.cashAmount || 0)
+      transferAmount = Number(body?.transferAmount || 0)
+      if (cashAmount + transferAmount === 0 && collectedAmount > 0) {
+        cashAmount = collectedAmount
+        paymentMethod = 'CASH'
+      }
+    } else {
+      paymentMethod = 'CASH'
+      cashAmount = collectedAmount
+      transferAmount = 0
+    }
+
+    cashAmount = Number(cashAmount.toFixed(2))
+    transferAmount = Number(transferAmount.toFixed(2))
+
     const now = new Date()
 
     if (unsettledRecords.length > 0) {
@@ -151,17 +185,32 @@ export default defineEventHandler(async (event) => {
       data: {
         lastSettledAt: now,
         lastSettledAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
+        lastPaymentMethod: paymentMethod,
+        lastCashAmount: new Prisma.Decimal(cashAmount.toFixed(2)),
+        lastTransferAmount: new Prisma.Decimal(transferAmount.toFixed(2)),
         carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
         prevCarriedBalance: new Prisma.Decimal(currentCarriedBalance.toFixed(2)),
         totalCollectedAmount: {
           increment: new Prisma.Decimal(collectedAmount.toFixed(2))
+        },
+        totalCashAmount: {
+          increment: new Prisma.Decimal(cashAmount.toFixed(2))
+        },
+        totalTransferAmount: {
+          increment: new Prisma.Decimal(transferAmount.toFixed(2))
         }
       }
     })
 
+    const paymentMethodLabel = paymentMethod === 'TRANSFER'
+      ? 'Havale ile'
+      : paymentMethod === 'SPLIT'
+        ? `(${cashAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${transferAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale)`
+        : 'Nakit olarak'
+
     const message = remainingBalance > 0
-      ? `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ tahsilat alındı. Kalan ${remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ borç olarak devredildi.`
-      : `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ tahsilat alındı ve toplam tutar sıfırlandı.`
+      ? `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı. Kalan ${remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ borç olarak devredildi.`
+      : `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı ve toplam tutar sıfırlandı.`
 
     return {
       success: true,
@@ -171,6 +220,9 @@ export default defineEventHandler(async (event) => {
         settledAmount: collectedAmount,
         remainingBalance,
         totalDue,
+        paymentMethod,
+        cashAmount,
+        transferAmount,
         settledPackages: totalPackages,
         indoorPackages,
         outdoorPackages,

@@ -31,6 +31,11 @@ export interface VenueItem {
   totalCollectedAmount?: number
   lastSettledAt?: string | null
   lastSettledAmount?: number | null
+  lastPaymentMethod?: string | null
+  lastCashAmount?: number | null
+  lastTransferAmount?: number | null
+  totalCashAmount?: number
+  totalTransferAmount?: number
   totalPackageCount?: number
   indoorPackageCount?: number
   outdoorPackageCount?: number
@@ -187,6 +192,9 @@ export const useVenues = () => {
       notes?: string
       collectedAmount?: number
       remainingBalance?: number
+      paymentMethod?: 'CASH' | 'TRANSFER' | 'SPLIT'
+      cashAmount?: number
+      transferAmount?: number
     }
   ) => {
     loading.value = true
