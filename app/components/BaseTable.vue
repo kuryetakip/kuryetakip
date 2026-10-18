@@ -31,14 +31,14 @@ withDefaults(defineProps<Props>(), {
               v-for="col in columns"
               :key="col.key"
               :class="[
-                'px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 select-none whitespace-nowrap text-xs',
+                'px-2.5 sm:px-3 py-3 font-semibold text-slate-700 dark:text-slate-300 select-none whitespace-nowrap text-xs',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
               ]"
               :style="col.width ? { width: col.width } : {}"
             >
               {{ col.label }}
             </th>
-            <th v-if="$slots.actions" class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right text-xs whitespace-nowrap">
+            <th v-if="$slots.actions" class="px-2.5 sm:px-3 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right text-xs whitespace-nowrap">
               İşlemler
             </th>
           </tr>
@@ -48,14 +48,14 @@ withDefaults(defineProps<Props>(), {
             <td
               v-for="(col, idx) in columns"
               :key="`skel-col-${idx}`"
-              class="px-4 py-3.5"
+              class="px-2.5 sm:px-3 py-3.5"
             >
               <div
                 class="h-4 bg-slate-200/80 dark:bg-slate-800/80 rounded"
                 :class="idx === 0 ? 'w-3/4' : idx === columns.length - 1 ? 'w-1/2 ml-auto' : 'w-2/3 ml-auto'"
               />
             </td>
-            <td v-if="$slots.actions" class="px-4 py-3.5 text-right">
+            <td v-if="$slots.actions" class="px-2.5 sm:px-3 py-3.5 text-right">
               <div class="h-4 w-16 bg-slate-200/80 dark:bg-slate-800/80 rounded ml-auto" />
             </td>
           </tr>
