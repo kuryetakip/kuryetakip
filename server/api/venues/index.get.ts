@@ -39,6 +39,7 @@ export default defineEventHandler(async (event) => {
             packageCount: true,
             totalAmount: true,
             venueTotalAmount: true,
+            courierTotalAmount: true,
             deliveryType: true,
             venuePriceSnapshot: true,
             unitPriceSnapshot: true,
@@ -54,6 +55,7 @@ export default defineEventHandler(async (event) => {
       let filteredIndoorPackageCount = 0
       let filteredOutdoorPackageCount = 0
       let filteredTotalAmount = 0
+      let filteredCourierAmount = 0
       let filteredIndoorAmount = 0
       let filteredOutdoorAmount = 0
 
@@ -62,6 +64,7 @@ export default defineEventHandler(async (event) => {
       let pendingIndoorCount = 0
       let pendingOutdoorCount = 0
       let pendingAmount = 0
+      let pendingCourierAmount = 0
       let pendingIndoorAmount = 0
       let pendingOutdoorAmount = 0
 
@@ -102,6 +105,9 @@ export default defineEventHandler(async (event) => {
         const amount = Number(rec.venueTotalAmount || 0) > 0
           ? Number(rec.venueTotalAmount)
           : Number(rec.totalAmount || 0)
+        const courierCost = Number(rec.courierTotalAmount || 0) > 0
+          ? Number(rec.courierTotalAmount)
+          : Number(rec.totalAmount || 0)
         const dateKey = rec.date.toISOString().substring(0, 10)
         const isRecSettled = !!rec.isSettled
 
@@ -113,6 +119,7 @@ export default defineEventHandler(async (event) => {
         if (!isRecSettled) {
           pendingPackageCount += count
           pendingAmount += amount
+          pendingCourierAmount += courierCost
           if (rec.deliveryType === 'INDOOR') {
             pendingIndoorCount += count
             pendingIndoorAmount += amount
@@ -169,6 +176,7 @@ export default defineEventHandler(async (event) => {
         if (matchesFilter) {
           filteredPackageCount += count
           filteredTotalAmount += amount
+          filteredCourierAmount += courierCost
 
           if (!dailyMap.has(dateKey)) {
             dailyMap.set(dateKey, {
@@ -238,6 +246,8 @@ export default defineEventHandler(async (event) => {
       const outdoorPackageCount = hasExplicitDateFilter ? filteredOutdoorPackageCount : pendingOutdoorCount
       const indoorAmount = hasExplicitDateFilter ? filteredIndoorAmount : pendingIndoorAmount
       const outdoorAmount = hasExplicitDateFilter ? filteredOutdoorAmount : pendingOutdoorAmount
+      const courierAmount = hasExplicitDateFilter ? filteredCourierAmount : pendingCourierAmount
+      const netProfit = Number((totalAmount - courierAmount).toFixed(2))
 
       return {
         id: v.id,
@@ -266,6 +276,8 @@ export default defineEventHandler(async (event) => {
         indoorPackageCount,
         outdoorPackageCount,
         totalAmount: Number(totalAmount.toFixed(2)),
+        courierAmount: Number(courierAmount.toFixed(2)),
+        netProfit,
         indoorAmount: Number(indoorAmount.toFixed(2)),
         outdoorAmount: Number(outdoorAmount.toFixed(2)),
         allTimePackageCount,

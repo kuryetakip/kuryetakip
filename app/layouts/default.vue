@@ -106,10 +106,10 @@ const navigationGroups = [
         description: 'Dönemsel hakediş ve mutabakat'
       },
       {
-        name: 'Para Girişleri',
+        name: 'Alınacak / Verilecek',
         path: '/kazanclar',
         icon: TrendingUp,
-        description: 'Tahsilat ve gelir akışı'
+        description: 'Mekan hakediş ve mutabakatı'
       }
     ]
   },
@@ -147,7 +147,7 @@ const currentBreadcrumb = computed(() => {
   if (p.startsWith('/couriers')) return 'Kurye Yönetimi'
   if (p.startsWith('/venues')) return 'Mekan Yönetimi'
   if (p.startsWith('/reports')) return 'Hakediş & Raporlar'
-  if (p.startsWith('/kazanclar')) return 'Para Girişleri & Kazançlar'
+  if (p.startsWith('/kazanclar')) return 'Haftalık Alınacak & Verilecek Hakediş'
   if (p.startsWith('/settings')) return 'Sistem Ayarları'
   return 'Genel Bakış'
 })

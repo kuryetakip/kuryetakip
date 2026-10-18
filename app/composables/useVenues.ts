@@ -43,6 +43,8 @@ export interface VenueItem {
   indoorPackageCount?: number
   outdoorPackageCount?: number
   totalAmount?: number
+  courierAmount?: number
+  netProfit?: number
   indoorAmount?: number
   outdoorAmount?: number
   allTimePackageCount?: number
