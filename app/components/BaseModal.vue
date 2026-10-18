@@ -7,8 +7,8 @@ interface Props {
   isOpen?: boolean
   title?: string
   description?: string
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
   persistent?: boolean
 }
 
@@ -78,6 +78,12 @@ const maxWidthClasses = computed(() => {
       return 'max-w-xl'
     case '2xl':
       return 'max-w-2xl'
+    case '3xl':
+      return 'max-w-3xl'
+    case '4xl':
+      return 'max-w-4xl'
+    case '5xl':
+      return 'max-w-5xl'
     case 'md':
     default:
       return 'max-w-md'

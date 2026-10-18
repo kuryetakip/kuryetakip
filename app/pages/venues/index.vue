@@ -26,7 +26,9 @@ import {
   Info,
   FileSpreadsheet,
   CreditCard,
-  Banknote
+  Banknote,
+  LayoutGrid,
+  Table
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 
@@ -206,6 +208,20 @@ const setFullSettlement = () => {
 const isHistoryModalOpen = ref(false)
 const historyVenue = ref<VenueItem | null>(null)
 const historyViewMode = ref<'all' | 'filtered'>('all')
+const historyDisplayMode = ref<'table' | 'cards'>('table')
+const historySearchQuery = ref('')
+
+const formatHistoryDayName = (dateStr: string) => {
+  if (!dateStr) return ''
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    if (!y || !m || !d) return ''
+    const dt = new Date(Date.UTC(y, m - 1, d))
+    return dt.toLocaleDateString('tr-TR', { weekday: 'long' })
+  } catch {
+    return ''
+  }
+}
 
 // Quick Daily Delivery Modal
 const isQuickDeliveryOpen = ref(false)
@@ -398,12 +414,17 @@ const onDateInputChange = () => {
 // Active History Breakdown for History Modal (Supports both filtered & all historical days)
 const activeHistoryBreakdown = computed(() => {
   if (!historyVenue.value) return []
-  if (historyViewMode.value === 'filtered') {
-    return historyVenue.value.dailyBreakdown || []
+  let list = historyViewMode.value === 'filtered'
+    ? (historyVenue.value.dailyBreakdown || [])
+    : (historyVenue.value.allDailyBreakdown && historyVenue.value.allDailyBreakdown.length > 0
+        ? historyVenue.value.allDailyBreakdown
+        : (historyVenue.value.dailyBreakdown || []))
+
+  if (historySearchQuery.value.trim()) {
+    const q = historySearchQuery.value.trim().toLowerCase()
+    list = list.filter(d => d.date.toLowerCase().includes(q))
   }
-  return historyVenue.value.allDailyBreakdown && historyVenue.value.allDailyBreakdown.length > 0
-    ? historyVenue.value.allDailyBreakdown
-    : (historyVenue.value.dailyBreakdown || [])
+  return list
 })
 
 const activeHistoryTotalCount = computed(() => {
@@ -1700,60 +1721,67 @@ onMounted(() => {
     <!-- 3. MEKAN GÜNLÜK PAKET DÖKÜMÜ & HESAPLAMA MODAL -->
     <BaseModal
       v-model="isHistoryModalOpen"
+      size="4xl"
       :title="`Günlük Paket Dökümü — ${historyVenue?.name || 'Mekan'}`"
       description="Seçilen mekana ait gün gün atılan iç ve dış mekan paket adetleri, tahsilat durumları ve birim fiyat üzerinden hakediş dökümü."
     >
       <div class="space-y-4">
         <!-- Mekan Finansal Durum & Fiyat Kartı -->
-        <div class="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span class="text-slate-400 block text-[10px] uppercase font-semibold">Mekan</span>
-              <span class="font-bold text-slate-900 dark:text-white text-sm">{{ historyVenue?.name }}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <div>
-                <span class="text-slate-400 block text-[10px] uppercase font-semibold">İç Fiyat</span>
-                <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ historyVenue?.indoorPrice.toFixed(2) }} ₺</span>
+        <div class="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 text-xs shadow-2xs">
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs shrink-0">
+                <Store class="w-4 h-4" />
               </div>
               <div>
-                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Dış Fiyat</span>
-                <span class="font-mono font-bold text-sky-600 dark:text-sky-400">{{ historyVenue?.outdoorPrice.toFixed(2) }} ₺</span>
+                <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Mekan</span>
+                <span class="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">{{ historyVenue?.name }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <div class="text-right">
+                <span class="text-slate-400 block text-[9.5px] uppercase font-bold">İç Mekan Birim</span>
+                <span class="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{{ (historyVenue?.indoorPrice || 0).toFixed(2) }} ₺</span>
+              </div>
+              <span class="text-slate-300 dark:text-slate-700">|</span>
+              <div class="text-right">
+                <span class="text-slate-400 block text-[9.5px] uppercase font-bold">Dış Mekan Birim</span>
+                <span class="font-mono font-black text-sky-600 dark:text-sky-400 text-xs sm:text-sm">{{ (historyVenue?.outdoorPrice || 0).toFixed(2) }} ₺</span>
               </div>
             </div>
           </div>
 
-          <!-- Tahsilat Özeti -->
-          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60 font-mono text-center">
-            <div class="p-2 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
-              <span class="text-[10px] font-sans font-semibold text-emerald-800 dark:text-emerald-300 block">Bekleyen Tahsilat</span>
-              <span class="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">
+          <!-- Tahsilat Özeti Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2.5 border-t border-slate-200/70 dark:border-slate-700/60 font-mono text-center">
+            <div class="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+              <span class="text-[10px] font-sans font-bold text-emerald-800 dark:text-emerald-300 block uppercase tracking-wide">Bekleyen Tahsilat</span>
+              <span class="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300">
                 {{ (historyVenue?.pendingAmount ?? historyVenue?.totalAmount ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
               </span>
             </div>
-            <div class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] font-sans font-semibold text-slate-600 dark:text-slate-300 block">Toplam Tahsil Edilen</span>
-              <span class="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[10px] font-sans font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wide">Toplam Tahsil Edilen</span>
+              <span class="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">
                 {{ (historyVenue?.totalCollectedAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
               </span>
             </div>
-            <div class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span class="text-[10px] font-sans font-semibold text-slate-600 dark:text-slate-300 block">Toplam Ciro</span>
-              <span class="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+              <span class="text-[10px] font-sans font-semibold text-slate-500 dark:text-slate-400 block uppercase tracking-wide">Toplam Ciro</span>
+              <span class="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">
                 {{ (historyVenue?.allTimeTotalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
               </span>
             </div>
           </div>
 
           <!-- Son Tahsilat Bilgisi & Geri Al Butonu -->
-          <div v-if="historyVenue?.lastSettledAt" class="pt-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+          <div v-if="historyVenue?.lastSettledAt" class="pt-1.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 flex-wrap gap-2">
             <span class="flex items-center gap-1.5">
               <Clock class="w-3.5 h-3.5 text-emerald-600" />
               <span>Son Tahsilat: <strong>{{ new Date(historyVenue.lastSettledAt).toLocaleString('tr-TR') }}</strong> ({{ (historyVenue.lastSettledAmount || 0).toFixed(2) }} ₺)</span>
             </span>
             <button
               type="button"
-              class="text-rose-600 hover:text-rose-700 dark:text-rose-400 text-[10px] font-semibold flex items-center gap-1 underline"
+              class="text-rose-600 hover:text-rose-700 dark:text-rose-400 text-[11px] font-bold flex items-center gap-1 underline cursor-pointer"
               :disabled="settlingVenue"
               title="Son yapılan tahsilat işlemini geri al ve tutarı tekrar aktif bakiyeye dahil et"
               @click="handleUndoSettle(historyVenue.id)"
@@ -1764,139 +1792,351 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Görünüm Seçimi (Tüm Geçmiş Kayıtlar vs Seçili Dönem) -->
-        <div class="flex items-center justify-between gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
-          <button
-            type="button"
-            :class="[
-              'flex-1 py-1.5 px-3 rounded-md font-semibold transition-all text-center flex items-center justify-center gap-1.5',
-              historyViewMode === 'all'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            ]"
-            @click="historyViewMode = 'all'"
-          >
-            <Calendar class="w-3.5 h-3.5 text-emerald-600" />
-            <span>Tüm Geçmiş Kayıtlar ({{ historyVenue?.allDailyBreakdown?.length || 0 }} Gün)</span>
-          </button>
-          <button
-            type="button"
-            :class="[
-              'flex-1 py-1.5 px-3 rounded-md font-semibold transition-all text-center flex items-center justify-center gap-1.5',
-              historyViewMode === 'filtered'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            ]"
-            @click="historyViewMode = 'filtered'"
-          >
-            <Filter class="w-3.5 h-3.5 text-sky-600" />
-            <span>Seçili Dönem ({{ activePeriodLabel }})</span>
-          </button>
-        </div>
+        <!-- Görünüm Seçimi & Kontroller -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <!-- Dönem Filtre Butonları -->
+          <div class="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs flex-1">
+            <button
+              type="button"
+              :class="[
+                'flex-1 py-1.5 px-3 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
+                historyViewMode === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              ]"
+              @click="historyViewMode = 'all'"
+            >
+              <Calendar class="w-3.5 h-3.5 text-emerald-600" />
+              <span>Tüm Geçmiş ({{ historyVenue?.allDailyBreakdown?.length || 0 }} Gün)</span>
+            </button>
+            <button
+              type="button"
+              :class="[
+                'flex-1 py-1.5 px-3 rounded-lg font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
+                historyViewMode === 'filtered'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              ]"
+              @click="historyViewMode = 'filtered'"
+            >
+              <Filter class="w-3.5 h-3.5 text-sky-600" />
+              <span>Seçili Dönem ({{ activePeriodLabel }})</span>
+            </button>
+          </div>
 
-        <!-- Günlük Döküm Tablosu (Tahsilat Durumu Kolonlu) -->
-        <div v-if="activeHistoryBreakdown && activeHistoryBreakdown.length > 0" class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-              <tr>
-                <th class="px-3 py-2.5">Tarih</th>
-                <th class="px-3 py-2.5 text-right text-emerald-800 dark:text-emerald-400">İç Mekan</th>
-                <th class="px-3 py-2.5 text-right text-sky-800 dark:text-sky-400">Dış Mekan</th>
-                <th class="px-3 py-2.5 text-right">Toplam Paket</th>
-                <th class="px-3 py-2.5 text-right text-slate-900 dark:text-slate-100">Toplam Tutar</th>
-                <th class="px-3 py-2.5 text-center">Durum</th>
-                <th class="px-3 py-2.5 text-center">İşlem</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-              <tr
-                v-for="day in activeHistoryBreakdown"
-                :key="day.date"
-                class="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors font-mono"
+          <!-- Sağ Taraf: Tarih Arama + Tablo/Kart Geçişi -->
+          <div class="flex items-center gap-2 self-end sm:self-auto">
+            <!-- Tarih Hızlı Arama -->
+            <div class="relative w-32 sm:w-36">
+              <Search class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                v-model="historySearchQuery"
+                type="text"
+                placeholder="Tarih ara..."
+                class="w-full pl-8 pr-2 py-1.5 rounded-xl text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <!-- Tablo / Kart Görünüm Butonları -->
+            <div class="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs">
+              <button
+                type="button"
+                :class="[
+                  'px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                  historyDisplayMode === 'table'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                ]"
+                title="Genişletilmiş Tablo Görünümü"
+                @click="historyDisplayMode = 'table'"
               >
-                <td class="px-3 py-2.5 font-sans font-semibold text-slate-900 dark:text-slate-100">
-                  {{ day.date }}
-                </td>
-                <td class="px-3 py-2.5 text-right text-emerald-700 dark:text-emerald-400">
-                  <span>{{ day.indoorCount }} Paket</span>
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ day.indoorAmount.toFixed(2) }} ₺)</span>
-                </td>
-                <td class="px-3 py-2.5 text-right text-sky-700 dark:text-sky-400">
-                  <span>{{ day.outdoorCount }} Paket</span>
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ day.outdoorAmount.toFixed(2) }} ₺)</span>
-                </td>
-                <td class="px-3 py-2.5 text-right font-bold text-slate-900 dark:text-slate-100">
-                  {{ day.totalCount }} Adet
-                </td>
-                <td class="px-3 py-2.5 text-right font-bold text-emerald-700 dark:text-emerald-400">
-                  {{ day.totalAmount.toFixed(2) }} ₺
-                </td>
-                <td class="px-3 py-2.5 text-center font-sans">
-                  <span
-                    v-if="day.isSettled"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                  >
-                    <CheckCircle2 class="w-2.5 h-2.5" />
-                    Tahsil Edildi
-                  </span>
-                  <span
-                    v-else
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                  >
-                    <Clock class="w-2.5 h-2.5" />
-                    Bekliyor
-                  </span>
-                </td>
-                <td class="px-3 py-2.5 text-center font-sans">
-                  <button
-                    v-if="!day.isSettled"
-                    type="button"
-                    class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs cursor-pointer"
-                    title="Bu tarihteki paket sayılarını güncelle"
-                    @click="editDayFromHistory(day.date)"
-                  >
-                    <Edit2 class="w-3 h-3" />
-                    <span>Güncelle</span>
-                  </button>
-                  <span
-                    v-else
-                    class="text-[10px] text-slate-400 font-sans italic"
-                  >
-                    Kilitli
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-            <tfoot class="bg-slate-900 text-white font-mono text-xs">
-              <tr>
-                <td class="px-3 py-2.5 font-bold font-sans">DÖKÜM TOPLAMI</td>
-                <td class="px-3 py-2.5 text-right text-emerald-400 font-bold">
-                  {{ activeHistoryIndoorCount }} Paket
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryIndoorAmount.toFixed(2) }} ₺)</span>
-                </td>
-                <td class="px-3 py-2.5 text-right text-sky-400 font-bold">
-                  {{ activeHistoryOutdoorCount }} Paket
-                  <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryOutdoorAmount.toFixed(2) }} ₺)</span>
-                </td>
-                <td class="px-3 py-2.5 text-right font-extrabold text-white">
-                  {{ activeHistoryTotalCount }} Adet
-                </td>
-                <td class="px-3 py-2.5 text-right font-extrabold text-emerald-400 text-sm">
-                  {{ activeHistoryTotalAmount.toFixed(2) }} ₺
-                </td>
-                <td class="px-3 py-2.5 text-center text-[10px] font-sans text-slate-400">
-                  Genel Kayıt
-                </td>
-                <td class="px-3 py-2.5 text-center text-[10px] font-sans text-slate-400">
-                  —
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                <Table class="w-3.5 h-3.5" />
+                <span class="hidden sm:inline">Tablo</span>
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                  historyDisplayMode === 'cards'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                ]"
+                title="Mobil Kart Görünümü"
+                @click="historyDisplayMode = 'cards'"
+              >
+                <LayoutGrid class="w-3.5 h-3.5" />
+                <span class="hidden sm:inline">Kartlar</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div v-else class="text-center py-6 text-slate-500 text-xs bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800">
-          Bu dönem için mekana ait paket teslimat kaydı bulunmuyor.
+        <!-- 1. TABLO GÖRÜNÜMÜ (Responsive Yatay Kaydırmalı, Asla Kırılmaz) -->
+        <div
+          v-if="activeHistoryBreakdown && activeHistoryBreakdown.length > 0 && historyDisplayMode === 'table'"
+          class="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs"
+        >
+          <div class="overflow-x-auto max-h-[55vh] scrollbar-thin">
+            <table class="w-full min-w-[680px] text-left text-xs border-collapse">
+              <thead class="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                <tr>
+                  <th class="px-4 py-3 whitespace-nowrap">Tarih</th>
+                  <th class="px-4 py-3 text-right text-emerald-800 dark:text-emerald-400 whitespace-nowrap">İç Mekan</th>
+                  <th class="px-4 py-3 text-right text-sky-800 dark:text-sky-400 whitespace-nowrap">Dış Mekan</th>
+                  <th class="px-4 py-3 text-right whitespace-nowrap">Toplam Paket</th>
+                  <th class="px-4 py-3 text-right text-slate-900 dark:text-slate-100 whitespace-nowrap">Toplam Tutar</th>
+                  <th class="px-4 py-3 text-center whitespace-nowrap">Durum</th>
+                  <th class="px-4 py-3 text-center whitespace-nowrap">İşlem</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80 font-mono">
+                <tr
+                  v-for="day in activeHistoryBreakdown"
+                  :key="day.date"
+                  class="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <!-- 1. Tarih -->
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <Calendar class="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span class="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs block">
+                          {{ day.date }}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-sans block">
+                          {{ formatHistoryDayName(day.date) }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- 2. İç Mekan -->
+                  <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <div class="inline-flex flex-col items-end">
+                      <span class="px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                        {{ day.indoorCount }} Paket
+                      </span>
+                      <span class="text-[10px] font-mono text-slate-400 mt-0.5">
+                        ({{ day.indoorAmount.toFixed(2) }} ₺)
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- 3. Dış Mekan -->
+                  <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <div class="inline-flex flex-col items-end">
+                      <span class="px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
+                        {{ day.outdoorCount }} Paket
+                      </span>
+                      <span class="text-[10px] font-mono text-slate-400 mt-0.5">
+                        ({{ day.outdoorAmount.toFixed(2) }} ₺)
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- 4. Toplam Paket -->
+                  <td class="px-4 py-3 text-right whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-extrabold text-slate-900 dark:text-slate-100 text-xs border border-slate-200/80 dark:border-slate-700/80">
+                      <Package class="w-3 h-3 text-slate-500" />
+                      <span>{{ day.totalCount }} Adet</span>
+                    </span>
+                  </td>
+
+                  <!-- 5. Toplam Tutar -->
+                  <td class="px-4 py-3 text-right whitespace-nowrap font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                    {{ day.totalAmount.toFixed(2) }} ₺
+                  </td>
+
+                  <!-- 6. Durum -->
+                  <td class="px-4 py-3 text-center whitespace-nowrap font-sans">
+                    <span
+                      v-if="day.isSettled"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
+                    >
+                      <CheckCircle2 class="w-3 h-3 text-emerald-600" />
+                      <span>Tahsil Edildi</span>
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80"
+                    >
+                      <Clock class="w-3 h-3 text-amber-600" />
+                      <span>Bekliyor</span>
+                    </span>
+                  </td>
+
+                  <!-- 7. İşlem -->
+                  <td class="px-4 py-3 text-center whitespace-nowrap font-sans">
+                    <button
+                      v-if="!day.isSettled"
+                      type="button"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                      title="Bu tarihteki paket sayılarını güncelle"
+                      @click="editDayFromHistory(day.date)"
+                    >
+                      <Edit2 class="w-3 h-3" />
+                      <span>Güncelle</span>
+                    </button>
+                    <span
+                      v-else
+                      class="text-[11px] text-slate-400 font-sans italic"
+                    >
+                      Kilitli
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot class="sticky bottom-0 z-10 bg-slate-900 text-white font-mono text-xs border-t-2 border-slate-700">
+                <tr>
+                  <td class="px-4 py-3 font-bold font-sans whitespace-nowrap">DÖKÜM TOPLAMI</td>
+                  <td class="px-4 py-3 text-right text-emerald-400 font-bold whitespace-nowrap">
+                    <div>{{ activeHistoryIndoorCount }} Paket</div>
+                    <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryIndoorAmount.toFixed(2) }} ₺)</span>
+                  </td>
+                  <td class="px-4 py-3 text-right text-sky-400 font-bold whitespace-nowrap">
+                    <div>{{ activeHistoryOutdoorCount }} Paket</div>
+                    <span class="text-[10px] text-slate-400 block font-sans">({{ activeHistoryOutdoorAmount.toFixed(2) }} ₺)</span>
+                  </td>
+                  <td class="px-4 py-3 text-right font-extrabold text-white whitespace-nowrap">
+                    {{ activeHistoryTotalCount }} Adet
+                  </td>
+                  <td class="px-4 py-3 text-right font-extrabold text-emerald-400 text-sm whitespace-nowrap">
+                    {{ activeHistoryTotalAmount.toFixed(2) }} ₺
+                  </td>
+                  <td class="px-4 py-3 text-center text-[10.5px] font-sans text-slate-300 whitespace-nowrap">
+                    Genel Kayıt
+                  </td>
+                  <td class="px-4 py-3 text-center text-slate-500 whitespace-nowrap">
+                    —
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. KART GÖRÜNÜMÜ (Mobil Dostu & Kompakt) -->
+        <div
+          v-else-if="activeHistoryBreakdown && activeHistoryBreakdown.length > 0 && historyDisplayMode === 'cards'"
+          class="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1 scrollbar-thin"
+        >
+          <div
+            v-for="day in activeHistoryBreakdown"
+            :key="day.date"
+            class="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700/60 shadow-2xs transition-all space-y-2.5"
+          >
+            <!-- Kart Üst Bar: Tarih & Durum & Güncelle -->
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <Calendar class="w-4 h-4" />
+                </div>
+                <div>
+                  <span class="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm block">
+                    {{ day.date }}
+                  </span>
+                  <span class="text-[11px] text-slate-400 font-sans block">
+                    {{ formatHistoryDayName(day.date) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <!-- Durum Rozeti -->
+                <span
+                  v-if="day.isSettled"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                >
+                  <CheckCircle2 class="w-3 h-3 text-emerald-600" />
+                  <span>Tahsil Edildi</span>
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                >
+                  <Clock class="w-3 h-3 text-amber-600" />
+                  <span>Bekliyor</span>
+                </span>
+
+                <!-- Güncelle Butonu -->
+                <button
+                  v-if="!day.isSettled"
+                  type="button"
+                  class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                  title="Güncelle"
+                  @click="editDayFromHistory(day.date)"
+                >
+                  <Edit2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <!-- 3 Kolonlu Metrik Kutucukları -->
+            <div class="grid grid-cols-3 gap-2 text-center font-mono">
+              <!-- İç Mekan -->
+              <div class="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+                <span class="text-[9.5px] font-sans font-bold text-emerald-800 dark:text-emerald-300 block uppercase">İç Mekan</span>
+                <div class="font-extrabold text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 mt-0.5">
+                  {{ day.indoorCount }} Pkt
+                </div>
+                <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {{ day.indoorAmount.toFixed(2) }} ₺
+                </div>
+              </div>
+
+              <!-- Dış Mekan -->
+              <div class="p-2 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50">
+                <span class="text-[9.5px] font-sans font-bold text-sky-800 dark:text-sky-300 block uppercase">Dış Mekan</span>
+                <div class="font-extrabold text-xs sm:text-sm text-sky-900 dark:text-sky-200 mt-0.5">
+                  {{ day.outdoorCount }} Pkt
+                </div>
+                <div class="text-[10px] text-sky-600 dark:text-sky-400 mt-0.5">
+                  {{ day.outdoorAmount.toFixed(2) }} ₺
+                </div>
+              </div>
+
+              <!-- Toplam Tutar -->
+              <div class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                <span class="text-[9.5px] font-sans font-bold text-slate-600 dark:text-slate-300 block uppercase">Toplam ({{ day.totalCount }} Adet)</span>
+                <div class="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 mt-0.5">
+                  {{ day.totalAmount.toFixed(2) }} ₺
+                </div>
+                <div class="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-sans mt-0.5 font-bold">
+                  Hakediş
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kart Görünümü Toplam Özeti -->
+          <div class="p-3.5 rounded-2xl bg-slate-900 text-white font-mono shadow-md space-y-2.5">
+            <div class="flex items-center justify-between text-xs font-sans font-bold">
+              <span class="text-slate-300">DÖKÜM TOPLAMI</span>
+              <span class="text-emerald-400 font-mono text-base font-black">{{ activeHistoryTotalAmount.toFixed(2) }} ₺</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-slate-800">
+              <div>
+                <span class="text-[10px] text-slate-400 block font-sans">İç Mekan</span>
+                <span class="text-emerald-400 font-bold">{{ activeHistoryIndoorCount }} Pkt ({{ activeHistoryIndoorAmount.toFixed(2) }} ₺)</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block font-sans">Dış Mekan</span>
+                <span class="text-sky-400 font-bold">{{ activeHistoryOutdoorCount }} Pkt ({{ activeHistoryOutdoorAmount.toFixed(2) }} ₺)</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block font-sans">Toplam Paket</span>
+                <span class="text-white font-black">{{ activeHistoryTotalCount }} Adet</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="text-center py-8 text-slate-500 text-xs bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+          <Calendar class="w-8 h-8 text-slate-400 mx-auto opacity-40 mb-1" />
+          <p class="font-semibold text-slate-700 dark:text-slate-300">Teslimat Kaydı Bulunamadı</p>
+          <p class="text-[11px] text-slate-400">Bu dönem veya arama kriterine uygun mekana ait paket teslimat kaydı bulunmuyor.</p>
         </div>
 
         <div class="pt-2 flex items-center justify-between">
