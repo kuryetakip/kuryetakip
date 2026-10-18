@@ -35,25 +35,39 @@ const isCopied = ref(false)
 const localPhone = ref('')
 const selectedScope = ref<'weekly' | 'lastWeek' | 'pending' | 'daily'>('weekly')
 
-// Load remembered phone from localStorage when modal opens
+// Load phone from venue record (database) or localStorage when modal opens
 watch(
   () => props.venue,
   (v) => {
-    if (v && typeof window !== 'undefined') {
-      const savedPhone = localStorage.getItem(`venue_phone_${v.id}`) || ''
-      localPhone.value = savedPhone
+    if (v) {
+      const savedPhone = (typeof window !== 'undefined' ? localStorage.getItem(`venue_phone_${v.id}`) : '') || ''
+      localPhone.value = v.phone || savedPhone || ''
     }
     selectedScope.value = 'weekly'
   },
   { immediate: true }
 )
 
-const onPhoneInput = () => {
-  if (props.venue && typeof window !== 'undefined') {
-    if (localPhone.value.trim()) {
-      localStorage.setItem(`venue_phone_${props.venue.id}`, localPhone.value.trim())
+const savePhoneToSystem = async () => {
+  if (props.venue && localPhone.value.trim()) {
+    const trimmed = localPhone.value.trim()
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`venue_phone_${props.venue.id}`, trimmed)
+    }
+    try {
+      await $fetch(`/api/venues/${props.venue.id}`, {
+        method: 'PUT',
+        body: { phone: trimmed }
+      })
+      props.venue.phone = trimmed
+    } catch {
+      // Non-blocking background sync
     }
   }
+}
+
+const onPhoneInput = () => {
+  savePhoneToSystem()
 }
 
 // Turkish day name helper
@@ -276,6 +290,7 @@ const handleCopy = async () => {
 }
 
 const handleOpenWhatsApp = () => {
+  savePhoneToSystem()
   if (typeof window !== 'undefined') {
     window.open(shareUrl.value, '_blank', 'noopener,noreferrer')
     toast.success('WhatsApp açılıyor...')

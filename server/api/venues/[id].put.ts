@@ -37,6 +37,10 @@ export default defineEventHandler(async (event) => {
       dataToUpdate.name = name
     }
 
+    if (body?.phone !== undefined) {
+      dataToUpdate.phone = body.phone ? String(body.phone).trim() : null
+    }
+
     let finalIndoorPrice = Number(existing.indoorPrice)
     let finalOutdoorPrice = Number(existing.outdoorPrice)
 

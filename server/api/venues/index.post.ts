@@ -5,6 +5,7 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
 
     const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const phone = typeof body?.phone === 'string' ? body.phone.trim() : null
     const parsePrice = (val: any) => {
       if (val === undefined || val === null || val === '') return 0
       const n = Number(String(val).replace(',', '.'))
@@ -40,10 +41,11 @@ export default defineEventHandler(async (event) => {
     const venue = await prisma.venue.create({
       data: {
         name,
+        phone: phone || null,
         indoorPrice: new Prisma.Decimal(indoorPriceNum.toFixed(2)),
         outdoorPrice: new Prisma.Decimal(outdoorPriceNum.toFixed(2)),
         isActive
-      }
+      } as any
     })
 
     // If daily delivery records are provided with the venue

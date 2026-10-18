@@ -16,6 +16,7 @@ export interface VenueDailyStat {
 export interface VenueItem {
   id: string
   name: string
+  phone?: string | null
   indoorPrice: number
   outdoorPrice: number
   isActive: boolean
@@ -54,6 +55,7 @@ export interface VenueItem {
 
 export interface VenueFormData {
   name: string
+  phone?: string
   indoorPrice: number | string
   outdoorPrice: number | string
   isActive: boolean

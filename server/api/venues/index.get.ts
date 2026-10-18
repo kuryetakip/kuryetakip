@@ -242,6 +242,7 @@ export default defineEventHandler(async (event) => {
       return {
         id: v.id,
         name: v.name,
+        phone: (v as any).phone || null,
         indoorPrice: Number(v.indoorPrice),
         outdoorPrice: Number(v.outdoorPrice),
         isActive: v.isActive,
