@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     const targetDate = (y && m && d) ? new Date(Date.UTC(y, m - 1, d)) : null
 
     // Monday 03:00 boundary for weekly cycle reset
-    const cycleStartBoundary = getCurrentCycleStart(new Date())
+    const { cycleStartUtc, mondayDateStr } = getCurrentCycleStart(new Date())
 
     const couriers = await prisma.courier.findMany({
       where,
@@ -102,9 +102,13 @@ export default defineEventHandler(async (event) => {
           ? Number(rec.courierTotalAmount)
           : Number(rec.totalAmount || 0)
 
+        const recDateStr = rec.date instanceof Date
+          ? rec.date.toISOString().substring(0, 10)
+          : String(rec.date).substring(0, 10)
+
         // Record timestamp checking for Monday 03:00 reset
         const recCreatedAt = rec.createdAt ? new Date(rec.createdAt) : (rec.date instanceof Date ? rec.date : new Date(rec.date))
-        const isWithinCurrentCycle = recCreatedAt >= cycleStartBoundary
+        const isWithinCurrentCycle = recCreatedAt >= cycleStartUtc || recDateStr >= mondayDateStr
 
         if (isWithinCurrentCycle) {
           weeklyEarnings += amount
@@ -126,11 +130,6 @@ export default defineEventHandler(async (event) => {
             cycleOutdoorAmount += amount
           }
         }
-
-        // Daily filter match for the selected dateStr
-        const recDateStr = rec.date instanceof Date
-          ? rec.date.toISOString().substring(0, 10)
-          : String(rec.date).substring(0, 10)
 
         if (recDateStr === dateStr) {
           if (rec.deliveryType === 'INDOOR') {
@@ -168,8 +167,10 @@ export default defineEventHandler(async (event) => {
       const todayTotalPackages = todayIndoorPackages + todayOutdoorPackages
       const todayTotalAmount = Number((todayIndoorAmount + todayOutdoorAmount).toFixed(2))
 
-      // Haftalık sıfırlanan toplam paket
-      const weeklyTotalPackages = weeklyIndoorPackages + weeklyOutdoorPackages
+      // Haftalık sıfırlanan toplam paket (Aktif döngü ile yedekli)
+      const effectiveWeeklyIndoor = weeklyIndoorPackages > 0 ? weeklyIndoorPackages : cycleIndoorPackages
+      const effectiveWeeklyOutdoor = weeklyOutdoorPackages > 0 ? weeklyOutdoorPackages : cycleOutdoorPackages
+      const weeklyTotalPackages = effectiveWeeklyIndoor + effectiveWeeklyOutdoor
 
       // Aktif hakediş döngüsü paket ve tutarları
       const cumulativeTotalPackages = cycleIndoorPackages + cycleOutdoorPackages
@@ -216,8 +217,8 @@ export default defineEventHandler(async (event) => {
         todayIndoorAmount: Number(todayIndoorAmount.toFixed(2)),
         todayOutdoorAmount: Number(todayOutdoorAmount.toFixed(2)),
         todayTotalAmount,
-        weeklyIndoorPackages,
-        weeklyOutdoorPackages,
+        weeklyIndoorPackages: effectiveWeeklyIndoor,
+        weeklyOutdoorPackages: effectiveWeeklyOutdoor,
         weeklyTotalPackages,
         weeklyEarnings: Number(weeklyEarnings.toFixed(2)),
         allTimeTotalPackages,

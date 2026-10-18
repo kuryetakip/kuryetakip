@@ -1400,9 +1400,9 @@ onUnmounted(() => {
                   <!-- Haftalık İç Mekan Paketi (Pazartesi 03:00 sıfırlanır) -->
                   <span
                     class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 group-hover/cell:shadow-xs transition-all"
-                    :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages || 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
+                    :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
                   >
-                    {{ courier.weeklyIndoorPackages || 0 }} Paket
+                    {{ courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0 }} Paket
                   </span>
                   <!-- Seçilen Gün İç Mekan -->
                   <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
@@ -1421,9 +1421,9 @@ onUnmounted(() => {
                   <!-- Haftalık Dış Mekan Paketi (Pazartesi 03:00 sıfırlanır) -->
                   <span
                     class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono font-bold text-xs border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 group-hover/cell:shadow-xs transition-all"
-                    :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages || 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
+                    :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
                   >
-                    {{ courier.weeklyOutdoorPackages || 0 }} Paket
+                    {{ courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0 }} Paket
                   </span>
                   <!-- Seçilen Gün Dış Mekan -->
                   <span class="text-[10px] text-sky-600 dark:text-sky-400 font-mono font-medium">
@@ -1444,11 +1444,11 @@ onUnmounted(() => {
                   <div class="flex items-center justify-end gap-1 mt-1 flex-wrap">
                     <span
                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-sans font-bold text-[10px] border border-emerald-500/30 dark:border-emerald-800/80 cursor-pointer hover:border-emerald-400 shadow-2xs transition-colors"
-                      :title="`Haftalık Toplam: ${courier.weeklyTotalPackages ?? 0} Paket | İç: ${courier.weeklyIndoorPackages || 0} | Dış: ${courier.weeklyOutdoorPackages || 0} (Pazartesi 03:00'te sıfırlanır)`"
+                      :title="`Haftalık Toplam: ${courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0} Paket | İç: ${courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0} | Dış: ${courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0} (Pazartesi 03:00'te sıfırlanır)`"
                       @click="openQuickDeliveryModal(courier)"
                     >
                       <Package class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>{{ courier.weeklyTotalPackages ?? 0 }} Paket</span>
+                      <span>{{ (courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0) }} Paket</span>
                     </span>
 
                     <span
@@ -1464,12 +1464,12 @@ onUnmounted(() => {
                   <div class="flex items-center justify-end gap-2 mt-0.5">
                     <span class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400">
                       <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      İç: {{ courier.weeklyIndoorPackages || 0 }}
+                      İç: {{ courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0 }}
                     </span>
                     <span class="text-slate-300 dark:text-slate-600 text-[10px]">·</span>
                     <span class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-sky-700 dark:text-sky-400">
                       <span class="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></span>
-                      Dış: {{ courier.weeklyOutdoorPackages || 0 }}
+                      Dış: {{ courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0 }}
                     </span>
                   </div>
 
@@ -1897,7 +1897,7 @@ onUnmounted(() => {
             >
               <span class="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 block uppercase">İç Mekan</span>
               <div class="font-mono font-bold text-sm text-emerald-900 dark:text-emerald-200 mt-0.5">
-                {{ courier.weeklyIndoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
               <div class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
                 Bugün: {{ courier.todayIndoorPackages || 0 }}
@@ -1911,7 +1911,7 @@ onUnmounted(() => {
             >
               <span class="text-[10px] font-semibold text-sky-800 dark:text-sky-300 block uppercase">Dış Mekan</span>
               <div class="font-mono font-bold text-sm text-sky-900 dark:text-sky-200 mt-0.5">
-                {{ courier.weeklyOutdoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
               <div class="text-[10px] font-mono text-sky-600 dark:text-sky-400 mt-0.5">
                 Bugün: {{ courier.todayOutdoorPackages || 0 }}
@@ -1921,7 +1921,7 @@ onUnmounted(() => {
             <!-- Toplam Hakediş (Kümülatif Hakediş ve Toplam Paket) -->
             <div
               class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 transition-colors"
-              :title="`Haftalık: ${courier.weeklyTotalPackages ?? 0} Pkt (İç: ${courier.weeklyIndoorPackages || 0} + Dış: ${courier.weeklyOutdoorPackages || 0})`"
+              :title="`Haftalık: ${courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0} Pkt (İç: ${courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0} + Dış: ${courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0})`"
               @click="openQuickDeliveryModal(courier)"
             >
               <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block uppercase">Toplam Hakediş</span>
@@ -1929,7 +1929,7 @@ onUnmounted(() => {
                 {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }} ₺
               </div>
               <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-bold">
-                {{ courier.weeklyTotalPackages ?? 0 }} Pkt
+                {{ courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0 }} Pkt
               </div>
             </div>
           </div>
