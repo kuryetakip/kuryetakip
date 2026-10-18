@@ -28,7 +28,8 @@ import {
   CreditCard,
   Banknote,
   LayoutGrid,
-  Table
+  Table,
+  MessageSquare
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 
@@ -448,6 +449,16 @@ const activeHistoryOutdoorCount = computed(() => {
 const activeHistoryOutdoorAmount = computed(() => {
   return activeHistoryBreakdown.value.reduce((sum, d) => sum + (d.outdoorAmount || 0), 0)
 })
+
+// WhatsApp Haftalık Rapor Modal Durumu
+const isVenueWhatsAppModalOpen = ref(false)
+const venueWhatsAppTarget = ref<VenueItem | null>(null)
+
+const openVenueWhatsAppModal = (venue?: VenueItem | null) => {
+  if (!venue) return
+  venueWhatsAppTarget.value = venue
+  isVenueWhatsAppModalOpen.value = true
+}
 
 const openAddModal = () => {
   isEditing.value = false
@@ -1320,6 +1331,20 @@ onMounted(() => {
                   </template>
                 </BaseButton>
 
+                <!-- WhatsApp Haftalık Alacak / Verecek Rapor Butonu -->
+                <BaseButton
+                  variant="outline"
+                  size="sm"
+                  class="!text-xs !py-1.5 !px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95"
+                  :title="`${venue.name} için haftalık alacak/verecek ve teslimat raporunu WhatsApp ile gönder`"
+                  @click="openVenueWhatsAppModal(venue)"
+                >
+                  <template #leading>
+                    <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  </template>
+                  WhatsApp
+                </BaseButton>
+
                 <!-- Paket Gir Butonu -->
                 <BaseButton
                   variant="outline"
@@ -1866,6 +1891,18 @@ onMounted(() => {
                 <span class="hidden sm:inline">Kartlar</span>
               </button>
             </div>
+
+            <!-- WhatsApp Rapor Butonu -->
+            <button
+              v-if="venueForHistory"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+              title="Bu mekanın haftalık alacak/verecek ve teslimat raporunu WhatsApp ile paylaş"
+              @click="openVenueWhatsAppModal(venueForHistory)"
+            >
+              <MessageSquare class="w-3.5 h-3.5" />
+              <span class="hidden sm:inline">WhatsApp Raporu</span>
+            </button>
           </div>
         </div>
 
@@ -2500,6 +2537,12 @@ onMounted(() => {
     <VenueCollectionsReportModal
       v-model="isCollectionsReportModalOpen"
       :initial-venue-id="selectedVenueIdForReport"
+    />
+
+    <!-- Mekan Haftalık Alacak / Verecek WhatsApp Paylaşım Modalı -->
+    <VenueWhatsAppShareModal
+      v-model="isVenueWhatsAppModalOpen"
+      :venue="venueWhatsAppTarget"
     />
   </div>
 </template>
