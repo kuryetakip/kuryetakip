@@ -3,7 +3,8 @@ import { onMounted, onUnmounted, watch, computed } from 'vue'
 import { X } from 'lucide-vue-next'
 
 interface Props {
-  modelValue: boolean
+  modelValue?: boolean
+  isOpen?: boolean
   title?: string
   description?: string
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -13,9 +14,12 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
+  isOpen: undefined,
   maxWidth: 'md',
   persistent: false
 })
+
+const isVisible = computed(() => (props.isOpen !== undefined ? props.isOpen : props.modelValue))
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
@@ -34,12 +38,12 @@ const onBackdropClick = () => {
 }
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && props.modelValue && !props.persistent) {
+  if (e.key === 'Escape' && isVisible.value && !props.persistent) {
     close()
   }
 }
 
-watch(() => props.modelValue, (isOpen) => {
+watch(isVisible, (isOpen) => {
   if (import.meta.client) {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -92,20 +96,20 @@ const maxWidthClasses = computed(() => {
       leave-to-class="opacity-0"
     >
       <div
-        v-if="modelValue"
-        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+        v-if="isVisible"
+        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
         @click="onBackdropClick"
       >
         <Transition
-          enter-active-class="transition duration-200 ease-out"
-          enter-from-class="transform scale-95 opacity-0 translate-y-2"
+          enter-active-class="transition duration-250 cubic-bezier(0.16, 1, 0.3, 1)"
+          enter-from-class="transform scale-95 opacity-0 translate-y-3"
           enter-to-class="transform scale-100 opacity-100 translate-y-0"
           leave-active-class="transition duration-150 ease-in"
           leave-from-class="transform scale-100 opacity-100 translate-y-0"
-          leave-to-class="transform scale-95 opacity-0 translate-y-2"
+          leave-to-class="transform scale-95 opacity-0 translate-y-3"
         >
           <div
-            class="w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-150"
+            class="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-150"
             :class="maxWidthClasses"
             @click.stop
           >

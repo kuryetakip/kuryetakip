@@ -165,8 +165,8 @@ export default defineEventHandler(async (event) => {
     const remainingBalance = Number((netDue - payoutAmount).toFixed(2))
 
     const now = new Date()
-    const startDate = unsettledRecords.length > 0 ? unsettledRecords[0].date : now
-    const endDate = unsettledRecords.length > 0 ? unsettledRecords[unsettledRecords.length - 1].date : now
+    const startDate = unsettledRecords[0]?.date ?? now
+    const endDate = unsettledRecords[unsettledRecords.length - 1]?.date ?? now
 
     const result = await prisma.$transaction(async (tx) => {
       // Teslimat kayıtlarını kapat

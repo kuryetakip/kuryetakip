@@ -11,10 +11,7 @@ import {
   Store,
   Plus,
   Trash2,
-  Tag,
-  AlertCircle,
-  TrendingDown,
-  Info
+  Tag
 } from 'lucide-vue-next'
 import { useCouriers, type CourierFormData, type CourierPriceFormData, type CourierVenuePriceItem } from '~/composables/useCouriers'
 import { useVenues, type VenueItem } from '~/composables/useVenues'
@@ -123,10 +120,11 @@ const handleCourierSubmit = async () => {
 const openAddPriceModal = () => {
   isEditingPrice.value = false
   selectedPriceId.value = null
+  const firstVenue = availableVenues.value[0]
   priceFormData.value = {
-    venueId: availableVenues.value.length > 0 ? availableVenues.value[0].id : '',
-    indoorPrice: availableVenues.value.length > 0 ? availableVenues.value[0].indoorPrice : '',
-    outdoorPrice: availableVenues.value.length > 0 ? availableVenues.value[0].outdoorPrice : ''
+    venueId: firstVenue?.id || '',
+    indoorPrice: firstVenue?.indoorPrice ?? '',
+    outdoorPrice: firstVenue?.outdoorPrice ?? ''
   }
   priceFormErrors.value = {}
   isPriceModalOpen.value = true
@@ -269,38 +267,38 @@ onMounted(async () => {
     <!-- Main Content -->
     <div v-else class="space-y-6">
       <!-- Profile & Basic Info Card -->
-      <BaseCard>
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div class="flex items-start sm:items-center gap-4">
-            <div class="w-14 h-14 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Bike class="w-7 h-7 text-emerald-400 dark:text-white" />
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-950/20">
+              <Bike class="w-7 h-7 text-white" />
             </div>
             <div>
               <div class="flex items-center gap-2.5">
-                <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                   {{ currentCourier.name }}
                 </h2>
                 <BaseBadge :variant="currentCourier.isActive ? 'success' : 'neutral'" dot>
                   {{ currentCourier.isActive ? 'Aktif Kurye' : 'Pasif Kurye' }}
                 </BaseBadge>
               </div>
-              <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+              <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-2">
                 <div class="flex items-center gap-1.5">
                   <Phone class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                  <span>{{ currentCourier.phone || 'Telefon belirtilmedi' }}</span>
+                  <span class="font-mono">{{ currentCourier.phone || 'Telefon belirtilmedi' }}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <Calendar class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span>Kayıt: {{ formatDate(currentCourier.createdAt) }}</span>
                 </div>
-                <div v-if="Number(currentCourier.indoorPrice) > 0 || Number(currentCourier.outdoorPrice) > 0" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-mono text-[11px] font-semibold">
+                <div v-if="Number(currentCourier.indoorPrice) > 0 || Number(currentCourier.outdoorPrice) > 0" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-mono text-[11px] font-semibold">
                   <span>Varsayılan: İç {{ Number(currentCourier.indoorPrice || 0).toFixed(2) }} ₺ / Dış {{ Number(currentCourier.outdoorPrice || 0).toFixed(2) }} ₺</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- Section: Mekan Özel Fiyatlandırması (CourierVenuePrice) -->
       <div class="space-y-4">

@@ -47,6 +47,7 @@ const {
   updateVenue,
   toggleVenueStatus,
   settleVenue,
+  clearCarriedBalance,
   deleteVenue
 } = useVenues()
 
@@ -57,6 +58,18 @@ const currentVenueId = ref<string | null>(null)
 const isConfirmDeleteOpen = ref(false)
 const venueToDelete = ref<VenueItem | null>(null)
 const isDailyReportModalOpen = ref(false)
+const isCollectionsReportModalOpen = ref(false)
+const selectedVenueIdForReport = ref<string | null>(null)
+
+const openCollectionsReportModal = (venueId?: string) => {
+  selectedVenueIdForReport.value = venueId || null
+  isCollectionsReportModalOpen.value = true
+}
+
+// Kalan Borcu Silme Onay Durumu
+const isClearCarriedModalOpen = ref(false)
+const venueToClearCarried = ref<VenueItem | null>(null)
+const clearingCarried = ref(false)
 
 // Settle / Tahsilat Modal State
 const isSettleModalOpen = ref(false)
@@ -694,6 +707,33 @@ const handleUndoSettle = async (venueId: string) => {
   }
 }
 
+const openClearCarriedModal = (venue: VenueItem) => {
+  venueToClearCarried.value = venue
+  isClearCarriedModalOpen.value = true
+}
+
+const openClearCarriedFromSettleModal = () => {
+  if (venueToSettle.value) {
+    const target = venueToSettle.value
+    isSettleModalOpen.value = false
+    openClearCarriedModal(target)
+  }
+}
+
+const handleConfirmClearCarried = async () => {
+  if (!venueToClearCarried.value) return
+  clearingCarried.value = true
+  try {
+    const ok = await clearCarriedBalance(venueToClearCarried.value.id)
+    if (ok) {
+      isClearCarriedModalOpen.value = false
+      venueToClearCarried.value = null
+    }
+  } finally {
+    clearingCarried.value = false
+  }
+}
+
 onMounted(() => {
   // Varsayılan olarak bekleyen tahsilatları göster (Otomatik sıfırlama YAPMA, manuel tahsilat ile sıfırlanır)
   setDateQuickFilter('pending')
@@ -738,6 +778,20 @@ onMounted(() => {
           Yenile
         </BaseButton>
 
+        <!-- Haftalık Tahsilat Geçmişi & Raporu Butonu -->
+        <BaseButton
+          variant="outline"
+          size="md"
+          class="h-10 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 font-bold shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
+          title="Mekanlardan yapılan haftalık tahsilatları, nakit/havale kırılımlarını ve geçmiş kayıtları raporla"
+          @click="openCollectionsReportModal()"
+        >
+          <template #leading>
+            <Receipt class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </template>
+          Tahsilat Raporu & Geçmişi
+        </BaseButton>
+
         <!-- Gün Sonu Raporu Al Butonu -->
         <BaseButton
           variant="outline"
@@ -766,93 +820,93 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- KPI Summary Cards (Modern Fintech Dashboard Cards) -->
+    <!-- KPI Summary Cards (Modern Bento Fintech Cards) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Toplam Mekan Sayısı -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Kayıtlı Mekanlar
             </span>
-            <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/60">
               <Store class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-2 font-mono tracking-tight">
-            {{ totalVenuesCount }} <span class="text-sm font-semibold text-slate-400 font-sans">Mekan</span>
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalVenuesCount" :decimals="0" /> <span class="text-sm font-semibold text-slate-400 font-sans">Mekan</span>
           </div>
         </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span>Aktif Mekan:</span>
           <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            {{ activeVenuesCount }} Aktif
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <CountUp :value="activeVenuesCount" :decimals="0" /> Aktif
           </span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 2. Toplam Atılan Paket Sayısı -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between border-l-4 border-l-emerald-500 group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>Toplam Atılan Paket</span>
             </span>
-            <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/20">
               <Package class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-2 font-mono tracking-tight">
-            {{ totalPackagesAcrossVenues }} <span class="text-sm font-semibold font-sans">Adet</span>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalPackagesAcrossVenues" :decimals="0" /> <span class="text-sm font-semibold font-sans">Adet</span>
           </div>
         </div>
-        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span class="font-mono text-[11px]">İç: {{ totalIndoorPackages }} · Dış: {{ totalOutdoorPackages }}</span>
           <span class="font-mono font-bold">{{ totalPackagesAcrossVenues }} Pkt</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 3. İç Mekan / Dış Mekan Dağılımı -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between border-l-4 border-l-sky-500 group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-sky-500 shadow-xs flex flex-col justify-between group hover:border-sky-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-sky-800 dark:text-sky-300 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">
               Teslimat Türü Dağılımı
             </span>
-            <div class="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform border border-sky-500/20">
               <Layers class="w-4 h-4" />
             </div>
           </div>
-          <div class="mt-2 space-y-1.5">
+          <div class="mt-3 space-y-1.5">
             <div class="flex items-center justify-between text-xs">
               <span class="text-slate-600 dark:text-slate-400 font-medium">İç Mekan:</span>
-              <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">{{ totalIndoorPackages }} Paket</span>
+              <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60"><CountUp :value="totalIndoorPackages" :decimals="0" /> Paket</span>
             </div>
             <div class="flex items-center justify-between text-xs">
               <span class="text-slate-600 dark:text-slate-400 font-medium">Dış Mekan:</span>
-              <span class="font-mono font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-200/60 dark:border-sky-800/60">{{ totalOutdoorPackages }} Paket</span>
+              <span class="font-mono font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-200/60 dark:border-sky-800/60"><CountUp :value="totalOutdoorPackages" :decimals="0" /> Paket</span>
             </div>
           </div>
         </div>
-        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/60">
           Birim fiyatlar üzerinden anlık hesaplanır
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 4. Toplam Tutar / Hakediş (Tahsilat Durumu) -->
-      <BaseCard no-padding class="p-4 sm:p-5 bg-slate-900 dark:bg-slate-900 text-white border-slate-800 dark:border-slate-700 flex flex-col justify-between group hover:shadow-md transition-all duration-200">
+      <div class="bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white p-5 rounded-2xl border border-slate-800/90 shadow-xs flex flex-col justify-between group hover:border-emerald-500/50 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
               {{ currentFilterMode === 'pending' ? 'Bekleyen Tahsilat' : 'Toplam Ciro' }}
             </span>
-            <div class="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-slate-800/90 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-700/60">
               <Wallet class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-400 mt-2 font-mono tracking-tight">
-            {{ totalAmountAcrossVenues.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          <div class="text-2xl sm:text-3xl font-black text-emerald-400 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalAmountAcrossVenues" :decimals="2" /> ₺
           </div>
         </div>
         <div class="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
@@ -860,7 +914,7 @@ onMounted(() => {
           <span v-else>Aktif Dönem</span>
           <span class="font-mono text-emerald-300 font-bold">{{ totalPackagesAcrossVenues }} Paket</span>
         </div>
-      </BaseCard>
+      </div>
     </div>
 
     <!-- Search & Unified Action Toolbar -->
@@ -1033,28 +1087,28 @@ onMounted(() => {
             v-for="venue in filteredVenues"
             :key="venue.id"
             :class="[
-              'group transition-colors duration-150 border-b border-slate-100 dark:border-slate-800/60',
+              'group transition-all duration-200 border-b border-slate-100/80 dark:border-slate-800/60',
               venue.isActive
-                ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
-                : 'bg-slate-50/40 dark:bg-slate-900/30 opacity-70 hover:opacity-95'
+                ? 'hover:bg-slate-50/90 dark:hover:bg-slate-800/50'
+                : 'bg-slate-50/40 dark:bg-slate-900/30 opacity-75 hover:opacity-100'
             ]"
           >
             <!-- 1. Mekan Adı & Durum -->
             <td class="px-5 py-4 font-medium text-slate-900 dark:text-slate-100">
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3.5">
                 <div
                   :class="[
-                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105 shadow-2xs',
+                    'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-200 group-hover:scale-105 group-hover:shadow-sm',
                     venue.isActive
-                      ? 'bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700 border-slate-200 dark:from-slate-800 dark:to-slate-850 dark:text-slate-300 dark:border-slate-700'
+                      ? 'bg-gradient-to-br from-emerald-500/10 via-slate-50 to-teal-500/10 text-emerald-600 border-emerald-500/20 dark:from-emerald-950/40 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-700/40 shadow-2xs'
                       : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-850 dark:text-slate-600 dark:border-slate-800'
                   ]"
                 >
-                  <Store class="w-4 h-4 stroke-[1.75]" />
+                  <Store class="w-5 h-5 stroke-[1.8]" />
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
-                    <span class="font-bold text-slate-900 dark:text-slate-100 text-sm tracking-tight truncate">
+                    <span class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base tracking-tight truncate">
                       {{ venue.name }}
                     </span>
                     <!-- Durum Rozeti -->
@@ -1066,7 +1120,7 @@ onMounted(() => {
                     </span>
                     <span
                       v-else-if="venue.totalPackageCount && venue.totalPackageCount > 0"
-                      class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/70"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 shadow-2xs"
                     >
                       <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       Aktif Sipariş
@@ -1078,7 +1132,7 @@ onMounted(() => {
                       Aktif
                     </span>
                   </div>
-                  <div class="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
+                  <div class="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5 font-medium">
                     <span v-if="venue.totalPackageCount && venue.totalPackageCount > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
                       {{ venue.totalPackageCount }} paket teslim edildi
                     </span>
@@ -1096,7 +1150,7 @@ onMounted(() => {
             <!-- 2. İç Teslimat Fiyatı & Atılan Paket -->
             <td class="px-5 py-4 text-right font-semibold text-slate-800 dark:text-slate-200">
               <div class="flex flex-col items-end gap-1">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 text-xs sm:text-sm font-bold font-mono shadow-2xs">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 text-xs sm:text-sm font-bold font-mono shadow-2xs group-hover:border-emerald-300 dark:group-hover:border-emerald-700 transition-colors">
                   {{ venue.indoorPrice.toFixed(2) }} ₺
                 </span>
                 <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 font-mono">
@@ -1108,7 +1162,7 @@ onMounted(() => {
             <!-- 3. Dış Teslimat Fiyatı & Atılan Paket -->
             <td class="px-5 py-4 text-right font-semibold text-slate-800 dark:text-slate-200">
               <div class="flex flex-col items-end gap-1">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60 text-xs sm:text-sm font-bold font-mono shadow-2xs">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-xl bg-sky-50/80 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 text-xs sm:text-sm font-bold font-mono shadow-2xs group-hover:border-sky-300 dark:group-hover:border-sky-700 transition-colors">
                   {{ venue.outdoorPrice.toFixed(2) }} ₺
                 </span>
                 <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 font-mono">
@@ -1120,10 +1174,10 @@ onMounted(() => {
             <!-- 4. Toplam Atılan Paket Sayısı -->
             <td class="px-5 py-4 text-right">
               <div class="flex flex-col items-end gap-1">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold text-xs sm:text-sm border border-slate-200/70 dark:border-slate-700/70">
+                <span class="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold text-xs sm:text-sm border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
                   {{ venue.totalPackageCount || 0 }} Paket
                 </span>
-                <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono font-medium">
                   İç: {{ venue.indoorPackageCount || 0 }} · Dış: {{ venue.outdoorPackageCount || 0 }}
                 </span>
               </div>
@@ -1131,30 +1185,21 @@ onMounted(() => {
 
             <!-- 5. Toplam Tutar / Hakediş -->
             <td class="px-5 py-4 text-right">
-              <div class="flex flex-col items-end gap-1">
-                <!-- Üst Tutar Kutusu -->
+              <div class="flex flex-col items-end gap-1.5">
+                <!-- Üst Tutar Kutusu (Fintech Capsule) -->
                 <span :class="[
-                  'inline-flex items-center px-3 py-1 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-shadow',
+                  'inline-flex items-center px-3.5 py-1.5 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-all duration-200 shadow-2xs',
                   (venue.totalAmount || 0) > 0
-                    ? 'bg-slate-900 text-emerald-400 dark:bg-slate-950 dark:text-emerald-400 border-slate-800 dark:border-slate-800 shadow-2xs'
+                    ? 'bg-slate-900 text-emerald-400 dark:bg-slate-950 dark:text-emerald-400 border-slate-800 dark:border-slate-700 shadow-emerald-500/5 group-hover:shadow-xs group-hover:scale-[1.02]'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                 ]">
                   {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
 
-                <!-- Kalan Borç Rozeti (Borç devam ediyorsa) -->
-                <span
-                  v-if="venue.carriedBalance && venue.carriedBalance > 0"
-                  class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[10px] border border-amber-200/80 dark:border-amber-800/80 shadow-2xs"
-                  title="Önceki Tahsilattan Kalan Borç"
-                >
-                  Kalan Borç: {{ venue.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
-                </span>
-
                 <!-- Borcun Tamamı Tahsil Edildi (Sıfırlandı) Rozeti -->
                 <span
-                  v-else-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60"
+                  v-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60"
                 >
                   <CheckCircle2 class="w-3 h-3 text-emerald-500" />
                   <span>Tahsil Edildi (Sıfırlandı)</span>
@@ -1164,7 +1209,7 @@ onMounted(() => {
                 <!-- 1. Nakit Rozeti -->
                 <span
                   v-if="venue.lastPaymentMethod === 'CASH' && (venue.lastCashAmount || venue.lastSettledAmount || 0) > 0"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
                   :title="`Son tahsilat elden nakit alındı: ${(venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                 >
                   <Banknote class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -1174,7 +1219,7 @@ onMounted(() => {
                 <!-- 2. Havale Rozeti -->
                 <span
                   v-else-if="venue.lastPaymentMethod === 'TRANSFER' && (venue.lastTransferAmount || venue.lastSettledAmount || 0) > 0"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 font-mono text-[10px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 font-mono text-[10px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
                   :title="`Son tahsilat havale / EFT ile alındı: ${(venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                 >
                   <CreditCard class="w-3 h-3 text-sky-600 dark:text-sky-400" />
@@ -1188,7 +1233,7 @@ onMounted(() => {
                 >
                   <span
                     v-if="(venue.lastCashAmount || 0) > 0"
-                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80"
                     :title="`Nakit: ${(venue.lastCashAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                   >
                     <Banknote class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
@@ -1196,7 +1241,7 @@ onMounted(() => {
                   </span>
                   <span
                     v-if="(venue.lastTransferAmount || 0) > 0"
-                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80"
+                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80"
                     :title="`Havale: ${(venue.lastTransferAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                   >
                     <CreditCard class="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
@@ -1219,7 +1264,7 @@ onMounted(() => {
                   v-if="(venue.totalAmount || 0) > 0"
                   variant="outline"
                   size="sm"
-                  class="!text-xs !py-1 !px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95"
+                  class="!text-xs !py-1.5 !px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95"
                   title="Mekandan tahsilat al ve ana paradan düş veya sıfırla"
                   @click="openSettleModal(venue)"
                 >
@@ -1233,7 +1278,7 @@ onMounted(() => {
                 <BaseButton
                   variant="outline"
                   size="sm"
-                  class="!text-xs !py-1 !px-2.5 text-sky-700 hover:bg-sky-50 border-sky-200 dark:text-sky-300 dark:border-sky-900/60 dark:hover:bg-sky-950/40 font-medium transition-all"
+                  class="!text-xs !py-1.5 !px-2.5 text-sky-700 hover:bg-sky-50 border-sky-200 dark:text-sky-300 dark:border-sky-900/60 dark:hover:bg-sky-950/40 font-medium transition-all"
                   title="Günlük Paket Dökümünü ve Hesaplamalarını Gör"
                   @click="openHistoryModal(venue)"
                 >
@@ -1243,11 +1288,24 @@ onMounted(() => {
                   Döküm
                 </BaseButton>
 
+                <!-- Mekana Özel Tahsilat Geçmişi Butonu -->
+                <BaseButton
+                  variant="outline"
+                  size="sm"
+                  class="!text-xs !py-1.5 !px-2 text-emerald-800 hover:bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:border-emerald-900/60 dark:hover:bg-emerald-950/40 font-medium transition-all"
+                  :title="`${venue.name} için haftalık tahsilat raporunu ve ödeme geçmişini aç`"
+                  @click="openCollectionsReportModal(venue.id)"
+                >
+                  <template #leading>
+                    <Receipt class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  </template>
+                </BaseButton>
+
                 <!-- Paket Gir Butonu -->
                 <BaseButton
                   variant="outline"
                   size="sm"
-                  class="!text-xs !py-1 !px-2.5 text-emerald-700 hover:bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:border-emerald-900/60 dark:hover:bg-emerald-950/40 font-medium transition-all"
+                  class="!text-xs !py-1.5 !px-2.5 text-emerald-700 hover:bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:border-emerald-900/60 dark:hover:bg-emerald-950/40 font-medium transition-all"
                   title="Günlük Paket Girişi Yap"
                   @click="openQuickDelivery(venue)"
                 >
@@ -1897,6 +1955,25 @@ onMounted(() => {
               {{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
             </span>
           </div>
+
+          <!-- Eğer önceki devir borcu varsa göster ve doğrudan silme butonu sun -->
+          <div
+            v-if="venueToSettle.carriedBalance && venueToSettle.carriedBalance > 0"
+            class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-200"
+          >
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+              <span>Bu tutarın <strong>{{ venueToSettle.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong> kısmı önceki kalan borçtur.</span>
+            </div>
+            <button
+              type="button"
+              class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-bold transition-colors cursor-pointer shrink-0"
+              title="Önceki kalan borcu ödendi olarak işaretle ve sil"
+              @click="openClearCarriedFromSettleModal"
+            >
+              Borcu Sil
+            </button>
+          </div>
         </div>
 
         <!-- Ödeme Giriş Alanları (Gelen Para, Ödeme Yöntemi ve Kalan Miktar) -->
@@ -2164,10 +2241,27 @@ onMounted(() => {
       @confirm="handleConfirmDelete"
     />
 
+    <!-- Kalan Borcu Silme Onay Modal -->
+    <BaseConfirmDialog
+      v-model="isClearCarriedModalOpen"
+      title="Kalan Borcu Sil / Sıfırla"
+      :message="venueToClearCarried ? `&quot;${venueToClearCarried.name}&quot; mekanına ait ${venueToClearCarried.carriedBalance?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ tutarındaki kalan borç ödendiği için sistemden silinecektir. Toplam tutardan bu borç düşülecektir. Onaylıyor musunuz?` : 'Kalan borcu silmek istediğinizden emin misiniz?'"
+      confirm-text="Borcu Sil ve Sıfırla"
+      variant="danger"
+      :loading="clearingCarried"
+      @confirm="handleConfirmClearCarried"
+    />
+
     <!-- Gün Sonu Raporu Dışa Aktarma (PDF & Excel) Modalı -->
     <DailyReportExportModal
       v-model="isDailyReportModalOpen"
       :initial-date="filterDate || ''"
+    />
+
+    <!-- Haftalık Tahsilat Raporu & Geçmişi Modalı -->
+    <VenueCollectionsReportModal
+      v-model="isCollectionsReportModalOpen"
+      :initial-venue-id="selectedVenueIdForReport"
     />
   </div>
 </template>

@@ -1,4 +1,6 @@
-  export interface VenueDailyStat {
+import { ref, readonly, type Ref } from 'vue'
+
+export interface VenueDailyStat {
   date: string
   indoorCount: number
   indoorAmount: number
@@ -188,7 +190,7 @@ export const useVenues = () => {
   const settleVenue = async (
     venueId: string,
     options?: {
-      action?: 'undo' | 'settle'
+      action?: 'undo' | 'settle' | 'clear-carried'
       notes?: string
       collectedAmount?: number
       remainingBalance?: number
@@ -219,6 +221,29 @@ export const useVenues = () => {
     }
   }
 
+  const clearCarriedBalance = async (venueId: string) => {
+    loading.value = true
+    try {
+      const response = await $fetch<{ success: boolean; message: string; data: any }>(`/api/venues/${venueId}/settle`, {
+        method: 'POST',
+        body: { action: 'clear-carried' }
+      })
+
+      if (response.success) {
+        toast.success(response.message || 'Kalan borç sıfırlandı.', 'Kalan Borç Silindi')
+        await fetchVenues()
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error('Clear carried balance error:', err)
+      toast.error(err?.data?.statusMessage || err?.data?.message || 'Kalan borç silinemedi.', 'Hata')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   const deleteVenue = async (id: string) => {
     loading.value = true
     try {
@@ -242,7 +267,7 @@ export const useVenues = () => {
   }
 
   return {
-    venues: readonly(venues),
+    venues: readonly(venues) as unknown as Ref<VenueItem[]>,
     loading: readonly(loading),
     searchQuery,
     filterDate,
@@ -254,6 +279,7 @@ export const useVenues = () => {
     updateVenue,
     toggleVenueStatus,
     settleVenue,
+    clearCarriedBalance,
     deleteVenue
   }
 }

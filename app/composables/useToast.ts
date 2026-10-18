@@ -1,3 +1,5 @@
+import { readonly } from 'vue'
+
 export interface ToastMessage {
   id: string
   title?: string
@@ -15,20 +17,21 @@ export const useToast = () => {
 
   const show = (options: { message: string; title?: string; type?: 'success' | 'error' | 'warning' | 'info'; duration?: number }) => {
     const id = Math.random().toString(36).substring(2, 9)
+    const duration = options.duration ?? 4000
     const toast: ToastMessage = {
       id,
       title: options.title,
       message: options.message,
       type: options.type || 'info',
-      duration: options.duration ?? 4000
+      duration
     }
 
     toasts.value.push(toast)
 
-    if (toast.duration > 0) {
+    if (duration > 0) {
       setTimeout(() => {
         remove(id)
-      }, toast.duration)
+      }, duration)
     }
   }
 

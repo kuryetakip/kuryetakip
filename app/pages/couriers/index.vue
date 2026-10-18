@@ -11,18 +11,14 @@ import {
   Phone,
   Eye,
   Bike,
-  Store,
   Calendar,
-  Layers,
   Package,
   TrendingUp,
   Sparkles,
   MessageSquare,
   FileText,
-  Copy,
   CheckCircle2,
   Clock,
-  ArrowRight,
   ExternalLink,
   Tag,
   AlertTriangle,
@@ -73,6 +69,7 @@ const isDailyReportModalOpen = ref(false)
 
 // Inline Paid Amount (Avans / Ödenen) State
 const courierPaidInputs = ref<Record<string, string | number>>({})
+const courierPaidDescriptions = ref<Record<string, string>>({})
 const savingPaidCourierId = ref<string | null>(null)
 const advanceFeedbackMap = ref<Record<string, string>>({})
 const paidInputRefs = ref<Record<string, HTMLInputElement | null>>({})
@@ -83,9 +80,15 @@ const setPaidInputRef = (key: string, el: any) => {
   }
 }
 
+const onPaidDescriptionInput = (courierId: string, val: string) => {
+  courierPaidDescriptions.value[courierId] = val
+}
+
 const clearPaidInput = (courierId: string) => {
   courierPaidInputs.value = { ...courierPaidInputs.value, [courierId]: '' }
   delete courierPaidInputs.value[courierId]
+  courierPaidDescriptions.value = { ...courierPaidDescriptions.value, [courierId]: '' }
+  delete courierPaidDescriptions.value[courierId]
   if (paidInputRefs.value[courierId]) {
     paidInputRefs.value[courierId]!.value = ''
   }
@@ -117,13 +120,6 @@ const getCourierRemainingBalance = (courier: CourierItem) => {
   return Number((tot - paid).toFixed(2))
 }
 
-const handlePaidInputBlur = (courier: CourierItem) => {
-  const val = courierPaidInputs.value[courier.id]
-  if (val !== undefined && val !== '' && val !== null) {
-    savePaidAmount(courier)
-  }
-}
-
 const savePaidAmount = async (courier: CourierItem) => {
   if (savingPaidCourierId.value === courier.id) return
 
@@ -137,18 +133,23 @@ const savePaidAmount = async (courier: CourierItem) => {
     return
   }
 
+  const description = courierPaidDescriptions.value[courier.id]?.trim() || undefined
+
   savingPaidCourierId.value = courier.id
   try {
     const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
     const result = await createCourierAdvance(courier.id, {
       amount: num,
-      date: targetDate
+      date: targetDate,
+      description
     })
 
     if (result) {
       clearPaidInput(courier.id)
       const formattedNum = num.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-      advanceFeedbackMap.value[courier.id] = `+${formattedNum} TL Eklendi`
+      advanceFeedbackMap.value[courier.id] = description
+        ? `+${formattedNum} TL (${description}) Eklendi`
+        : `+${formattedNum} TL Eklendi`
       setTimeout(() => {
         delete advanceFeedbackMap.value[courier.id]
       }, 3500)
@@ -458,14 +459,46 @@ const filteredCouriers = computed(() => {
   )
 })
 
-// Quick date filter buttons
-const setDateFilter = (type: 'today' | 'yesterday') => {
+// Helper for date string
+const formatDateYMD = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// Current week range
+const getThisWeekMonday = () => {
+  const now = new Date()
+  const day = now.getDay() // 0 = Sun, 1 = Mon ...
+  const diff = day === 0 ? -6 : 1 - day
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diff)
+  return formatDateYMD(monday)
+}
+
+// Last week range
+const getLastWeekMonday = () => {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  const lastMonday = new Date(now)
+  lastMonday.setDate(now.getDate() + diff - 7)
+  return formatDateYMD(lastMonday)
+}
+
+// Quick date filter buttons ('today' | 'yesterday' | 'thisWeek' | 'lastWeek')
+const setDateFilter = (type: 'today' | 'yesterday' | 'thisWeek' | 'lastWeek') => {
   if (type === 'today') {
-    filterDate.value = new Date().toISOString().substring(0, 10)
+    filterDate.value = formatDateYMD(new Date())
   } else if (type === 'yesterday') {
     const d = new Date()
     d.setDate(d.getDate() - 1)
-    filterDate.value = d.toISOString().substring(0, 10)
+    filterDate.value = formatDateYMD(d)
+  } else if (type === 'thisWeek') {
+    filterDate.value = getThisWeekMonday()
+  } else if (type === 'lastWeek') {
+    filterDate.value = getLastWeekMonday()
   }
   fetchCouriers()
 }
@@ -808,6 +841,9 @@ const openQuickDeliveryModal = async (courier?: CourierItem) => {
   quickDeliveryForm.value = {
     date: targetDate,
     courierId: targetCourierId,
+    venueId: '',
+    venueIndoorPrice: '',
+    venueOutdoorPrice: '',
     courierIndoorPrice: selectedC?.indoorPrice ? selectedC.indoorPrice : 0,
     courierOutdoorPrice: selectedC?.outdoorPrice ? selectedC.outdoorPrice : 0,
     indoorPrice: selectedC?.indoorPrice ? selectedC.indoorPrice : 0,
@@ -983,93 +1019,92 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- KPI Summary Cards (Modern Fintech Dashboard Cards) -->
+    <!-- KPI Summary Cards (Modern Bento Fintech Cards) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Kayıtlı Kuryeler -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Kayıtlı Kuryeler
             </span>
-            <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/60">
               <Users class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-2 font-mono tracking-tight">
-            {{ totalCouriersCount }} <span class="text-sm font-semibold text-slate-400 font-sans">Kurye</span>
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalCouriersCount" :decimals="0" /> <span class="text-sm font-semibold text-slate-400 font-sans">Kurye</span>
           </div>
         </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span>Aktif Kurye Sayısı:</span>
           <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            {{ activeCouriersCount }} Aktif
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <CountUp :value="activeCouriersCount" :decimals="0" /> Aktif
           </span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 2. Seçilen Gün Paket ve Hakediş -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between border-l-4 border-l-emerald-500 group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>Seçilen Gün: Paketler</span>
             </span>
-            <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/20">
               <Package class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-2 font-mono tracking-tight">
-            {{ totalPackagesAcrossCouriers }} <span class="text-sm font-semibold font-sans">Paket</span>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalPackagesAcrossCouriers" :decimals="0" /> <span class="text-sm font-semibold font-sans">Paket</span>
           </div>
         </div>
-        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span class="font-mono text-[11px]">İç: {{ totalIndoorAcrossCouriers }} · Dış: {{ totalOutdoorAcrossCouriers }}</span>
-          <span class="font-mono font-bold">{{ totalAmountAcrossCouriers.toFixed(2) }} ₺</span>
+          <span class="font-mono font-bold"><CountUp :value="totalAmountAcrossCouriers" :decimals="2" /> ₺</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 3. Toplam Hakediş & Verilen Avans -->
-      <BaseCard no-padding class="p-4 sm:p-5 flex flex-col justify-between border-l-4 border-l-amber-500 group hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-amber-500 shadow-xs flex flex-col justify-between group hover:border-amber-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
               Verilen Avans / Ödenen
             </span>
-            <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+            <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform border border-amber-500/20">
               <Wallet class="w-4 h-4" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400 mt-2 font-mono tracking-tight">
-            {{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          <div class="text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400 mt-3 font-mono tracking-tight">
+            <CountUp :value="totalPaidAcrossCouriers" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-xs font-medium text-amber-700/90 dark:text-amber-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-xs font-medium text-amber-700/90 dark:text-amber-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span>Toplam Dönem Hakedişi:</span>
-          <span class="font-mono font-bold">{{ totalCumulativeEarningsAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</span>
+          <span class="font-mono font-bold"><CountUp :value="totalCumulativeEarningsAcrossCouriers" :decimals="2" /> ₺</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 4. Kalan Toplam Hakediş (Net Bakiye) -->
-      <BaseCard
-        no-padding
+      <div
         :class="[
-          'p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 group hover:shadow-md',
+          'p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between transition-all duration-200 group shadow-xs',
           totalRemainingBalanceAcrossCouriers < 0
-            ? 'bg-rose-950/90 text-white border-rose-800 border-2 shadow-sm'
-            : 'bg-slate-900 dark:bg-slate-900 text-white border-slate-800 dark:border-slate-700'
+            ? 'bg-rose-950/90 text-white border-2 border-rose-800'
+            : 'bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white border border-slate-800/90'
         ]"
       >
         <div>
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-300' : 'text-emerald-400'">
+            <span class="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5" :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-300' : 'text-emerald-400'">
               <span>Kalan Net Hakediş</span>
             </span>
             <div
               :class="[
-                'w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform',
-                totalRemainingBalanceAcrossCouriers < 0 ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-emerald-400'
+                'w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform border',
+                totalRemainingBalanceAcrossCouriers < 0 ? 'bg-rose-900/60 text-rose-300 border-rose-700' : 'bg-slate-800/90 text-emerald-400 border-slate-700/60'
               ]"
             >
               <AlertTriangle v-if="totalRemainingBalanceAcrossCouriers < 0" class="w-4 h-4 text-rose-400 shrink-0" />
@@ -1078,11 +1113,11 @@ onUnmounted(() => {
           </div>
           <div
             :class="[
-              'text-2xl sm:text-3xl font-black mt-2 font-mono tracking-tight',
+              'text-2xl sm:text-3xl font-black mt-3 font-mono tracking-tight',
               totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-400' : 'text-emerald-400'
             ]"
           >
-            {{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            <CountUp :value="totalRemainingBalanceAcrossCouriers" :decimals="2" /> ₺
           </div>
         </div>
         <div class="text-xs text-slate-300 dark:text-slate-400 mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
@@ -1091,7 +1126,7 @@ onUnmounted(() => {
             {{ totalRemainingBalanceAcrossCouriers < 0 ? 'Borç' : 'Bakiye' }}
           </span>
         </div>
-      </BaseCard>
+      </div>
     </div>
 
     <!-- Search & Unified Action Toolbar -->
@@ -1138,13 +1173,14 @@ onUnmounted(() => {
 
       <!-- Quick Date Shortcuts & View Mode Switcher -->
       <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Hızlı Tarih:</span>
+          <!-- Bugün -->
           <button
             type="button"
             :class="[
               'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
-              filterDate === new Date().toISOString().substring(0, 10)
+              filterDate === formatDateYMD(new Date())
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
             ]"
@@ -1152,12 +1188,48 @@ onUnmounted(() => {
           >
             Bugün
           </button>
+          <!-- Dün -->
           <button
             type="button"
-            class="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+            :class="[
+              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              (() => {
+                const d = new Date()
+                d.setDate(d.getDate() - 1)
+                return filterDate === formatDateYMD(d)
+              })()
+                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+            ]"
             @click="setDateFilter('yesterday')"
           >
             Dün
+          </button>
+          <!-- Bu Hafta -->
+          <button
+            type="button"
+            :class="[
+              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              filterDate === getThisWeekMonday()
+                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+            ]"
+            @click="setDateFilter('thisWeek')"
+          >
+            Bu Hafta
+          </button>
+          <!-- Geçen Hafta -->
+          <button
+            type="button"
+            :class="[
+              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              filterDate === getLastWeekMonday()
+                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+            ]"
+            @click="setDateFilter('lastWeek')"
+          >
+            Geçen Hafta
           </button>
         </div>
 
@@ -1324,12 +1396,17 @@ onUnmounted(() => {
                 title="Hızlı paket girmek için tıklayın"
                 @click="openQuickDeliveryModal(courier)"
               >
-                <div class="inline-flex flex-col items-end">
-                  <span class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 group-hover/cell:shadow-xs transition-all">
-                    {{ courier.todayIndoorPackages || 0 }} Paket
+                <div class="inline-flex flex-col items-end gap-0.5">
+                  <!-- Haftalık İç Mekan Paketi (Pazartesi 03:00 sıfırlanır) -->
+                  <span
+                    class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 group-hover/cell:shadow-xs transition-all"
+                    :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages || 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
+                  >
+                    {{ courier.weeklyIndoorPackages || 0 }} Paket
                   </span>
-                  <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono mt-0.5 font-medium">
-                    {{ (courier.todayIndoorAmount || 0).toFixed(2) }} ₺
+                  <!-- Seçilen Gün İç Mekan -->
+                  <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                    Bugün: {{ courier.todayIndoorPackages || 0 }} · {{ (courier.todayIndoorAmount || 0).toFixed(2) }} ₺
                   </span>
                 </div>
               </td>
@@ -1340,12 +1417,17 @@ onUnmounted(() => {
                 title="Hızlı paket girmek için tıklayın"
                 @click="openQuickDeliveryModal(courier)"
               >
-                <div class="inline-flex flex-col items-end">
-                  <span class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono font-bold text-xs border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 group-hover/cell:shadow-xs transition-all">
-                    {{ courier.todayOutdoorPackages || 0 }} Paket
+                <div class="inline-flex flex-col items-end gap-0.5">
+                  <!-- Haftalık Dış Mekan Paketi (Pazartesi 03:00 sıfırlanır) -->
+                  <span
+                    class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono font-bold text-xs border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 group-hover/cell:shadow-xs transition-all"
+                    :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages || 0} Paket (Pazartesi 03:00'te sıfırlanır)`"
+                  >
+                    {{ courier.weeklyOutdoorPackages || 0 }} Paket
                   </span>
-                  <span class="text-[11px] text-sky-600 dark:text-sky-400 font-mono mt-0.5 font-medium">
-                    {{ (courier.todayOutdoorAmount || 0).toFixed(2) }} ₺
+                  <!-- Seçilen Gün Dış Mekan -->
+                  <span class="text-[10px] text-sky-600 dark:text-sky-400 font-mono font-medium">
+                    Bugün: {{ courier.todayOutdoorPackages || 0 }} · {{ (courier.todayOutdoorAmount || 0).toFixed(2) }} ₺
                   </span>
                 </div>
               </td>
@@ -1358,15 +1440,15 @@ onUnmounted(() => {
                     {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </div>
 
-                  <!-- Alt Rozet / Paket Bilgisi: Kümülatif Paket Sayısı ve Devreden Bakiye -->
-                  <div class="flex items-center justify-end gap-1.5 mt-1 flex-wrap">
+                  <!-- Haftalık Toplam Paket Rozeti (iç + dış ayrımı) -->
+                  <div class="flex items-center justify-end gap-1 mt-1 flex-wrap">
                     <span
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans font-bold text-[10px] border border-slate-200/80 dark:border-slate-700/80 cursor-pointer hover:border-emerald-400 transition-colors"
-                      title="Dönem Kümülatif Paket Sayısı (Hızlı paket girmek için tıklayın)"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-sans font-bold text-[10px] border border-emerald-500/30 dark:border-emerald-800/80 cursor-pointer hover:border-emerald-400 shadow-2xs transition-colors"
+                      :title="`Haftalık Toplam: ${courier.weeklyTotalPackages ?? 0} Paket | İç: ${courier.weeklyIndoorPackages || 0} | Dış: ${courier.weeklyOutdoorPackages || 0} (Pazartesi 03:00'te sıfırlanır)`"
                       @click="openQuickDeliveryModal(courier)"
                     >
                       <Package class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>{{ courier.cumulativeTotalPackages || 0 }} Paket</span>
+                      <span>{{ courier.weeklyTotalPackages ?? 0 }} Paket</span>
                     </span>
 
                     <span
@@ -1375,6 +1457,19 @@ onUnmounted(() => {
                       title="Önceki Tahsilattan Devreden Kalan Tutar"
                     >
                       +{{ courier.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devir
+                    </span>
+                  </div>
+
+                  <!-- Haftalık İç / Dış Mekan Paket Ayrımı -->
+                  <div class="flex items-center justify-end gap-2 mt-0.5">
+                    <span class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      İç: {{ courier.weeklyIndoorPackages || 0 }}
+                    </span>
+                    <span class="text-slate-300 dark:text-slate-600 text-[10px]">·</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-sky-700 dark:text-sky-400">
+                      <span class="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0"></span>
+                      Dış: {{ courier.weeklyOutdoorPackages || 0 }}
                     </span>
                   </div>
 
@@ -1403,8 +1498,8 @@ onUnmounted(() => {
                   </div>
 
                   <div class="inline-flex items-center gap-1.5">
-                    <!-- Hızlı Avans Giriş Kutusu -->
-                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-800/90 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
+                    <!-- Hızlı Avans Giriş Kutusu (Tutar + Açıklama) -->
+                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
                       <span class="text-xs font-semibold text-slate-400 shrink-0">+₺</span>
                       <input
                         :ref="(el) => setPaidInputRef(courier.id, el)"
@@ -1412,19 +1507,28 @@ onUnmounted(() => {
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="Avans gir"
-                        class="w-20 bg-transparent text-right font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none ml-1"
-                        title="Yeni avans tutarı girip Enter'a basınız"
+                        placeholder="Tutar"
+                        class="w-16 bg-transparent text-right font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none ml-1"
+                        title="Avans tutarı giriniz (Örn: 650)"
                         @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
-                        @blur="handlePaidInputBlur(courier)"
+                        @keyup.enter="savePaidAmount(courier)"
+                      />
+                      <span class="text-slate-300 dark:text-slate-600 mx-1">|</span>
+                      <input
+                        :value="courierPaidDescriptions[courier.id] || ''"
+                        type="text"
+                        placeholder="Açıklama (örn: elektrik)"
+                        class="w-28 sm:w-36 bg-transparent text-left text-[11px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                        title="Avans açıklaması (Örn: elektrik parası, yemek)"
+                        @input="onPaidDescriptionInput(courier.id, ($event.target as HTMLInputElement).value)"
                         @keyup.enter="savePaidAmount(courier)"
                       />
                       <button
                         v-if="courierPaidInputs[courier.id]"
                         type="button"
                         :disabled="savingPaidCourierId === courier.id"
-                        class="ml-1 p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 disabled:opacity-50"
-                        title="Avansı Kaydet"
+                        class="ml-1.5 p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+                        title="Avansı Açıklamasıyla Kaydet"
                         @mousedown.prevent="savePaidAmount(courier)"
                       >
                         <span v-if="savingPaidCourierId === courier.id" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin block"></span>
@@ -1435,18 +1539,24 @@ onUnmounted(() => {
                     <!-- Avans Geçmişi Butonu (Clock / History Icon) -->
                     <button
                       type="button"
-                      class="p-1.5 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:shadow-xs transition-all shrink-0"
-                      title="Avans Geçmişi & Detayları"
+                      class="p-1.5 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 hover:shadow-xs transition-all shrink-0 cursor-pointer"
+                      title="Avans Geçmişi & Detayları (Açıklamalar Dahil)"
                       @click="openAdvanceHistoryModal(courier)"
                     >
                       <Clock class="w-4 h-4" />
                     </button>
                   </div>
 
-                  <!-- Alt Bilgi: Bugün / Seçilen Günlük Avans -->
-                  <div class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5">
-                    <span v-if="courier.todayAdvanceAmount && courier.todayAdvanceAmount > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
-                      Bugün: {{ courier.todayAdvanceAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+                  <!-- Alt Bilgi: Bugün / Seçilen Günlük Avans ve Son Açıklama -->
+                  <div class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5 mt-0.5 max-w-[280px] truncate">
+                    <span v-if="courier.todayAdvanceAmount && courier.todayAdvanceAmount > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold font-mono flex items-center gap-1 truncate">
+                      <span>Bugün: {{ courier.todayAdvanceAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+                      <span v-if="courier.recentAdvances?.[0]?.description" class="text-[9.5px] font-normal text-slate-500 dark:text-slate-400 italic truncate" :title="`Açıklama: ${courier.recentAdvances[0].description}`">
+                        ({{ courier.recentAdvances[0].description }})
+                      </span>
+                    </span>
+                    <span v-else-if="courier.recentAdvances?.[0]?.description" class="text-slate-500 dark:text-slate-400 italic truncate" :title="`Son avans: ${courier.recentAdvances[0].description}`">
+                      Son: {{ courier.recentAdvances[0].description }}
                     </span>
                     <span v-else class="text-slate-400 dark:text-slate-500">
                       Bugün Avans Yok
@@ -1782,44 +1892,44 @@ onUnmounted(() => {
           <div class="grid grid-cols-3 gap-2 text-center">
             <div
               class="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 rounded-xl p-2.5 cursor-pointer hover:border-emerald-300 transition-colors"
-              title="Hızlı paket girmek için tıklayın"
+              title="Haftalık İç Mekan Paketleri (Pazartesi 03:00'te sıfırlanır) - Tıkla paket gir"
               @click="openQuickDeliveryModal(courier)"
             >
               <span class="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 block uppercase">İç Mekan</span>
               <div class="font-mono font-bold text-sm text-emerald-900 dark:text-emerald-200 mt-0.5">
-                {{ courier.todayIndoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyIndoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
-              <div class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">
-                {{ (courier.todayIndoorAmount || 0).toFixed(2) }} ₺
+              <div class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                Bugün: {{ courier.todayIndoorPackages || 0 }}
               </div>
             </div>
 
             <div
               class="bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60 rounded-xl p-2.5 cursor-pointer hover:border-sky-300 transition-colors"
-              title="Hızlı paket girmek için tıklayın"
+              title="Haftalık Dış Mekan Paketleri (Pazartesi 03:00'te sıfırlanır) - Tıkla paket gir"
               @click="openQuickDeliveryModal(courier)"
             >
               <span class="text-[10px] font-semibold text-sky-800 dark:text-sky-300 block uppercase">Dış Mekan</span>
               <div class="font-mono font-bold text-sm text-sky-900 dark:text-sky-200 mt-0.5">
-                {{ courier.todayOutdoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyOutdoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
-              <div class="text-[10px] font-mono text-sky-600 dark:text-sky-400 mt-0.5 font-medium">
-                {{ (courier.todayOutdoorAmount || 0).toFixed(2) }} ₺
+              <div class="text-[10px] font-mono text-sky-600 dark:text-sky-400 mt-0.5">
+                Bugün: {{ courier.todayOutdoorPackages || 0 }}
               </div>
             </div>
 
             <!-- Toplam Hakediş (Kümülatif Hakediş ve Toplam Paket) -->
             <div
               class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 transition-colors"
-              title="Dönem kümülatif hakediş ve paketleri"
+              :title="`Haftalık: ${courier.weeklyTotalPackages ?? 0} Pkt (İç: ${courier.weeklyIndoorPackages || 0} + Dış: ${courier.weeklyOutdoorPackages || 0})`"
               @click="openQuickDeliveryModal(courier)"
             >
               <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block uppercase">Toplam Hakediş</span>
               <div class="font-mono font-extrabold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
                 {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }} ₺
               </div>
-              <div class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold">
-                {{ courier.cumulativeTotalPackages || 0 }} Paket
+              <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-bold">
+                {{ courier.weeklyTotalPackages ?? 0 }} Pkt
               </div>
             </div>
           </div>
@@ -1868,17 +1978,25 @@ onUnmounted(() => {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    placeholder="Avans gir"
-                    class="w-20 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none ml-1"
+                    placeholder="Tutar"
+                    class="w-16 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal focus:outline-none ml-1"
                     @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
-                    @blur="handlePaidInputBlur(courier)"
+                    @keyup.enter="savePaidAmount(courier)"
+                  />
+                  <span class="text-slate-300 dark:text-slate-600 mx-1">|</span>
+                  <input
+                    :value="courierPaidDescriptions[courier.id] || ''"
+                    type="text"
+                    placeholder="Açıklama"
+                    class="w-24 bg-transparent text-left text-[11px] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                    @input="onPaidDescriptionInput(courier.id, ($event.target as HTMLInputElement).value)"
                     @keyup.enter="savePaidAmount(courier)"
                   />
                   <button
                     v-if="courierPaidInputs[courier.id]"
                     type="button"
                     :disabled="savingPaidCourierId === courier.id"
-                    class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                    class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
                     title="Kaydet"
                     @mousedown.prevent="savePaidAmount(courier)"
                   >
@@ -1888,8 +2006,8 @@ onUnmounted(() => {
                 </div>
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shrink-0"
-                  title="Avans Geçmişi"
+                  class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer"
+                  title="Avans Geçmişi & Açıklamalar"
                   @click="openAdvanceHistoryModal(courier)"
                 >
                   <Clock class="w-3.5 h-3.5" />

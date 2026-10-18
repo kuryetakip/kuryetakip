@@ -15,8 +15,8 @@ withDefaults(defineProps<Props>(), {
 <template>
   <div
     :class="[
-      'bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800/90 shadow-card overflow-hidden transition-all duration-200',
-      interactive ? 'hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer active:scale-[0.995]' : ''
+      'bg-white/80 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-hidden transition-all duration-200 relative group',
+      interactive ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700/90 hover:-translate-y-0.5 cursor-pointer active:scale-[0.99]' : ''
     ]"
   >
     <div

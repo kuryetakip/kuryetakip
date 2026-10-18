@@ -1,4 +1,5 @@
 import { prisma, DeliveryType, Prisma } from '../../utils/prisma'
+import { resolveCourierRate } from '../../utils/pricing'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -82,7 +83,9 @@ export default defineEventHandler(async (event) => {
       let utcDate: Date
       if (dateStr) {
         const [y, m, d] = dateStr.split('-').map(Number)
-        utcDate = new Date(Date.UTC(y, m - 1, d))
+        utcDate = (y !== undefined && m !== undefined && d !== undefined)
+          ? new Date(Date.UTC(y, m - 1, d))
+          : new Date()
       } else {
         const d = new Date()
         utcDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
@@ -127,23 +130,25 @@ export default defineEventHandler(async (event) => {
 
           if (existingIndoorRecords.length > 0) {
             const [primary, ...duplicates] = existingIndoorRecords
-            await prisma.deliveryRecord.update({
-              where: { id: primary.id },
-              data: {
-                packageCount: targetIndoor,
-                venuePriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
-                venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
-                courierPriceSnapshot: new Prisma.Decimal(courierIndoorPrice.toFixed(2)),
-                courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
-                unitPriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
-                totalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
-                ...(courierId ? { courierId } : {})
-              }
-            })
-            if (duplicates.length > 0) {
-              await prisma.deliveryRecord.deleteMany({
-                where: { id: { in: duplicates.map(d => d.id) } }
+            if (primary) {
+              await prisma.deliveryRecord.update({
+                where: { id: primary.id },
+                data: {
+                  packageCount: targetIndoor,
+                  venuePriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
+                  venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+                  courierPriceSnapshot: new Prisma.Decimal(courierIndoorPrice.toFixed(2)),
+                  courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
+                  unitPriceSnapshot: new Prisma.Decimal(finalIndoorPrice.toFixed(2)),
+                  totalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+                  ...(courierId ? { courierId } : {})
+                }
               })
+              if (duplicates.length > 0) {
+                await prisma.deliveryRecord.deleteMany({
+                  where: { id: { in: duplicates.map(d => d.id) } }
+                })
+              }
             }
           } else {
             await prisma.deliveryRecord.create({
@@ -181,23 +186,25 @@ export default defineEventHandler(async (event) => {
 
           if (existingOutdoorRecords.length > 0) {
             const [primary, ...duplicates] = existingOutdoorRecords
-            await prisma.deliveryRecord.update({
-              where: { id: primary.id },
-              data: {
-                packageCount: targetOutdoor,
-                venuePriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
-                venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
-                courierPriceSnapshot: new Prisma.Decimal(courierOutdoorPrice.toFixed(2)),
-                courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
-                unitPriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
-                totalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
-                ...(courierId ? { courierId } : {})
-              }
-            })
-            if (duplicates.length > 0) {
-              await prisma.deliveryRecord.deleteMany({
-                where: { id: { in: duplicates.map(d => d.id) } }
+            if (primary) {
+              await prisma.deliveryRecord.update({
+                where: { id: primary.id },
+                data: {
+                  packageCount: targetOutdoor,
+                  venuePriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
+                  venueTotalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+                  courierPriceSnapshot: new Prisma.Decimal(courierOutdoorPrice.toFixed(2)),
+                  courierTotalAmount: new Prisma.Decimal(courierTotal.toFixed(2)),
+                  unitPriceSnapshot: new Prisma.Decimal(finalOutdoorPrice.toFixed(2)),
+                  totalAmount: new Prisma.Decimal(venueTotal.toFixed(2)),
+                  ...(courierId ? { courierId } : {})
+                }
               })
+              if (duplicates.length > 0) {
+                await prisma.deliveryRecord.deleteMany({
+                  where: { id: { in: duplicates.map(d => d.id) } }
+                })
+              }
             }
           } else {
             await prisma.deliveryRecord.create({

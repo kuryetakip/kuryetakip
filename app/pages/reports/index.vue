@@ -222,7 +222,7 @@ onMounted(async () => {
   await fetchAdvanceReports()
   // Select first active courier by default if available
   if (activeCouriers.value.length > 0 && !selectedCourierId.value) {
-    selectedCourierId.value = activeCouriers.value[0].id
+    selectedCourierId.value = activeCouriers.value[0]?.id || ''
   }
 })
 </script>
@@ -472,76 +472,80 @@ onMounted(async () => {
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Toplam Avans -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-emerald-500/40 transition-all duration-200 group">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam Avans</span>
-              <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam Avans</span>
+              <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
                 <Wallet class="w-4 h-4" />
               </div>
             </div>
-            <div class="mt-2">
-              <span class="text-2xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
-                {{ advanceReportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            <div class="mt-3">
+              <span class="text-2xl sm:text-3xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
+                <CountUp :value="advanceReportData.totalAmount" :decimals="2" /> ₺
               </span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-1">
-              Seçili dönemde ödenen toplam
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Seçili dönemde ödenen toplam</span>
             </div>
           </div>
 
           <!-- Toplam İşlem Sayısı -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-blue-500/40 transition-all duration-200 group">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Sayısı</span>
-              <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Sayısı</span>
+              <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
                 <Layers class="w-4 h-4" />
               </div>
             </div>
-            <div class="mt-2">
-              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
-                {{ advanceReportData.totalCount }}
+            <div class="mt-3">
+              <span class="text-2xl sm:text-3xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                <CountUp :value="advanceReportData.totalCount" :decimals="0" />
               </span>
-              <span class="text-xs font-medium text-slate-400 ml-1">kayıt</span>
+              <span class="text-xs font-medium text-slate-400 ml-1.5">kayıt</span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-1">
-              Farklı zamanlarda girilen işlemler
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+              <span>Farklı zamanlarda girilen işlemler</span>
             </div>
           </div>
 
           <!-- Ortalama Avans Tutarı -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-purple-500/40 transition-all duration-200 group">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Ortalaması</span>
-              <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">İşlem Ortalaması</span>
+              <div class="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
                 <TrendingUp class="w-4 h-4" />
               </div>
             </div>
-            <div class="mt-2">
-              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
-                {{ advanceReportData.averageAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+            <div class="mt-3">
+              <span class="text-2xl sm:text-3xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                <CountUp :value="advanceReportData.averageAmount" :decimals="2" /> ₺
               </span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-1">
-              İşlem başına düşen ortalama
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+              <span>İşlem başına düşen ortalama</span>
             </div>
           </div>
 
           <!-- Avans Alan Kurye Sayısı -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-amber-500/40 transition-all duration-200 group">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avans Alan Kurye</span>
-              <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avans Alan Kurye</span>
+              <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20 group-hover:scale-110 transition-transform">
                 <Bike class="w-4 h-4" />
               </div>
             </div>
-            <div class="mt-2">
-              <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
-                {{ advanceReportData.courierBreakdown.length }}
+            <div class="mt-3">
+              <span class="text-2xl sm:text-3xl font-mono font-extrabold text-slate-900 dark:text-slate-100">
+                <CountUp :value="advanceReportData.courierBreakdown.length" :decimals="0" />
               </span>
-              <span class="text-xs font-medium text-slate-400 ml-1">kurye</span>
+              <span class="text-xs font-medium text-slate-400 ml-1.5">kurye</span>
             </div>
-            <div class="text-[11px] text-slate-400 mt-1">
-              Bu periyotta avans alanlar
+            <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span>Bu periyotta avans alanlar</span>
             </div>
           </div>
         </div>
@@ -866,40 +870,40 @@ onMounted(async () => {
         <!-- KPI Cards Grid (Hakediş, Avans, Kalan Hakediş) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Toplam Paket -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Toplam Paket</span>
-            <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
-              {{ reportData.totalPackageCount }}
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-slate-400 dark:hover:border-slate-700 transition-all duration-200 group">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Toplam Paket</span>
+            <span class="text-2xl sm:text-3xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
+              <CountUp :value="reportData.totalPackageCount" :decimals="0" />
             </span>
             <div class="text-[11px] text-slate-400 mt-1">İç: {{ reportData.indoorPackages }} | Dış: {{ reportData.outdoorPackages }}</div>
           </div>
 
           <!-- Toplam Hakediş -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Toplam Hakediş</span>
-            <span class="text-2xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
-              {{ reportData.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-blue-500/40 transition-all duration-200 group">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Toplam Hakediş</span>
+            <span class="text-2xl sm:text-3xl font-mono font-extrabold text-slate-900 dark:text-slate-100 block mt-2">
+              <CountUp :value="reportData.totalAmount" :decimals="2" /> ₺
             </span>
             <div class="text-[11px] text-slate-400 mt-1">Dönem içi paket kazancı</div>
           </div>
 
           <!-- Verilen Avans -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Verilen Avans</span>
-            <span class="text-2xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400 block mt-2">
-              {{ (reportData.totalAdvance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-emerald-500/40 transition-all duration-200 group">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Verilen Avans</span>
+            <span class="text-2xl sm:text-3xl font-mono font-extrabold text-emerald-600 dark:text-emerald-400 block mt-2">
+              <CountUp :value="reportData.totalAdvance || 0" :decimals="2" /> ₺
             </span>
             <div class="text-[11px] text-slate-400 mt-1">Dönem içi kayıtlı avanslar</div>
           </div>
 
           <!-- Kalan Hakediş -->
-          <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Kalan Hakediş</span>
+          <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs hover:border-emerald-500/40 transition-all duration-200 group">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Kalan Hakediş</span>
             <span
-              class="text-2xl font-mono font-extrabold block mt-2"
+              class="text-2xl sm:text-3xl font-mono font-extrabold block mt-2"
               :class="(reportData.remainingBalance ?? 0) < 0 ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'"
             >
-              {{ (reportData.remainingBalance ?? (reportData.totalAmount - (reportData.totalAdvance || 0))).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+              <CountUp :value="reportData.remainingBalance ?? (reportData.totalAmount - (reportData.totalAdvance || 0))" :decimals="2" /> ₺
             </span>
             <div class="text-[11px] text-slate-400 mt-1">Hakediş - Avans Tutarı</div>
           </div>

@@ -212,14 +212,27 @@ export default defineEventHandler(async (event) => {
       const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
       const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
-      // When no date filter is active and not explicitly viewing all-time, the primary display
-      // is the pending unsettled amount (the amount to be collected) plus any carried balance from previous settlement.
+      // Devreden borç (carriedBalance), mekanın mevcut / aktif borcuna (Toplam Tutar) eklenir.
       const carriedBalance = Number(v.carriedBalance || 0)
       const pendingDeliveriesAmount = Number(pendingAmount.toFixed(2))
       const pendingTotalWithCarried = Number((pendingDeliveriesAmount + carriedBalance).toFixed(2))
 
+      // Eğer tek bir spesifik gün filtrelenmiyorsa (haftalık veya bekleyen görünümlerde),
+      // önceki haftadan/dönemden devreden borç toplam tutara doğrudan eklenir.
+      let totalAmount = 0
+      if (scope === 'all') {
+        totalAmount = allTimeTotalAmount
+      } else if (dateStr) {
+        totalAmount = filteredTotalAmount
+      } else if (startDateStr || endDateStr) {
+        // Haftalık veya tarih aralığı filtresinde devreden borç toplam tutara eklenir
+        totalAmount = Number((filteredTotalAmount + carriedBalance).toFixed(2))
+      } else {
+        // Bekleyen tahsilat (varsayılan)
+        totalAmount = pendingTotalWithCarried
+      }
+
       const hasExplicitDateFilter = !!(dateStr || startDateStr || endDateStr || scope === 'all')
-      const totalAmount = hasExplicitDateFilter ? filteredTotalAmount : pendingTotalWithCarried
       const totalPackageCount = hasExplicitDateFilter ? filteredPackageCount : pendingPackageCount
       const indoorPackageCount = hasExplicitDateFilter ? filteredIndoorPackageCount : pendingIndoorCount
       const outdoorPackageCount = hasExplicitDateFilter ? filteredOutdoorPackageCount : pendingOutdoorCount

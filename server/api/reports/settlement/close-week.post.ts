@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     if (!validationResult.success) {
       throw createError({
         statusCode: 400,
-        statusMessage: validationResult.error.errors[0]?.message || 'Geçersiz parametre.'
+        statusMessage: validationResult.error.issues?.[0]?.message || 'Geçersiz parametre.'
       })
     }
 
@@ -31,8 +31,12 @@ export default defineEventHandler(async (event) => {
     if (startStr && endStr) {
       const [sy, sm, sd] = startStr.split('-').map(Number)
       const [ey, em, ed] = endStr.split('-').map(Number)
-      fromDate = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0))
-      toDate = new Date(Date.UTC(ey, em - 1, ed, 23, 59, 59, 999))
+      fromDate = (sy !== undefined && sm !== undefined && sd !== undefined)
+        ? new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0))
+        : new Date()
+      toDate = (ey !== undefined && em !== undefined && ed !== undefined)
+        ? new Date(Date.UTC(ey, em - 1, ed, 23, 59, 59, 999))
+        : new Date()
       weekCode = week || getISOWeekString(fromDate)
     } else {
       const range = getWeekDateRange(week || new Date())

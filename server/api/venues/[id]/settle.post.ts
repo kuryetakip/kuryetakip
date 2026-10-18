@@ -1,4 +1,5 @@
 import { prisma, Prisma } from '../../../utils/prisma'
+import { getISOWeekString, getWeekDateRange } from '../../../utils/period'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -12,6 +13,7 @@ export default defineEventHandler(async (event) => {
 
     const body = await readBody(event).catch(() => ({}))
     const isUndo = body?.action === 'undo'
+    const isClearCarried = body?.action === 'clear-carried'
 
     const venue = await prisma.venue.findUnique({
       where: { id }
@@ -22,6 +24,35 @@ export default defineEventHandler(async (event) => {
         statusCode: 404,
         statusMessage: 'Mekan bulunamadı.'
       })
+    }
+
+    // Kalan Borcu Sıfırla / Sil İşlemi
+    if (isClearCarried) {
+      const currentCarried = Number(venue.carriedBalance || 0)
+      if (currentCarried <= 0) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Mekanda silinebilecek aktif bir kalan borç bulunmuyor.'
+        })
+      }
+
+      await prisma.venue.update({
+        where: { id },
+        data: {
+          carriedBalance: new Prisma.Decimal(0),
+          prevCarriedBalance: new Prisma.Decimal(currentCarried.toFixed(2))
+        }
+      })
+
+      return {
+        success: true,
+        message: `${venue.name} için kalan ${currentCarried.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ borç başarıyla silindi ve sıfırlandı.`,
+        data: {
+          venueId: id,
+          carriedBalance: 0,
+          clearedAmount: currentCarried
+        }
+      }
     }
 
     // Geri alma işlemi (Undo)
@@ -201,6 +232,39 @@ export default defineEventHandler(async (event) => {
         }
       }
     })
+
+    // Log settlement into SettlementPeriod for comprehensive collection reporting
+    try {
+      const weekCode = getISOWeekString(now)
+      const weekRange = getWeekDateRange(weekCode)
+      await prisma.settlementPeriod.create({
+        data: {
+          type: 'VENUE',
+          week: weekCode,
+          startDate: weekRange.startDate,
+          endDate: weekRange.endDate,
+          totalPackages,
+          totalEarnings: new Prisma.Decimal(totalDue.toFixed(2)),
+          totalAdvance: new Prisma.Decimal(0),
+          paidAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
+          remainingBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
+          closedAt: now,
+          note: JSON.stringify({
+            venueId: id,
+            venueName: venue.name,
+            paymentMethod,
+            cashAmount,
+            transferAmount,
+            collectedAmount,
+            remainingBalance,
+            totalDue,
+            notes: body?.notes || ''
+          })
+        }
+      })
+    } catch (spErr) {
+      console.warn('Could not create settlementPeriod log for venue:', spErr)
+    }
 
     const paymentMethodLabel = paymentMethod === 'TRANSFER'
       ? 'Havale ile'

@@ -274,10 +274,10 @@ const handleLogout = async () => {
               :title="isCollapsed ? item.name : undefined"
               :class="[
                 'flex items-center rounded-xl text-xs sm:text-sm font-medium transition-all duration-150 group relative',
-                isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2',
+                isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5',
                 isActive(item.path)
-                  ? 'bg-slate-900 text-white dark:bg-emerald-600 dark:text-white shadow-xs font-semibold'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-600 dark:text-white font-bold border border-emerald-500/20 dark:border-transparent shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-slate-800'
               ]"
             >
               <component
@@ -286,7 +286,7 @@ const handleLogout = async () => {
                   'shrink-0 transition-colors',
                   isCollapsed ? 'w-5 h-5' : 'w-4 h-4',
                   isActive(item.path)
-                    ? 'text-white'
+                    ? 'text-emerald-600 dark:text-white'
                     : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200'
                 ]"
               />

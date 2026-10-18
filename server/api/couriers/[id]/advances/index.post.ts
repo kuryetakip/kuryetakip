@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     if (!validationResult.success) {
       throw createError({
         statusCode: 400,
-        statusMessage: validationResult.error.errors[0]?.message || 'Geçersiz avans bilgisi.'
+        statusMessage: validationResult.error.issues?.[0]?.message || 'Geçersiz avans bilgisi.'
       })
     }
 
@@ -51,7 +51,9 @@ export default defineEventHandler(async (event) => {
     const targetTimeStr = rawTime || currentTimeStr
 
     const [y, m, d] = targetDateStr.split('-').map(Number)
-    const targetDateUTC = new Date(Date.UTC(y, m - 1, d))
+    const targetDateUTC = (y !== undefined && m !== undefined && d !== undefined)
+      ? new Date(Date.UTC(y, m - 1, d))
+      : new Date()
     const weekCode = getISOWeekString(targetDateUTC)
 
     // Duplicate submission protection: check if identical advance was submitted within last 3 seconds

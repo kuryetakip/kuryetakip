@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma'
+import { getCurrentCycleStart } from '../../utils/period'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -20,6 +21,9 @@ export default defineEventHandler(async (event) => {
     // Target date UTC boundary
     const [y, m, d] = dateStr.split('-').map(Number)
     const targetDate = (y && m && d) ? new Date(Date.UTC(y, m - 1, d)) : null
+
+    // Monday 03:00 boundary for weekly cycle reset
+    const cycleStartBoundary = getCurrentCycleStart(new Date())
 
     const couriers = await prisma.courier.findMany({
       where,
@@ -46,7 +50,8 @@ export default defineEventHandler(async (event) => {
             courierPriceSnapshot: true,
             unitPriceSnapshot: true,
             isCourierSettled: true,
-            courierSettledAt: true
+            courierSettledAt: true,
+            createdAt: true
           }
         },
         advances: {
@@ -73,20 +78,44 @@ export default defineEventHandler(async (event) => {
       let todayIndoorAmount = 0
       let todayOutdoorAmount = 0
 
+      // Haftalık Paket ve Kazanç (Her Pazartesi 03:00'te sıfırlanan aktif döngü)
+      let weeklyIndoorPackages = 0
+      let weeklyOutdoorPackages = 0
+      let weeklyEarnings = 0
+
+      // Aktif hakediş döngüsü (hesap kapatılana veya devredilene kadar)
       let cycleIndoorPackages = 0
       let cycleOutdoorPackages = 0
       let cycleIndoorAmount = 0
       let cycleOutdoorAmount = 0
       let cycleEarnings = 0
 
+      // Tüm zamanlar toplam paket
+      let allTimeTotalPackages = 0
+
       for (const rec of c.deliveryRecords) {
         const count = rec.packageCount || 0
+        allTimeTotalPackages += count
+
         // Use courierTotalAmount if set, fallback to totalAmount
         const amount = Number(rec.courierTotalAmount || 0) > 0
           ? Number(rec.courierTotalAmount)
           : Number(rec.totalAmount || 0)
 
-        // Only unsettled records count towards the current active cycle (Day 1..7)
+        // Record timestamp checking for Monday 03:00 reset
+        const recCreatedAt = rec.createdAt ? new Date(rec.createdAt) : (rec.date instanceof Date ? rec.date : new Date(rec.date))
+        const isWithinCurrentCycle = recCreatedAt >= cycleStartBoundary
+
+        if (isWithinCurrentCycle) {
+          weeklyEarnings += amount
+          if (rec.deliveryType === 'INDOOR') {
+            weeklyIndoorPackages += count
+          } else {
+            weeklyOutdoorPackages += count
+          }
+        }
+
+        // Only unsettled records count towards the current active settlement cycle
         if (!rec.isCourierSettled) {
           cycleEarnings += amount
           if (rec.deliveryType === 'INDOOR') {
@@ -139,6 +168,10 @@ export default defineEventHandler(async (event) => {
       const todayTotalPackages = todayIndoorPackages + todayOutdoorPackages
       const todayTotalAmount = Number((todayIndoorAmount + todayOutdoorAmount).toFixed(2))
 
+      // Haftalık sıfırlanan toplam paket
+      const weeklyTotalPackages = weeklyIndoorPackages + weeklyOutdoorPackages
+
+      // Aktif hakediş döngüsü paket ve tutarları
       const cumulativeTotalPackages = cycleIndoorPackages + cycleOutdoorPackages
       const carriedBalance = Number(c.carriedBalance || 0)
       // Toplam Hakediş = Aktif Dönem Hakedişi + Önceki Dönemden Devreden Bakiye
@@ -183,6 +216,11 @@ export default defineEventHandler(async (event) => {
         todayIndoorAmount: Number(todayIndoorAmount.toFixed(2)),
         todayOutdoorAmount: Number(todayOutdoorAmount.toFixed(2)),
         todayTotalAmount,
+        weeklyIndoorPackages,
+        weeklyOutdoorPackages,
+        weeklyTotalPackages,
+        weeklyEarnings: Number(weeklyEarnings.toFixed(2)),
+        allTimeTotalPackages,
         cycleIndoorPackages,
         cycleOutdoorPackages,
         cycleEarnings: Number(cycleEarnings.toFixed(2)),

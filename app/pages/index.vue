@@ -242,15 +242,15 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 4 PRIMARY KPI CARDS -->
+    <!-- 4 PRIMARY BENTO KPI CARDS -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Toplam Teslimat (Paket Hacmi) -->
-      <BaseCard no-padding class="p-5 flex flex-col justify-between border-l-4 border-l-emerald-500 relative overflow-hidden group">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {{ periodLabels[selectedPeriod] }} Teslimat
           </span>
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 group-hover:scale-110 transition-transform">
             <Package class="w-5 h-5" />
           </div>
         </div>
@@ -262,10 +262,10 @@ onMounted(() => {
           </div>
           <div v-else>
             <div class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
-              {{ reportSummary.totalCount }}
-              <span class="text-sm font-semibold text-slate-400 font-sans">Paket</span>
+              <CountUp :value="reportSummary.totalCount" :decimals="0" />
+              <span class="text-sm font-semibold text-slate-400 font-sans ml-1.5">Paket</span>
             </div>
-            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               <span class="text-emerald-600 dark:text-emerald-400 font-bold font-mono">{{ reportSummary.indoorCount }} İç</span>
               <span>·</span>
               <span class="text-sky-600 dark:text-sky-400 font-bold font-mono">{{ reportSummary.outdoorCount }} Dış</span>
@@ -274,15 +274,15 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 2. Aktif Kurye Sayısı & Filo -->
-      <BaseCard no-padding class="p-5 flex flex-col justify-between border-l-4 border-l-sky-500 relative overflow-hidden group">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-sky-500 shadow-xs flex flex-col justify-between group hover:border-sky-500/40 transition-all duration-200">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Aktif Kuryeler
           </span>
-          <div class="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-500/20 group-hover:scale-110 transition-transform">
             <Bike class="w-5 h-5" />
           </div>
         </div>
@@ -294,12 +294,12 @@ onMounted(() => {
           </div>
           <div v-else>
             <div class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
-              {{ activeCouriersList.length }}
-              <span class="text-sm font-semibold text-slate-400 font-sans">/ {{ totalCouriersCount }} Kurye</span>
+              <CountUp :value="activeCouriersList.length" :decimals="0" />
+              <span class="text-sm font-semibold text-slate-400 font-sans ml-1.5">/ {{ totalCouriersCount }} Kurye</span>
             </div>
-            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 {{ activeCouriersList.length }} Sahada Aktif
               </span>
               <NuxtLink to="/couriers" class="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5">
@@ -308,15 +308,15 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 3. Toplam Hakediş / Ciro -->
-      <BaseCard no-padding class="p-5 flex flex-col justify-between border-l-4 border-l-emerald-600 bg-slate-900 dark:bg-slate-900 text-white relative overflow-hidden group">
+      <div class="bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white p-5 rounded-2xl border border-slate-800/90 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+          <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
             {{ periodLabels[selectedPeriod] }} Hakediş
           </span>
-          <div class="w-9 h-9 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-slate-800/90 text-emerald-400 flex items-center justify-center shrink-0 border border-slate-700/60 group-hover:scale-110 transition-transform">
             <TrendingUp class="w-5 h-5" />
           </div>
         </div>
@@ -328,7 +328,7 @@ onMounted(() => {
           </div>
           <div v-else>
             <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">
-              {{ formatCurrency(reportSummary.totalAmount) }}
+              <CountUp :value="reportSummary.totalAmount" :decimals="2" /> ₺
             </div>
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-800 text-[11px] text-slate-400 font-medium">
               <span>Mekan Hakediş Toplamı</span>
@@ -338,15 +338,15 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 4. Aktif Mekanlar -->
-      <BaseCard no-padding class="p-5 flex flex-col justify-between border-l-4 border-l-amber-500 relative overflow-hidden group">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-amber-500 shadow-xs flex flex-col justify-between group hover:border-amber-500/40 transition-all duration-200">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Kayıtlı Mekanlar
           </span>
-          <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 group-hover:scale-110 transition-transform">
             <Store class="w-5 h-5" />
           </div>
         </div>
@@ -358,10 +358,10 @@ onMounted(() => {
           </div>
           <div v-else>
             <div class="text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
-              {{ totalVenuesCount }}
-              <span class="text-sm font-semibold text-slate-400 font-sans">İşletme</span>
+              <CountUp :value="totalVenuesCount" :decimals="0" />
+              <span class="text-sm font-semibold text-slate-400 font-sans ml-1.5">İşletme</span>
             </div>
-            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               <span class="text-amber-600 dark:text-amber-400 font-semibold">
                 {{ reportSummary.venueCount }} Mekandan Teslimat
               </span>
@@ -371,7 +371,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </BaseCard>
+      </div>
     </div>
 
     <!-- OPERATIONS OVERVIEW: RATIO & FLOW -->

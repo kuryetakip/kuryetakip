@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import {
-  X,
   Wallet,
-  Package,
   Clock,
   AlertTriangle,
   CheckCircle2,
-  ArrowRight,
-  TrendingUp,
-  FileText,
   RotateCcw
 } from 'lucide-vue-next'
 import type { CourierItem } from '~/composables/useCouriers'
@@ -25,7 +20,7 @@ const emit = defineEmits<{
   (e: 'settled'): void
 }>()
 
-const { settleCourier, loading } = useCouriers()
+const { settleCourier } = useCouriers()
 
 const payoutInput = ref<string | number>('')
 const note = ref('')
@@ -154,22 +149,22 @@ const handleUndo = async () => {
         </div>
       </div>
 
-      <!-- Hakediş Özeti Kartları (4 Kolon) -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+      <!-- Hakediş Özeti Kartları (4 Kolon Bento Izgarası) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
         <!-- Toplam Paket -->
-        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-          <span class="text-[10px] uppercase font-semibold text-slate-500 block">Dönem Paketi</span>
-          <div class="font-mono font-extrabold text-base text-slate-900 dark:text-slate-100 mt-0.5">
-            {{ totalPackages }}
+        <div class="p-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+          <span class="text-[10px] uppercase font-bold text-slate-500 block">Dönem Paketi</span>
+          <div class="font-mono font-extrabold text-lg text-slate-900 dark:text-slate-100 mt-1">
+            <CountUp :value="totalPackages" :decimals="0" />
           </div>
           <span class="text-[10px] text-slate-400">Adet</span>
         </div>
 
         <!-- Toplam Hakediş -->
-        <div class="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/70">
-          <span class="text-[10px] uppercase font-semibold text-emerald-700 dark:text-emerald-300 block">Toplam Hakediş</span>
-          <div class="font-mono font-extrabold text-sm sm:text-base text-emerald-900 dark:text-emerald-100 mt-0.5">
-            {{ totalEarnings.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+        <div class="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/70 shadow-2xs">
+          <span class="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 block">Toplam Hakediş</span>
+          <div class="font-mono font-extrabold text-base sm:text-lg text-emerald-900 dark:text-emerald-100 mt-1">
+            <CountUp :value="totalEarnings" :decimals="2" /> ₺
           </div>
           <span v-if="carriedBalance > 0" class="text-[10px] text-amber-600 dark:text-amber-400 font-mono">
             +{{ carriedBalance.toFixed(0) }} ₺ Devir
@@ -178,19 +173,19 @@ const handleUndo = async () => {
         </div>
 
         <!-- Düşülen Avans -->
-        <div class="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/70">
-          <span class="text-[10px] uppercase font-semibold text-amber-700 dark:text-amber-300 block">Verilen Avans</span>
-          <div class="font-mono font-extrabold text-sm sm:text-base text-amber-900 dark:text-amber-100 mt-0.5">
-            -{{ totalAdvance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+        <div class="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/70 shadow-2xs">
+          <span class="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-300 block">Verilen Avans</span>
+          <div class="font-mono font-extrabold text-base sm:text-lg text-amber-900 dark:text-amber-100 mt-1">
+            -<CountUp :value="totalAdvance" :decimals="2" /> ₺
           </div>
           <span class="text-[10px] text-amber-600 dark:text-amber-400">Düşülecek</span>
         </div>
 
         <!-- Net Kalan Hakediş -->
-        <div class="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/70">
-          <span class="text-[10px] uppercase font-semibold text-indigo-700 dark:text-indigo-300 block">Net Ödenecek</span>
-          <div class="font-mono font-extrabold text-sm sm:text-base text-indigo-900 dark:text-indigo-100 mt-0.5">
-            {{ netDue.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+        <div class="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/70 shadow-2xs">
+          <span class="text-[10px] uppercase font-bold text-indigo-700 dark:text-indigo-300 block">Net Ödenecek</span>
+          <div class="font-mono font-extrabold text-base sm:text-lg text-indigo-900 dark:text-indigo-100 mt-1">
+            <CountUp :value="netDue" :decimals="2" /> ₺
           </div>
           <span class="text-[10px] text-indigo-600 dark:text-indigo-400">Kalan Bakiye</span>
         </div>

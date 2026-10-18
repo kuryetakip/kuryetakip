@@ -27,19 +27,19 @@ const emit = defineEmits<{
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'primary':
-      return 'bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 focus-visible:ring-slate-900 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500 dark:active:bg-emerald-700 dark:focus-visible:ring-emerald-500 shadow-xs border border-transparent'
+      return 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 focus-visible:ring-emerald-500 shadow-xs shadow-emerald-900/20 border border-emerald-500/30'
     case 'secondary':
-      return 'bg-slate-100 text-slate-900 hover:bg-slate-200 active:bg-slate-300 focus-visible:ring-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:active:bg-slate-600 dark:focus-visible:ring-slate-600 border border-transparent'
+      return 'bg-slate-100 text-slate-900 hover:bg-slate-200 active:bg-slate-300 focus-visible:ring-slate-400 dark:bg-slate-800/80 dark:text-slate-100 dark:hover:bg-slate-700 dark:active:bg-slate-600 dark:border dark:border-slate-700/60'
     case 'outline':
-      return 'bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 border border-slate-300/90 focus-visible:ring-slate-400 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:active:bg-slate-750 dark:focus-visible:ring-slate-500 shadow-xs'
+      return 'bg-white/70 text-slate-700 hover:bg-slate-50 active:bg-slate-100 border border-slate-300/80 focus-visible:ring-slate-400 dark:bg-slate-900/60 dark:text-slate-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:active:bg-slate-750 dark:focus-visible:ring-slate-500 shadow-2xs'
     case 'danger':
-      return 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 focus-visible:ring-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500 shadow-xs border border-transparent'
+      return 'bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700 focus-visible:ring-rose-500 shadow-xs border border-rose-500/30'
     case 'success':
-      return 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 focus-visible:ring-emerald-500 shadow-xs border border-transparent'
+      return 'bg-emerald-600 text-white hover:bg-emerald-500 active:bg-emerald-700 focus-visible:ring-emerald-500 shadow-xs border border-emerald-500/30'
     case 'ghost':
-      return 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 focus-visible:ring-slate-400 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:active:bg-slate-700 border border-transparent'
+      return 'bg-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 active:bg-slate-200 focus-visible:ring-slate-400 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-slate-100 dark:active:bg-slate-700'
     default:
-      return 'bg-slate-900 text-white dark:bg-emerald-600'
+      return 'bg-emerald-600 text-white'
   }
 })
 

@@ -122,3 +122,59 @@ export function getWeekDateRange(dateOrWeek: string | Date): {
     weekStr
   }
 }
+
+/**
+ * Calculates the start boundary of the current weekly cycle (Monday to Monday).
+ * Returns both the UTC Date boundary and the Istanbul YYYY-MM-DD Monday date string.
+ */
+export function getCurrentCycleStart(now: Date = new Date()): {
+  cycleStartUtc: Date
+  mondayDateStr: string
+} {
+  // Convert current time to Istanbul time parts
+  const istanbulDateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(now)
+
+  const yr = Number(istanbulDateParts.find(p => p.type === 'year')?.value || 1970)
+  const mo = Number(istanbulDateParts.find(p => p.type === 'month')?.value || 1)
+  const dy = Number(istanbulDateParts.find(p => p.type === 'day')?.value || 1)
+  const hr = Number(istanbulDateParts.find(p => p.type === 'hour')?.value || 0)
+  const mi = Number(istanbulDateParts.find(p => p.type === 'minute')?.value || 0)
+
+  // Construct local Istanbul date
+  const istanbulDate = new Date(Date.UTC(yr, mo - 1, dy, hr, mi))
+  const dayOfWeek = istanbulDate.getUTCDay() // 0 = Sunday, 1 = Monday ... 6 = Saturday
+
+  // Calculate days back to Monday
+  let daysBackToMonday: number
+  if (dayOfWeek === 1) { // Monday
+    daysBackToMonday = hr < 3 ? 7 : 0
+  } else if (dayOfWeek === 0) { // Sunday
+    daysBackToMonday = 6
+  } else {
+    daysBackToMonday = dayOfWeek - 1
+  }
+
+  // Target Monday
+  const targetMonday = new Date(Date.UTC(yr, mo - 1, dy - daysBackToMonday))
+  const mYr = targetMonday.getUTCFullYear()
+  const mMo = String(targetMonday.getUTCMonth() + 1).padStart(2, '0')
+  const mDy = String(targetMonday.getUTCDate()).padStart(2, '0')
+  const mondayDateStr = `${mYr}-${mMo}-${mDy}`
+
+  // 03:00 Istanbul = 00:00 UTC
+  const cycleStartUtc = new Date(Date.UTC(mYr, targetMonday.getUTCMonth(), targetMonday.getUTCDate(), 0, 0, 0, 0))
+
+  return {
+    cycleStartUtc,
+    mondayDateStr
+  }
+}

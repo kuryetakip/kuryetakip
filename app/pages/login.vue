@@ -284,7 +284,11 @@ const handleLogin = async () => {
   min-height: 100dvh;
   position: relative;
   overflow: hidden;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background: #f8fafc;
+}
+
+.dark .login-page {
   background: #0a0e1a;
 }
 

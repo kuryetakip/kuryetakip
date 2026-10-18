@@ -15,7 +15,8 @@ export default defineNuxtConfig({
     }
   },
   modules: [
-    '@nuxtjs/tailwindcss'
+    '@nuxtjs/tailwindcss',
+    'motion-v/nuxt'
   ],
   css: [
     '~/assets/css/main.css'
@@ -24,7 +25,7 @@ export default defineNuxtConfig({
     head: {
       title: 'KuryeTakip — Kurye & Operasyon Yönetim Sistemi',
       htmlAttrs: {
-        class: 'dark',
+        class: '',
         lang: 'tr'
       },
       meta: [
@@ -34,14 +35,14 @@ export default defineNuxtConfig({
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap' }
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap' }
       ],
       script: [
         {
-          children: `(function() {
+          innerHTML: `(function() {
             try {
-              var theme = localStorage.getItem('theme_preference') || 'dark';
-              var isDark = theme !== 'light';
+              var theme = localStorage.getItem('theme_preference') || 'light';
+              var isDark = theme === 'dark';
               if (isDark) {
                 document.documentElement.classList.add('dark');
                 document.documentElement.setAttribute('data-theme', 'dark');

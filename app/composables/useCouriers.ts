@@ -1,3 +1,5 @@
+import { ref, readonly, type Ref } from 'vue'
+
 export interface CourierItem {
   id: string
   name: string
@@ -34,7 +36,13 @@ export interface CourierItem {
   todayIndoorAmount?: number
   todayOutdoorAmount?: number
   todayTotalAmount?: number
+  weeklyIndoorPackages?: number
+  weeklyOutdoorPackages?: number
+  weeklyTotalPackages?: number
+  weeklyEarnings?: number
+  allTimeTotalPackages?: number
   cumulativeTotalPackages?: number
+  totalPackages?: number
   cumulativeTotalAmount?: number
   totalEarnings?: number
   remainingBalance?: number
@@ -456,9 +464,9 @@ export const useCouriers = () => {
   }
 
   return {
-    couriers: readonly(couriers),
-    currentCourier: readonly(currentCourier),
-    courierPrices: readonly(courierPrices),
+    couriers: readonly(couriers) as unknown as Ref<CourierItem[]>,
+    currentCourier: readonly(currentCourier) as unknown as Ref<CourierItem | null>,
+    courierPrices: readonly(courierPrices) as unknown as Ref<CourierVenuePriceItem[]>,
     loading: readonly(loading),
     searchQuery,
     filterDate,

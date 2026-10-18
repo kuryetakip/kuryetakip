@@ -417,71 +417,78 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Operational KPI Summary Cards (Kurye Hakedişi, Mekan Tahsilatı ve Net Kâr) -->
+    <!-- Operational KPI Summary Cards (Modern Bento Grid) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Toplam Paket Kartı -->
-      <BaseCard no-padding class="p-4 flex flex-col justify-between">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between group hover:border-slate-400 dark:hover:border-slate-700 transition-all duration-200">
         <div>
-          <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Toplam Paket Sayısı
           </div>
-          <div class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
-            {{ summary.totalPackages }} Adet
+          <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 mt-2 font-mono tracking-tight">
+            <CountUp :value="summary.totalPackages" :decimals="0" /> <span class="text-sm font-semibold text-slate-400 font-sans">Adet</span>
           </div>
         </div>
-        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between font-mono">
           <span>İç: {{ summary.indoorPackages }} / Dış: {{ summary.outdoorPackages }}</span>
           <span>{{ summary.totalRecords }} kayıt</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 2. Kurye Hakediş Toplamı -->
-      <BaseCard no-padding class="p-4 border-l-4 border-l-amber-500 flex flex-col justify-between">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-amber-500 shadow-xs flex flex-col justify-between group hover:border-amber-500/40 transition-all duration-200">
         <div>
-          <div class="text-xs font-semibold text-amber-800 dark:text-amber-400 flex items-center justify-between">
+          <div class="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center justify-between">
             <span>Kurye Hakedişi (Ödenen)</span>
-            <Bike class="w-4 h-4 text-amber-500" />
+            <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-110 transition-transform">
+              <Bike class="w-4 h-4" />
+            </div>
           </div>
-          <div class="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1 font-mono">
-            {{ (summary.totalCourierAmount || summary.totalSettlementAmount || 0).toFixed(2) }} ₺
+          <div class="text-2xl sm:text-3xl font-extrabold text-amber-700 dark:text-amber-400 mt-2 font-mono tracking-tight">
+            <CountUp :value="summary.totalCourierAmount || summary.totalSettlementAmount || 0" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-[11px] font-medium text-amber-700 dark:text-amber-400/90 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-[11px] font-medium text-amber-700 dark:text-amber-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span>Kuryelere ödenecek toplam</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 3. Mekan Tahsilat Toplamı -->
-      <BaseCard no-padding class="p-4 border-l-4 border-l-indigo-500 flex flex-col justify-between">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-indigo-500 shadow-xs flex flex-col justify-between group hover:border-indigo-500/40 transition-all duration-200">
         <div>
-          <div class="text-xs font-semibold text-indigo-800 dark:text-indigo-400 flex items-center justify-between">
+          <div class="text-[11px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider flex items-center justify-between">
             <span>Mekan Ücreti (Alınan)</span>
-            <Store class="w-4 h-4 text-indigo-500" />
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+              <Store class="w-4 h-4" />
+            </div>
           </div>
-          <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mt-1 font-mono">
-            {{ (summary.totalVenueAmount || summary.totalSettlementAmount || 0).toFixed(2) }} ₺
+          <div class="text-2xl sm:text-3xl font-extrabold text-indigo-700 dark:text-indigo-400 mt-2 font-mono tracking-tight">
+            <CountUp :value="summary.totalVenueAmount || summary.totalSettlementAmount || 0" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-[11px] font-medium text-indigo-700 dark:text-indigo-400/90 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-[11px] font-medium text-indigo-700 dark:text-indigo-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
           <span>Mekanlardan tahsil edilecek</span>
         </div>
-      </BaseCard>
+      </div>
 
       <!-- 4. NET FARK / KÂR KARTI -->
-      <BaseCard no-padding class="p-4 bg-slate-900 dark:bg-slate-900 text-white border-slate-800 dark:border-slate-700 flex flex-col justify-between">
+      <div class="bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white p-5 rounded-2xl border border-slate-800/90 shadow-xs flex flex-col justify-between group hover:border-emerald-500/50 transition-all duration-200">
         <div>
-          <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Net Kâr / Fark</span>
-            <Sparkles class="w-4 h-4 text-emerald-400" />
+          <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Net Kâr / Operasyonel Fark</span>
+            <div class="w-8 h-8 rounded-xl bg-slate-800/90 text-emerald-400 flex items-center justify-center border border-slate-700/60 group-hover:scale-110 transition-transform">
+              <Sparkles class="w-4 h-4" />
+            </div>
           </div>
-          <div class="text-2xl font-bold text-emerald-400 mt-1 font-mono">
-            {{ (summary.netProfitAmount !== undefined ? summary.netProfitAmount : ((summary.totalVenueAmount || 0) - (summary.totalCourierAmount || summary.totalSettlementAmount || 0))).toFixed(2) }} ₺
+          <div class="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-2 font-mono tracking-tight">
+            <CountUp :value="summary.netProfitAmount !== undefined ? summary.netProfitAmount : ((summary.totalVenueAmount || 0) - (summary.totalCourierAmount || summary.totalSettlementAmount || 0))" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 dark:border-slate-800 flex items-center justify-between">
+        <div class="text-[11px] text-slate-400 mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
           <span>Mekan Alınan - Kurye Ödenen</span>
+          <span class="text-emerald-400 font-semibold font-mono">Net Bakiye</span>
         </div>
-      </BaseCard>
+      </div>
     </div>
 
     <!-- Deliveries Table / Empty State -->
