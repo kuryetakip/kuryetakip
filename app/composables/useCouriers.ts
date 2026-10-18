@@ -88,7 +88,7 @@ export const useCouriers = () => {
   const courierPrices = useState<CourierVenuePriceItem[]>('current-courier-prices', () => [])
   const loading = ref(false)
   const searchQuery = ref('')
-  const filterDate = ref(new Date().toISOString().substring(0, 10))
+  const filterDate = ref(getBusinessDateStr())
   const toast = useToast()
 
   const fetchCouriers = async (search?: string, dateOverride?: string) => {

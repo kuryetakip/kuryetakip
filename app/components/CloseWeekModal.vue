@@ -45,18 +45,12 @@ const weekInfo = ref<{
 
 // Calculate Monday-Sunday date range for current or last week
 const computeDates = (type: 'thisWeek' | 'lastWeek') => {
-  const now = new Date()
-  if (type === 'lastWeek') {
-    now.setDate(now.getDate() - 7)
-  }
+  const mondayStr = type === 'lastWeek' ? getBusinessLastWeekMonday() : getBusinessThisWeekMonday()
+  const [y, m, d] = mondayStr.split('-').map(Number)
+  const monday = new Date(Date.UTC(y, m - 1, d))
+  const sunday = new Date(monday.getTime() + 6 * 86400000)
 
-  const day = now.getDay()
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(now.setDate(diff))
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-
-  const sStr = monday.toISOString().substring(0, 10)
+  const sStr = mondayStr
   const eStr = sunday.toISOString().substring(0, 10)
 
   // ISO Week

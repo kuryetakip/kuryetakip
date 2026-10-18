@@ -379,14 +379,12 @@ const setDateQuickFilter = (type: 'pending' | 'thisWeek' | 'today' | 'yesterday'
     filterEndDate.value = range.end
     filterScope.value = 'custom'
   } else if (type === 'today') {
-    filterDate.value = new Date().toISOString().substring(0, 10)
+    filterDate.value = getBusinessDateStr()
     filterStartDate.value = ''
     filterEndDate.value = ''
     filterScope.value = 'custom'
   } else if (type === 'yesterday') {
-    const d = new Date()
-    d.setDate(d.getDate() - 1)
-    filterDate.value = d.toISOString().substring(0, 10)
+    filterDate.value = getBusinessYesterdayStr()
     filterStartDate.value = ''
     filterEndDate.value = ''
     filterScope.value = 'custom'
@@ -459,7 +457,7 @@ const openAddModal = () => {
     indoorPrice: '',
     outdoorPrice: '',
     isActive: true,
-    date: filterDate.value || new Date().toISOString().substring(0, 10),
+    date: filterDate.value || getBusinessDateStr(),
     indoorCount: '',
     outdoorCount: ''
   }
@@ -470,7 +468,7 @@ const openAddModal = () => {
 const openEditModal = (venue: VenueItem) => {
   isEditing.value = true
   currentVenueId.value = venue.id
-  const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+  const targetDate = filterDate.value || getBusinessDateStr()
   const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
     ? venue.allDailyBreakdown
     : (venue.dailyBreakdown || [])
@@ -518,7 +516,7 @@ const existingDeliveryForEditModal = computed(() => {
 
 const openQuickDelivery = (venue: VenueItem, dateOverride?: string) => {
   targetVenue.value = venue
-  const selectedDate = dateOverride || filterDate.value || new Date().toISOString().substring(0, 10)
+  const selectedDate = dateOverride || filterDate.value || getBusinessDateStr()
   const allDays = venue.allDailyBreakdown && venue.allDailyBreakdown.length > 0
     ? venue.allDailyBreakdown
     : (venue.dailyBreakdown || [])

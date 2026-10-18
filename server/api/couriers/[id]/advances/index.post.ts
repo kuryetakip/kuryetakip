@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   parseMoneyAmount,
   getIstanbulDateString,
+  getBusinessDateString,
   getIstanbulTimeString,
   getISOWeekString
 } from '../../../../utils/period'
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event) => {
     const { amount: rawAmount, date: rawDate, time: rawTime, description } = validationResult.data
     const amount = parseMoneyAmount(rawAmount)
 
-    const todayStr = getIstanbulDateString()
+    const todayStr = getBusinessDateString()
     const currentTimeStr = getIstanbulTimeString()
     const targetDateStr = rawDate || todayStr
     const targetTimeStr = rawTime || currentTimeStr

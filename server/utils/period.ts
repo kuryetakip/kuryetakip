@@ -43,6 +43,16 @@ export function getIstanbulDateString(d: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * Operasyonel iş günü tarih stringi (YYYY-MM-DD).
+ * Sistem Kuralı: Gece 12:00'de değil, gece 03:00'te gün atlar.
+ * 00:00 - 02:59 arası bir önceki güne aittir.
+ */
+export function getBusinessDateString(d: Date = new Date()): string {
+  const shifted = new Date(d.getTime() - 3 * 60 * 60 * 1000)
+  return getIstanbulDateString(shifted)
+}
+
 export function getIstanbulTimeString(d: Date = new Date()): string {
   // Format HH:mm in Europe/Istanbul
   return new Intl.DateTimeFormat('tr-TR', {

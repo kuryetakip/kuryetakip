@@ -1,5 +1,5 @@
 import { prisma } from '../../utils/prisma'
-import { getCurrentCycleStart } from '../../utils/period'
+import { getCurrentCycleStart, getBusinessDateString } from '../../utils/period'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     const search = typeof query.search === 'string' ? query.search.trim() : ''
     const dateStr = typeof query.date === 'string' && query.date.trim()
       ? query.date.trim()
-      : new Date().toISOString().substring(0, 10)
+      : getBusinessDateString()
 
     const where: any = {}
 

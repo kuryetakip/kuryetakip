@@ -93,7 +93,7 @@ export const useDeliveries = () => {
   const toast = useToast()
 
   // Filter state
-  const filterDate = ref(new Date().toISOString().substring(0, 10))
+  const filterDate = ref(getBusinessDateStr())
   const filterCourierId = ref('all')
   const filterVenueId = ref('all')
   const filterDeliveryType = ref('all')

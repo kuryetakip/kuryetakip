@@ -1,6 +1,7 @@
 import { prisma } from '../../../utils/prisma'
 import {
   getIstanbulDateString,
+  getBusinessDateString,
   getWeekDateRange,
   getISOWeekString
 } from '../../../utils/period'
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
     const minAmount = query.minAmount ? Number(query.minAmount) : undefined
     const maxAmount = query.maxAmount ? Number(query.maxAmount) : undefined
 
-    const todayStr = getIstanbulDateString()
+    const todayStr = getBusinessDateString()
     const [currY, currM, currD] = todayStr.split('-').map(Number)
     const todayDate = new Date(Date.UTC(currY, currM - 1, currD))
 

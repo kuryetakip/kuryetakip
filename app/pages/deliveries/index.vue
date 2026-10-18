@@ -167,9 +167,8 @@ const editVenueTotal = computed(() => {
 const editTotal = editCourierTotal
 
 const setDateQuickFilter = (daysOffset: number) => {
-  const d = new Date()
-  d.setDate(d.getDate() + daysOffset)
-  filterDate.value = d.toISOString().substring(0, 10)
+  const d = new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000)
+  filterDate.value = getBusinessDateStr(d)
   fetchDeliveries()
 }
 
@@ -177,7 +176,7 @@ const openAddModal = () => {
   const defaultVenue = activeVenues.value.length > 0 ? activeVenues.value[0] : null
 
   addForm.value = {
-    date: filterDate.value || new Date().toISOString().substring(0, 10),
+    date: filterDate.value || getBusinessDateStr(),
     courierId: '',
     venueId: defaultVenue ? defaultVenue.id : '',
     venueIndoorPrice: defaultVenue ? defaultVenue.indoorPrice : '',

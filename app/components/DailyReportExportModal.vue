@@ -33,8 +33,8 @@ const emit = defineEmits<{
 
 const { isExporting, exportingType, fetchDailySummary, exportToExcel, exportToPdf } = useDailyReportExport()
 
-// Target Date State (Defaults to today)
-const todayStr = new Date().toISOString().substring(0, 10)
+// Target Date State (Defaults to business today with 03:00 cutoff)
+const todayStr = getBusinessDateStr()
 const selectedDate = ref(props.initialDate || todayStr)
 
 // Preview State
@@ -44,11 +44,11 @@ const summaryData = ref<DailyReportSummaryResponse | null>(null)
 const isToday = computed(() => selectedDate.value === todayStr)
 
 const setQuickDate = (type: 'today' | 'yesterday') => {
-  const d = new Date()
   if (type === 'yesterday') {
-    d.setDate(d.getDate() - 1)
+    selectedDate.value = getBusinessYesterdayStr()
+  } else {
+    selectedDate.value = getBusinessDateStr()
   }
-  selectedDate.value = d.toISOString().substring(0, 10)
 }
 
 const loadSummary = async () => {

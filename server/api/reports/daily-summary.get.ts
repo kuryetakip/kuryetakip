@@ -1,4 +1,5 @@
 import { prisma, DeliveryType } from '../../utils/prisma'
+import { getBusinessDateString } from '../../utils/period'
 
 export interface DailyCourierRow {
   courierId: string
@@ -54,10 +55,10 @@ export default defineEventHandler(async (event): Promise<DailyReportSummaryRespo
     const query = getQuery(event)
     const now = new Date()
 
-    // Determine target date (Default: Today in YYYY-MM-DD)
+    // Determine target date (Default: Today in YYYY-MM-DD with 03:00 cutoff)
     const targetDateStr = typeof query.date === 'string' && query.date.trim()
       ? query.date.trim()
-      : now.toISOString().substring(0, 10)
+      : getBusinessDateString()
 
     const [year, month, day] = targetDateStr.split('-').map(Number)
     const fromDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0))

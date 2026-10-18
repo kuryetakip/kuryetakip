@@ -45,7 +45,7 @@ const advanceData = ref<{
 
 // New advance form state
 const formAmount = ref('')
-const formDate = ref(new Date().toISOString().substring(0, 10))
+const formDate = ref(getBusinessDateStr())
 const formTime = ref('')
 const formDescription = ref('')
 const formError = ref('')
@@ -86,7 +86,7 @@ watch(() => props.isOpen, (newVal) => {
     const hh = String(now.getHours()).padStart(2, '0')
     const mm = String(now.getMinutes()).padStart(2, '0')
     formTime.value = `${hh}:${mm}`
-    formDate.value = now.toISOString().substring(0, 10)
+    formDate.value = getBusinessDateStr()
     formAmount.value = ''
     formDescription.value = ''
     formError.value = ''

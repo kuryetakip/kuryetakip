@@ -137,7 +137,7 @@ const savePaidAmount = async (courier: CourierItem) => {
 
   savingPaidCourierId.value = courier.id
   try {
-    const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+    const targetDate = filterDate.value || getBusinessDateStr()
     const result = await createCourierAdvance(courier.id, {
       amount: num,
       date: targetDate,
@@ -459,46 +459,31 @@ const filteredCouriers = computed(() => {
   )
 })
 
-// Helper for date string
+// Helper for date string (03:00 cutoff standard)
 const formatDateYMD = (d: Date) => {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return getBusinessDateStr(d)
 }
 
-// Current week range
+// Current week range (Pazartesi 03:00'e kadar önceki hafta döngüsü sayılır)
 const getThisWeekMonday = () => {
-  const now = new Date()
-  const day = now.getDay() // 0 = Sun, 1 = Mon ...
-  const diff = day === 0 ? -6 : 1 - day
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diff)
-  return formatDateYMD(monday)
+  return getBusinessThisWeekMonday()
 }
 
 // Last week range
 const getLastWeekMonday = () => {
-  const now = new Date()
-  const day = now.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  const lastMonday = new Date(now)
-  lastMonday.setDate(now.getDate() + diff - 7)
-  return formatDateYMD(lastMonday)
+  return getBusinessLastWeekMonday()
 }
 
 // Quick date filter buttons ('today' | 'yesterday' | 'thisWeek' | 'lastWeek')
 const setDateFilter = (type: 'today' | 'yesterday' | 'thisWeek' | 'lastWeek') => {
   if (type === 'today') {
-    filterDate.value = formatDateYMD(new Date())
+    filterDate.value = getBusinessDateStr()
   } else if (type === 'yesterday') {
-    const d = new Date()
-    d.setDate(d.getDate() - 1)
-    filterDate.value = formatDateYMD(d)
+    filterDate.value = getBusinessYesterdayStr()
   } else if (type === 'thisWeek') {
-    filterDate.value = getThisWeekMonday()
+    filterDate.value = getBusinessThisWeekMonday()
   } else if (type === 'lastWeek') {
-    filterDate.value = getLastWeekMonday()
+    filterDate.value = getBusinessLastWeekMonday()
   }
   fetchCouriers()
 }
@@ -536,29 +521,28 @@ const setDetailDaily = (dateStr: string) => {
 
 const setDetailWeekly = (type: 'thisWeek' | 'lastWeek' | 'thisMonth') => {
   detailMode.value = 'weekly'
-  const today = new Date()
 
   if (type === 'thisWeek') {
-    const day = today.getDay()
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1) // Monday
-    const monday = new Date(today.setDate(diff))
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    detailStartDate.value = monday.toISOString().substring(0, 10)
+    const mondayStr = getBusinessThisWeekMonday()
+    const [y, m, d] = mondayStr.split('-').map(Number)
+    const monday = new Date(Date.UTC(y, m - 1, d))
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    detailStartDate.value = mondayStr
     detailEndDate.value = sunday.toISOString().substring(0, 10)
   } else if (type === 'lastWeek') {
-    const day = today.getDay()
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1) - 7 // Prev Monday
-    const monday = new Date(today.setDate(diff))
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    detailStartDate.value = monday.toISOString().substring(0, 10)
+    const mondayStr = getBusinessLastWeekMonday()
+    const [y, m, d] = mondayStr.split('-').map(Number)
+    const monday = new Date(Date.UTC(y, m - 1, d))
+    const sunday = new Date(monday.getTime() + 6 * 86400000)
+    detailStartDate.value = mondayStr
     detailEndDate.value = sunday.toISOString().substring(0, 10)
   } else if (type === 'thisMonth') {
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    detailStartDate.value = firstDay.toISOString().substring(0, 10)
-    detailEndDate.value = lastDay.toISOString().substring(0, 10)
+    const todayStr = getBusinessDateStr()
+    const [y, m] = todayStr.split('-').map(Number)
+    const firstDay = `${y}-${String(m).padStart(2, '0')}-01`
+    const lastDate = new Date(Date.UTC(y, m, 0))
+    detailStartDate.value = firstDay
+    detailEndDate.value = `${y}-${String(m).padStart(2, '0')}-${String(lastDate.getUTCDate()).padStart(2, '0')}`
   }
   fetchDetailReport()
 }
@@ -567,7 +551,7 @@ const setDetailWeekly = (type: 'thisWeek' | 'lastWeek' | 'thisMonth') => {
 const openDetailModal = (courier: CourierItem) => {
   detailCourier.value = courier
   detailMode.value = 'daily'
-  const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+  const targetDate = filterDate.value || getBusinessDateStr()
   detailStartDate.value = targetDate
   detailEndDate.value = targetDate
   detailReportData.value = null
@@ -577,7 +561,7 @@ const openDetailModal = (courier: CourierItem) => {
 
 // Open WhatsApp Modal for a courier
 const openWhatsAppModal = (courier: CourierItem) => {
-  const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+  const targetDate = filterDate.value || getBusinessDateStr()
   const dParts = targetDate.split('-')
   const dateFormatted = dParts.length === 3 ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : targetDate
 
@@ -834,7 +818,7 @@ const onQuickCourierChange = (courierId: string) => {
 
 const openQuickDeliveryModal = async (courier?: CourierItem) => {
   quickDeliveryCourier.value = courier || null
-  const targetDate = filterDate.value || new Date().toISOString().substring(0, 10)
+  const targetDate = filterDate.value || getBusinessDateStr()
   const targetCourierId = courier ? courier.id : (activeCouriersList.value[0]?.id || '')
   const selectedC = courier || couriers.value.find(c => c.id === targetCourierId)
 
@@ -1180,7 +1164,7 @@ onUnmounted(() => {
             type="button"
             :class="[
               'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
-              filterDate === formatDateYMD(new Date())
+              filterDate === getBusinessDateStr()
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
             ]"
@@ -1193,11 +1177,7 @@ onUnmounted(() => {
             type="button"
             :class="[
               'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
-              (() => {
-                const d = new Date()
-                d.setDate(d.getDate() - 1)
-                return filterDate === formatDateYMD(d)
-              })()
+              filterDate === getBusinessYesterdayStr()
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
             ]"
@@ -1210,7 +1190,7 @@ onUnmounted(() => {
             type="button"
             :class="[
               'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
-              filterDate === getThisWeekMonday()
+              filterDate === getBusinessThisWeekMonday()
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
             ]"
@@ -1223,7 +1203,7 @@ onUnmounted(() => {
             type="button"
             :class="[
               'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
-              filterDate === getLastWeekMonday()
+              filterDate === getBusinessLastWeekMonday()
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
             ]"
@@ -2164,14 +2144,14 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="px-2 py-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300"
-                @click="setDetailDaily(new Date().toISOString().substring(0, 10))"
+                @click="setDetailDaily(getBusinessDateStr())"
               >
                 Bugün
               </button>
               <button
                 type="button"
                 class="px-2 py-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300"
-                @click="() => { const d = new Date(); d.setDate(d.getDate() - 1); setDetailDaily(d.toISOString().substring(0, 10)); }"
+                @click="setDetailDaily(getBusinessYesterdayStr())"
               >
                 Dün
               </button>

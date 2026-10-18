@@ -66,24 +66,20 @@ export interface VenueFormData {
 }
 
 export const getThisWeekRange = () => {
-  const now = new Date()
-  const day = now.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(now)
-  monday.setDate(now.getDate() + diffToMonday)
+  const mondayStr = getBusinessThisWeekMonday()
+  const [y, m, d] = mondayStr.split('-').map(Number)
+  const monday = new Date(Date.UTC(y, m - 1, d))
+  const sunday = new Date(monday.getTime() + 6 * 86400000)
 
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-
-  const toDateStr = (d: Date) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const dayStr = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${dayStr}`
+  const toDateStr = (dt: Date) => {
+    const yStr = dt.getUTCFullYear()
+    const mStr = String(dt.getUTCMonth() + 1).padStart(2, '0')
+    const dayStr = String(dt.getUTCDate()).padStart(2, '0')
+    return `${yStr}-${mStr}-${dayStr}`
   }
 
   return {
-    start: toDateStr(monday),
+    start: mondayStr,
     end: toDateStr(sunday)
   }
 }
