@@ -115,6 +115,9 @@ const getCourierPaidAmount = (courier: CourierItem) => {
 }
 
 const getCourierRemainingBalance = (courier: CourierItem) => {
+  if (courier.remainingBalance !== undefined && courier.remainingBalance !== null) {
+    return Number(courier.remainingBalance)
+  }
   const tot = courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0
   const paid = getCourierPaidAmount(courier)
   return Number((tot - paid).toFixed(2))
@@ -1387,16 +1390,16 @@ onUnmounted(() => {
                   <div class="flex items-center gap-1 font-mono font-bold text-xs">
                     <span
                       class="px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 transition-all"
-                      :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0} Paket | Bugün: ${courier.todayIndoorPackages || 0}`"
+                      :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages || 0} Paket | Bugün: ${courier.todayIndoorPackages || 0}`"
                     >
-                      {{ courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0 }} İç
+                      {{ courier.weeklyIndoorPackages || 0 }} İç
                     </span>
                     <span class="text-slate-300">·</span>
                     <span
                       class="px-1.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 transition-all"
-                      :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0} Paket | Bugün: ${courier.todayOutdoorPackages || 0}`"
+                      :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages || 0} Paket | Bugün: ${courier.todayOutdoorPackages || 0}`"
                     >
-                      {{ courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0 }} Dış
+                      {{ courier.weeklyOutdoorPackages || 0 }} Dış
                     </span>
                   </div>
                   <span class="text-[9.5px] text-slate-500 font-mono font-medium">
@@ -1417,7 +1420,7 @@ onUnmounted(() => {
                       title="Haftalık Toplam Paket"
                     >
                       <Package class="w-2.5 h-2.5 text-emerald-600" />
-                      <span>{{ (courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0) }} Pkt</span>
+                      <span>{{ courier.weeklyTotalPackages || 0 }} Pkt</span>
                     </span>
                     <span
                       v-if="courier.carriedBalance && courier.carriedBalance > 0"
@@ -1501,14 +1504,9 @@ onUnmounted(() => {
 
               <!-- 6. Kalan Bakiye -->
               <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-right font-mono">
-                <!-- Eksi bakiye (Kurye borçlu / Fazla ödeme) -->
                 <div v-if="getCourierRemainingBalance(courier) < 0" class="inline-flex flex-col items-end">
-                  <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-mono font-extrabold text-xs border border-rose-200 dark:border-rose-800 shadow-2xs">
-                    <AlertTriangle class="w-3 h-3 text-rose-600 shrink-0" />
-                    <span>{{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</span>
-                  </span>
-                  <span class="text-[9.5px] text-rose-600 dark:text-rose-400 font-sans font-semibold mt-0.5">
-                    Borçlu
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-extrabold text-xs border border-amber-200 dark:border-amber-800 shadow-2xs">
+                    {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
                 </div>
                 <!-- Pozitif / Sıfır bakiye -->
@@ -1832,7 +1830,7 @@ onUnmounted(() => {
             >
               <span class="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 block uppercase">İç Mekan</span>
               <div class="font-mono font-bold text-sm text-emerald-900 dark:text-emerald-200 mt-0.5">
-                {{ courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyIndoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
               <div class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
                 Bugün: {{ courier.todayIndoorPackages || 0 }}
@@ -1846,7 +1844,7 @@ onUnmounted(() => {
             >
               <span class="text-[10px] font-semibold text-sky-800 dark:text-sky-300 block uppercase">Dış Mekan</span>
               <div class="font-mono font-bold text-sm text-sky-900 dark:text-sky-200 mt-0.5">
-                {{ courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0 }} <span class="text-xs font-normal">Pkt</span>
+                {{ courier.weeklyOutdoorPackages || 0 }} <span class="text-xs font-normal">Pkt</span>
               </div>
               <div class="text-[10px] font-mono text-sky-600 dark:text-sky-400 mt-0.5">
                 Bugün: {{ courier.todayOutdoorPackages || 0 }}
@@ -1856,7 +1854,7 @@ onUnmounted(() => {
             <!-- Toplam Hakediş (Kümülatif Hakediş ve Toplam Paket) -->
             <div
               class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 transition-colors"
-              :title="`Haftalık: ${courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0} Pkt (İç: ${courier.weeklyIndoorPackages ?? courier.cycleIndoorPackages ?? 0} + Dış: ${courier.weeklyOutdoorPackages ?? courier.cycleOutdoorPackages ?? 0})`"
+              :title="`Haftalık: ${courier.weeklyTotalPackages || 0} Pkt`"
               @click="openQuickDeliveryModal(courier)"
             >
               <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block uppercase">Toplam Hakediş</span>
@@ -1864,7 +1862,7 @@ onUnmounted(() => {
                 {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }} ₺
               </div>
               <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-bold">
-                {{ courier.weeklyTotalPackages || courier.cumulativeTotalPackages || 0 }} Pkt
+                {{ courier.weeklyTotalPackages || 0 }} Pkt
               </div>
             </div>
           </div>
@@ -1953,11 +1951,9 @@ onUnmounted(() => {
             <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800">
               <span class="text-slate-500 dark:text-slate-400 font-medium">Kalan Hakediş:</span>
               <div v-if="getCourierRemainingBalance(courier) < 0" class="text-right">
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-mono font-bold text-xs border border-rose-300 dark:border-rose-800">
-                  <AlertTriangle class="w-3 h-3" />
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs border border-amber-200 dark:border-amber-800">
                   {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
-                <span class="text-[10px] text-rose-600 dark:text-rose-400 block font-medium mt-0.5">Fazla Ödeme (Borçlu)</span>
               </div>
               <div v-else>
                 <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200 dark:border-emerald-800">

@@ -2433,25 +2433,6 @@ onMounted(() => {
               {{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
             </span>
           </div>
-
-          <!-- Eğer önceki devir borcu varsa göster ve doğrudan silme butonu sun -->
-          <div
-            v-if="venueToSettle.carriedBalance && venueToSettle.carriedBalance > 0"
-            class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-200"
-          >
-            <div class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-              <span>Bu tutarın <strong>{{ venueToSettle.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong> kısmı önceki kalan borçtur.</span>
-            </div>
-            <button
-              type="button"
-              class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-bold transition-colors cursor-pointer shrink-0"
-              title="Önceki kalan borcu ödendi olarak işaretle ve sil"
-              @click="openClearCarriedFromSettleModal"
-            >
-              Borcu Sil
-            </button>
-          </div>
         </div>
 
         <!-- Ödeme Giriş Alanları (Gelen Para, Ödeme Yöntemi ve Kalan Miktar) -->

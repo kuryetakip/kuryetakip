@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma'
+import { getCurrentCycleStart } from '../../utils/period'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -8,6 +9,9 @@ export default defineEventHandler(async (event) => {
     const startDateStr = typeof query.startDate === 'string' ? query.startDate.trim() : ''
     const endDateStr = typeof query.endDate === 'string' ? query.endDate.trim() : ''
     const scope = typeof query.scope === 'string' ? query.scope.trim() : '' // 'all' | 'pending' | 'settled'
+
+    // Monday 03:00 boundary for weekly cycle reset
+    const { cycleStartUtc, mondayDateStr } = getCurrentCycleStart(new Date())
 
     const where: any = {}
 
@@ -44,7 +48,8 @@ export default defineEventHandler(async (event) => {
             venuePriceSnapshot: true,
             unitPriceSnapshot: true,
             isSettled: true,
-            settledAt: true
+            settledAt: true,
+            createdAt: true
           }
         }
       }
@@ -59,7 +64,20 @@ export default defineEventHandler(async (event) => {
       let filteredIndoorAmount = 0
       let filteredOutdoorAmount = 0
 
-      // Unsettled / Pending (Tahsilat Bekleyen) metrics
+      // Aktif döngü (Pazartesi 03:00'ten itibaren başlayan aktif hafta) metrikleri
+      let currentCycleIndoorCount = 0
+      let currentCycleOutdoorCount = 0
+      let currentCycleTotalCount = 0
+      let currentCycleIndoorAmount = 0
+      let currentCycleOutdoorAmount = 0
+      let currentCycleTotalAmount = 0
+      let currentCycleCourierAmount = 0
+
+      // Geçmiş haftalardan kalan tahsil edilmemiş teslimat tutarları
+      let priorUnsettledAmount = 0
+      let priorUnsettledCourierAmount = 0
+
+      // Unsettled / Pending (Tahsilat Bekleyen) metrics across all time
       let pendingPackageCount = 0
       let pendingIndoorCount = 0
       let pendingOutdoorCount = 0
@@ -110,6 +128,26 @@ export default defineEventHandler(async (event) => {
           : Number(rec.totalAmount || 0)
         const dateKey = rec.date.toISOString().substring(0, 10)
         const isRecSettled = !!rec.isSettled
+
+        // Record timestamp checking for Monday 03:00 reset
+        const recCreatedAt = rec.createdAt ? new Date(rec.createdAt) : (rec.date instanceof Date ? rec.date : new Date(rec.date))
+        const isWithinCurrentCycle = recCreatedAt >= cycleStartUtc || dateKey >= mondayDateStr
+
+        if (isWithinCurrentCycle) {
+          currentCycleTotalCount += count
+          currentCycleTotalAmount += amount
+          currentCycleCourierAmount += courierCost
+          if (rec.deliveryType === 'INDOOR') {
+            currentCycleIndoorCount += count
+            currentCycleIndoorAmount += amount
+          } else {
+            currentCycleOutdoorCount += count
+            currentCycleOutdoorAmount += amount
+          }
+        } else if (!isRecSettled) {
+          priorUnsettledAmount += amount
+          priorUnsettledCourierAmount += courierCost
+        }
 
         // All-time aggregation
         allTimePackageCount += count
@@ -220,33 +258,57 @@ export default defineEventHandler(async (event) => {
       const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
       const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
-      // Devreden borç (carriedBalance), mekanın mevcut / aktif borcuna (Toplam Tutar) eklenir.
+      // Devreden ve önceki kapanmamış borçların toplamı (carriedBalance + geçmiş haftaların tahsil edilmemiş teslimat tutarları)
       const carriedBalance = Number(v.carriedBalance || 0)
-      const pendingDeliveriesAmount = Number(pendingAmount.toFixed(2))
-      const pendingTotalWithCarried = Number((pendingDeliveriesAmount + carriedBalance).toFixed(2))
+      const uncollectedPriorBalance = Number((priorUnsettledAmount + carriedBalance).toFixed(2))
 
-      // Eğer tek bir spesifik gün filtrelenmiyorsa (haftalık veya bekleyen görünümlerde),
-      // önceki haftadan/dönemden devreden borç toplam tutara doğrudan eklenir.
       let totalAmount = 0
+      let totalPackageCount = 0
+      let indoorPackageCount = 0
+      let outdoorPackageCount = 0
+      let indoorAmount = 0
+      let outdoorAmount = 0
+      let courierAmount = 0
+
       if (scope === 'all') {
         totalAmount = allTimeTotalAmount
+        totalPackageCount = allTimePackageCount
+        indoorPackageCount = filteredIndoorPackageCount
+        outdoorPackageCount = filteredOutdoorPackageCount
+        indoorAmount = filteredIndoorAmount
+        outdoorAmount = filteredOutdoorAmount
+        courierAmount = filteredCourierAmount
       } else if (dateStr) {
+        // Belirli tek bir gün seçildiğinde o günün değerleri
         totalAmount = filteredTotalAmount
+        totalPackageCount = filteredPackageCount
+        indoorPackageCount = filteredIndoorPackageCount
+        outdoorPackageCount = filteredOutdoorPackageCount
+        indoorAmount = filteredIndoorAmount
+        outdoorAmount = filteredOutdoorAmount
+        courierAmount = filteredCourierAmount
       } else if (startDateStr || endDateStr) {
-        // Haftalık veya tarih aralığı filtresinde devreden borç toplam tutara eklenir
-        totalAmount = Number((filteredTotalAmount + carriedBalance).toFixed(2))
+        // Haftalık veya tarih aralığı filtresinde o aralıktaki paketler ve geçmiş devir borcu eklenir
+        totalAmount = Number((filteredTotalAmount + uncollectedPriorBalance).toFixed(2))
+        totalPackageCount = filteredPackageCount
+        indoorPackageCount = filteredIndoorPackageCount
+        outdoorPackageCount = filteredOutdoorPackageCount
+        indoorAmount = filteredIndoorAmount
+        outdoorAmount = filteredOutdoorAmount
+        courierAmount = Number((filteredCourierAmount + priorUnsettledCourierAmount).toFixed(2))
       } else {
-        // Bekleyen tahsilat (varsayılan)
-        totalAmount = pendingTotalWithCarried
+        // Varsayılan: Bekleyen Tahsilat (Aktif Döngü)
+        // Paketler Pazartesi 03:00'ten itibaren sıfırlanıp yeni haftaya geçer;
+        // Önceki haftadan kalan tüm borçlar doğrudan tahsil edilecek toplam tutara eklenir.
+        totalAmount = Number((currentCycleTotalAmount + uncollectedPriorBalance).toFixed(2))
+        totalPackageCount = currentCycleTotalCount
+        indoorPackageCount = currentCycleIndoorCount
+        outdoorPackageCount = currentCycleOutdoorCount
+        indoorAmount = currentCycleIndoorAmount
+        outdoorAmount = currentCycleOutdoorAmount
+        courierAmount = Number((currentCycleCourierAmount + priorUnsettledCourierAmount).toFixed(2))
       }
 
-      const hasExplicitDateFilter = !!(dateStr || startDateStr || endDateStr || scope === 'all')
-      const totalPackageCount = hasExplicitDateFilter ? filteredPackageCount : pendingPackageCount
-      const indoorPackageCount = hasExplicitDateFilter ? filteredIndoorPackageCount : pendingIndoorCount
-      const outdoorPackageCount = hasExplicitDateFilter ? filteredOutdoorPackageCount : pendingOutdoorCount
-      const indoorAmount = hasExplicitDateFilter ? filteredIndoorAmount : pendingIndoorAmount
-      const outdoorAmount = hasExplicitDateFilter ? filteredOutdoorAmount : pendingOutdoorAmount
-      const courierAmount = hasExplicitDateFilter ? filteredCourierAmount : pendingCourierAmount
       const netProfit = Number((totalAmount - courierAmount).toFixed(2))
 
       return {

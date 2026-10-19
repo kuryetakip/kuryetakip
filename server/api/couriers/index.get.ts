@@ -20,10 +20,12 @@ export default defineEventHandler(async (event) => {
 
     // Target date UTC boundary
     const [y, m, d] = dateStr.split('-').map(Number)
-    const targetDate = (y && m && d) ? new Date(Date.UTC(y, m - 1, d)) : null
+    const targetDateTime = (y && m && d) ? new Date(Date.UTC(y, m - 1, d, 12, 0, 0)) : new Date()
 
     // Monday 03:00 boundary for weekly cycle reset
-    const { cycleStartUtc, mondayDateStr } = getCurrentCycleStart(new Date())
+    const { cycleStartUtc, mondayDateStr } = getCurrentCycleStart(targetDateTime)
+    const cycleEndUtc = new Date(cycleStartUtc.getTime() + 7 * 86400000)
+    const nextMondayDateStr = new Date(targetDateTime.getTime() + 7 * 86400000).toISOString().substring(0, 10)
 
     const couriers = await prisma.courier.findMany({
       where,
@@ -78,12 +80,15 @@ export default defineEventHandler(async (event) => {
       let todayIndoorAmount = 0
       let todayOutdoorAmount = 0
 
-      // Haftalık Paket ve Kazanç (Her Pazartesi 03:00'te sıfırlanan aktif döngü)
+      // Haftalık Paket ve Kazanç (Her Pazartesi 03:00'te sıfırlanan aktif haftalık döngü)
       let weeklyIndoorPackages = 0
       let weeklyOutdoorPackages = 0
       let weeklyEarnings = 0
 
-      // Aktif hakediş döngüsü (hesap kapatılana veya devredilene kadar)
+      // Önceki haftalardan kapanmamış / devreden hakediş ve avanslar
+      let priorUnsettledEarnings = 0
+
+      // Aktif hakediş döngüsü (hesap kapatılana veya devredilene kadar tüm kapanmamış kayıtlar)
       let cycleIndoorPackages = 0
       let cycleOutdoorPackages = 0
       let cycleIndoorAmount = 0
@@ -106,9 +111,10 @@ export default defineEventHandler(async (event) => {
           ? rec.date.toISOString().substring(0, 10)
           : String(rec.date).substring(0, 10)
 
-        // Record timestamp checking for Monday 03:00 reset
+        // Record timestamp checking for Monday 03:00 weekly reset
         const recCreatedAt = rec.createdAt ? new Date(rec.createdAt) : (rec.date instanceof Date ? rec.date : new Date(rec.date))
-        const isWithinCurrentCycle = recCreatedAt >= cycleStartUtc || recDateStr >= mondayDateStr
+        const isWithinCurrentCycle = (recCreatedAt >= cycleStartUtc && recCreatedAt < cycleEndUtc) ||
+          (recDateStr >= mondayDateStr && (!nextMondayDateStr || recDateStr < nextMondayDateStr))
 
         if (isWithinCurrentCycle) {
           weeklyEarnings += amount
@@ -117,9 +123,11 @@ export default defineEventHandler(async (event) => {
           } else {
             weeklyOutdoorPackages += count
           }
+        } else if (!rec.isCourierSettled && recCreatedAt < cycleStartUtc) {
+          priorUnsettledEarnings += amount
         }
 
-        // Only unsettled records count towards the current active settlement cycle
+        // Only unsettled records count towards the full unclosed cycle
         if (!rec.isCourierSettled) {
           cycleEarnings += amount
           if (rec.deliveryType === 'INDOOR') {
@@ -146,18 +154,29 @@ export default defineEventHandler(async (event) => {
       let todayAdvanceAmount = 0
       let activeAdvanceAmount = 0
       let totalAdvanceAmount = 0
+      let weeklyAdvanceAmount = 0
+      let priorActiveAdvances = 0
 
       for (const adv of c.advances) {
         const advAmt = Number(adv.amount || 0)
         totalAdvanceAmount += advAmt
 
-        if (adv.status === 'ACTIVE') {
-          activeAdvanceAmount += advAmt
-        }
-
         const advDateStr = adv.date instanceof Date
           ? adv.date.toISOString().substring(0, 10)
           : String(adv.date).substring(0, 10)
+
+        const advCreatedAt = adv.createdAt ? new Date(adv.createdAt) : (adv.date instanceof Date ? adv.date : new Date(adv.date))
+        const isAdvWithinCurrentCycle = (advCreatedAt >= cycleStartUtc && advCreatedAt < cycleEndUtc) ||
+          (advDateStr >= mondayDateStr && (!nextMondayDateStr || advDateStr < nextMondayDateStr))
+
+        if (adv.status === 'ACTIVE') {
+          activeAdvanceAmount += advAmt
+          if (isAdvWithinCurrentCycle) {
+            weeklyAdvanceAmount += advAmt
+          } else if (advCreatedAt < cycleStartUtc) {
+            priorActiveAdvances += advAmt
+          }
+        }
 
         if (advDateStr === dateStr) {
           todayAdvanceAmount += advAmt
@@ -167,20 +186,24 @@ export default defineEventHandler(async (event) => {
       const todayTotalPackages = todayIndoorPackages + todayOutdoorPackages
       const todayTotalAmount = Number((todayIndoorAmount + todayOutdoorAmount).toFixed(2))
 
-      // Haftalık sıfırlanan toplam paket (Aktif döngü ile yedekli)
-      const effectiveWeeklyIndoor = weeklyIndoorPackages > 0 ? weeklyIndoorPackages : cycleIndoorPackages
-      const effectiveWeeklyOutdoor = weeklyOutdoorPackages > 0 ? weeklyOutdoorPackages : cycleOutdoorPackages
-      const weeklyTotalPackages = effectiveWeeklyIndoor + effectiveWeeklyOutdoor
+      // Haftalık sıfırlanan toplam paket (Pazartesi 03:00'te sıfırlanır, eski döngüye fallback yapılmaz)
+      const weeklyTotalPackages = weeklyIndoorPackages + weeklyOutdoorPackages
 
       // Aktif hakediş döngüsü paket ve tutarları
       const cumulativeTotalPackages = cycleIndoorPackages + cycleOutdoorPackages
       const carriedBalance = Number(c.carriedBalance || 0)
-      // Toplam Hakediş = Aktif Dönem Hakedişi + Önceki Dönemden Devreden Bakiye
-      const cumulativeTotalAmount = Number((cycleEarnings + carriedBalance).toFixed(2))
 
-      // Aktif avanslar: kuryeye verilen avans girildikçe düşer
-      const paidAmount = c.advances.length > 0 ? Number(activeAdvanceAmount.toFixed(2)) : Number(c.paidAmount || 0)
-      const remainingBalance = Number((cumulativeTotalAmount - paidAmount).toFixed(2))
+      // Önceki dönemlerden devreden bakiye ve kapanmamış net fark
+      const priorNetBalance = Number((priorUnsettledEarnings - priorActiveAdvances + carriedBalance).toFixed(2))
+
+      // Toplam Hakediş = Bu haftanın hakedişi + (Varsa önceki dönemlerden kalan pozitif devir hakedişi)
+      const cumulativeTotalAmount = Number((weeklyEarnings + (priorNetBalance > 0 ? priorNetBalance : 0)).toFixed(2))
+
+      // Bu hafta verilen avans tutarı
+      const paidAmount = Number(weeklyAdvanceAmount.toFixed(2))
+
+      // Kalan bakiye = Bu haftaki hakediş - bu haftaki avans + devreden net bakiye
+      const remainingBalance = Number((weeklyEarnings - weeklyAdvanceAmount + priorNetBalance).toFixed(2))
 
       return {
         id: c.id,
@@ -190,9 +213,11 @@ export default defineEventHandler(async (event) => {
         outdoorPrice: Number(c.outdoorPrice || 0),
         paidAmount,
         carriedBalance: Number(carriedBalance.toFixed(2)),
+        priorNetBalance,
         lastSettledAt: c.lastSettledAt,
         lastSettledAmount: Number(c.lastSettledAmount || 0),
         todayAdvanceAmount: Number(todayAdvanceAmount.toFixed(2)),
+        weeklyAdvanceAmount: Number(weeklyAdvanceAmount.toFixed(2)),
         activeAdvanceAmount: Number(activeAdvanceAmount.toFixed(2)),
         totalAdvanceAmount: Number(totalAdvanceAmount.toFixed(2)),
         advanceCount: c._count.advances,
@@ -217,8 +242,8 @@ export default defineEventHandler(async (event) => {
         todayIndoorAmount: Number(todayIndoorAmount.toFixed(2)),
         todayOutdoorAmount: Number(todayOutdoorAmount.toFixed(2)),
         todayTotalAmount,
-        weeklyIndoorPackages: effectiveWeeklyIndoor,
-        weeklyOutdoorPackages: effectiveWeeklyOutdoor,
+        weeklyIndoorPackages,
+        weeklyOutdoorPackages,
         weeklyTotalPackages,
         weeklyEarnings: Number(weeklyEarnings.toFixed(2)),
         allTimeTotalPackages,
