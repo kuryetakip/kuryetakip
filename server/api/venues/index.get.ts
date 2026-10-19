@@ -261,6 +261,8 @@ export default defineEventHandler(async (event) => {
       // Devreden ve önceki kapanmamış borçların toplamı (carriedBalance + geçmiş haftaların tahsil edilmemiş teslimat tutarları)
       const carriedBalance = Number(v.carriedBalance || 0)
       const uncollectedPriorBalance = Number((priorUnsettledAmount + carriedBalance).toFixed(2))
+      const pendingDeliveriesAmount = Number(pendingAmount.toFixed(2))
+      const pendingTotalWithCarried = Number((pendingDeliveriesAmount + carriedBalance).toFixed(2))
 
       let totalAmount = 0
       let totalPackageCount = 0
