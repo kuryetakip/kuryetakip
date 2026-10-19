@@ -1005,26 +1005,26 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- KPI Summary Cards (Modern Bento Fintech Cards) -->
+    <!-- KPI Summary Cards (Ultra-Modern Bento Fintech Dark Mode) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Kayıtlı Kuryeler -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700/80 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Kayıtlı Kuryeler
             </span>
-            <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/60">
-              <Users class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/70 shadow-2xs">
+              <Users class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-3 font-mono tracking-tight">
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 font-mono tracking-tight">
             <CountUp :value="totalCouriersCount" :decimals="0" /> <span class="text-sm font-semibold text-slate-400 font-sans">Kurye</span>
           </div>
         </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <span>Aktif Kurye Sayısı:</span>
-          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <CountUp :value="activeCouriersCount" :decimals="0" /> Aktif
           </span>
@@ -1032,56 +1032,57 @@ onUnmounted(() => {
       </div>
 
       <!-- 2. Seçilen Gün Paket ve Hakediş -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 border-l-4 border-l-emerald-500 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>Seçilen Gün: Paketler</span>
             </span>
-            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/20">
-              <Package class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/30 shadow-2xs">
+              <Package class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-3 font-mono tracking-tight">
-            <CountUp :value="totalPackagesAcrossCouriers" :decimals="0" /> <span class="text-sm font-semibold font-sans">Paket</span>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3 font-mono tracking-tight drop-shadow-xs">
+            <CountUp :value="totalPackagesAcrossCouriers" :decimals="0" /> <span class="text-sm font-semibold font-sans text-slate-400">Paket</span>
           </div>
         </div>
-        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-          <span class="font-mono text-[11px]">İç: {{ totalIndoorAcrossCouriers }} · Dış: {{ totalOutdoorAcrossCouriers }}</span>
-          <span class="font-mono font-bold"><CountUp :value="totalAmountAcrossCouriers" :decimals="2" /> ₺</span>
+        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+          <span class="font-mono text-[11px] text-slate-400">İç: {{ totalIndoorAcrossCouriers }} · Dış: {{ totalOutdoorAcrossCouriers }}</span>
+          <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400"><CountUp :value="totalAmountAcrossCouriers" :decimals="2" /> ₺</span>
         </div>
       </div>
 
       <!-- 3. Toplam Hakediş & Verilen Avans -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-amber-500 shadow-xs flex flex-col justify-between group hover:border-amber-500/40 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 border-l-4 border-l-amber-500 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-amber-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
               Verilen Avans / Ödenen
             </span>
-            <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform border border-amber-500/20">
-              <Wallet class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform border border-amber-500/30 shadow-2xs">
+              <Wallet class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400 mt-3 font-mono tracking-tight">
+          <div class="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-3 font-mono tracking-tight drop-shadow-xs">
             <CountUp :value="totalPaidAcrossCouriers" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-xs font-medium text-amber-700/90 dark:text-amber-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-          <span>Toplam Dönem Hakedişi:</span>
-          <span class="font-mono font-bold"><CountUp :value="totalCumulativeEarningsAcrossCouriers" :decimals="2" /> ₺</span>
+        <div class="text-xs font-medium text-amber-700/90 dark:text-amber-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+          <span class="text-slate-400">Dönem Hakedişi:</span>
+          <span class="font-mono font-bold text-slate-700 dark:text-slate-300"><CountUp :value="totalCumulativeEarningsAcrossCouriers" :decimals="2" /> ₺</span>
         </div>
       </div>
 
-      <!-- 4. Kalan Toplam Hakediş (Net Bakiye) -->
+      <!-- 4. Kalan Toplam Hakediş (Net Bakiye Hero Card) -->
       <div
         :class="[
-          'p-5 rounded-2xl backdrop-blur-md flex flex-col justify-between transition-all duration-200 group shadow-xs',
+          'p-5 rounded-2xl backdrop-blur-xl flex flex-col justify-between transition-all duration-200 group shadow-lg dark:shadow-xl relative overflow-hidden',
           totalRemainingBalanceAcrossCouriers < 0
             ? 'bg-rose-950/90 text-white border-2 border-rose-800'
-            : 'bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white border border-slate-800/90'
+            : 'bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/50 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/60 text-white border border-slate-800 dark:border-emerald-500/30 dark:shadow-emerald-950/20'
         ]"
       >
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5" :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-300' : 'text-emerald-400'">
@@ -1089,24 +1090,24 @@ onUnmounted(() => {
             </span>
             <div
               :class="[
-                'w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform border',
-                totalRemainingBalanceAcrossCouriers < 0 ? 'bg-rose-900/60 text-rose-300 border-rose-700' : 'bg-slate-800/90 text-emerald-400 border-slate-700/60'
+                'w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform border shadow-2xs',
+                totalRemainingBalanceAcrossCouriers < 0 ? 'bg-rose-900/60 text-rose-300 border-rose-700' : 'bg-slate-800/90 dark:bg-emerald-950/60 text-emerald-400 border-slate-700/60 dark:border-emerald-700/60'
               ]"
             >
-              <AlertTriangle v-if="totalRemainingBalanceAcrossCouriers < 0" class="w-4 h-4 text-rose-400 shrink-0" />
-              <TrendingUp v-else class="w-4 h-4 text-emerald-400 shrink-0" />
+              <AlertTriangle v-if="totalRemainingBalanceAcrossCouriers < 0" class="w-4.5 h-4.5 text-rose-400 shrink-0" />
+              <TrendingUp v-else class="w-4.5 h-4.5 text-emerald-400 shrink-0" />
             </div>
           </div>
           <div
             :class="[
-              'text-2xl sm:text-3xl font-black mt-3 font-mono tracking-tight',
-              totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-400' : 'text-emerald-400'
+              'text-2xl sm:text-3xl font-black mt-3 font-mono tracking-tight drop-shadow-sm',
+              totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-400' : 'text-emerald-300 dark:text-emerald-400'
             ]"
           >
             <CountUp :value="totalRemainingBalanceAcrossCouriers" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-xs text-slate-300 dark:text-slate-400 mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div class="text-xs text-slate-300 dark:text-slate-400 mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between relative z-10">
           <span>{{ totalRemainingBalanceAcrossCouriers < 0 ? 'Fazla Avans (Kurye Borçlu)' : 'Ödenecek Net Bakiye' }}</span>
           <span class="font-mono font-bold" :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-300' : 'text-emerald-400'">
             {{ totalRemainingBalanceAcrossCouriers < 0 ? 'Borç' : 'Bakiye' }}
@@ -1115,8 +1116,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Search & Unified Action Toolbar -->
-    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
+    <!-- Search & Unified Action Toolbar (Dark Mode Glassmorphism) -->
+    <div class="bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-xs dark:shadow-lg dark:shadow-black/20 space-y-3">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <!-- Search Input -->
         <div class="lg:col-span-2">
@@ -1158,17 +1159,17 @@ onUnmounted(() => {
       </div>
 
       <!-- Quick Date Shortcuts & View Mode Switcher -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Hızlı Tarih:</span>
           <!-- Bugün -->
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               filterDate === getBusinessDateStr()
-                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateFilter('today')"
           >
@@ -1178,10 +1179,10 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               filterDate === getBusinessYesterdayStr()
-                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateFilter('yesterday')"
           >
@@ -1191,10 +1192,10 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               filterDate === getBusinessThisWeekMonday()
-                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateFilter('thisWeek')"
           >
@@ -1204,10 +1205,10 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-lg text-xs font-semibold transition-all',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               filterDate === getBusinessLastWeekMonday()
-                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
+                : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateFilter('lastWeek')"
           >
@@ -1216,22 +1217,22 @@ onUnmounted(() => {
         </div>
 
         <div class="flex items-center gap-3">
-          <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 font-mono bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60">
+          <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
             <Calendar class="w-3.5 h-3.5" />
             <span>Hesaplanan: {{ filterDate }}</span>
           </div>
 
           <!-- View Mode Toggle -->
-          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
             <button
               type="button"
               :class="[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer',
                 viewMode === 'table'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
-              title="Tablo Görünümü"
+              title="Tablo Görünümü (Masaüstü için kompakt)"
               @click="viewMode = 'table'"
             >
               <TableIcon class="w-3.5 h-3.5" />
@@ -1240,12 +1241,12 @@ onUnmounted(() => {
             <button
               type="button"
               :class="[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer',
                 viewMode === 'cards'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
-              title="Kart Görünümü"
+              title="Kart Görünümü (Mobil & Tablet uyumlu)"
               @click="viewMode = 'cards'"
             >
               <LayoutGrid class="w-3.5 h-3.5" />
@@ -1307,7 +1308,7 @@ onUnmounted(() => {
                       :class="[
                         'w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-2xs group-hover:scale-105 transition-all',
                         courier.isActive
-                          ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white dark:from-slate-700 dark:to-slate-800 dark:text-emerald-400 ring-2 ring-emerald-500/20'
+                          ? 'bg-gradient-to-br from-emerald-500/15 via-slate-50 to-teal-500/10 text-emerald-600 border border-emerald-500/30 dark:from-emerald-950/60 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/5'
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                       ]"
                     >
@@ -1326,7 +1327,7 @@ onUnmounted(() => {
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
-                        class="font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-xs truncate block text-left cursor-pointer"
+                        class="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-xs truncate block text-left cursor-pointer"
                         @click="openDetailModal(courier)"
                       >
                         {{ courier.name }}
@@ -1335,14 +1336,14 @@ onUnmounted(() => {
                       <!-- Modern Status Pill Badge -->
                       <span
                         v-if="courier.isActive && (courier.todayTotalPackages || 0) > 0"
-                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60 shadow-2xs"
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 shadow-2xs"
                       >
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         {{ courier.todayTotalPackages }} Pkt
                       </span>
                       <span
                         v-else-if="courier.isActive"
-                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60 shadow-2xs"
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80 shadow-2xs"
                       >
                         <span class="w-1.5 h-1.5 rounded-full bg-sky-500" />
                         Boşta
@@ -1359,7 +1360,7 @@ onUnmounted(() => {
                       <a
                         v-if="courier.phone"
                         :href="'tel:' + courier.phone"
-                        class="text-slate-500 dark:text-slate-400 hover:text-emerald-600 font-mono flex items-center gap-1 transition-colors"
+                        class="text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 font-mono flex items-center gap-1 transition-colors"
                         title="Aramak için tıklayın"
                       >
                         <Phone class="w-2.5 h-2.5 text-slate-400" />
@@ -1368,7 +1369,7 @@ onUnmounted(() => {
                       <button
                         v-if="courier.phone"
                         type="button"
-                        class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 p-0.5 rounded transition-colors"
+                        class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-0.5 rounded transition-colors cursor-pointer"
                         title="WhatsApp üzerinden aç"
                         @click="openWhatsAppModal(courier)"
                       >
@@ -1389,20 +1390,20 @@ onUnmounted(() => {
                 <div class="inline-flex flex-col items-center gap-0.5">
                   <div class="flex items-center gap-1 font-mono font-bold text-xs">
                     <span
-                      class="px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 transition-all"
+                      class="px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 transition-all shadow-2xs"
                       :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages || 0} Paket | Bugün: ${courier.todayIndoorPackages || 0}`"
                     >
                       {{ courier.weeklyIndoorPackages || 0 }} İç
                     </span>
-                    <span class="text-slate-300">·</span>
+                    <span class="text-slate-300 dark:text-slate-600">·</span>
                     <span
-                      class="px-1.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 transition-all"
+                      class="px-1.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 transition-all shadow-2xs"
                       :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages || 0} Paket | Bugün: ${courier.todayOutdoorPackages || 0}`"
                     >
                       {{ courier.weeklyOutdoorPackages || 0 }} Dış
                     </span>
                   </div>
-                  <span class="text-[9.5px] text-slate-500 font-mono font-medium">
+                  <span class="text-[9.5px] text-slate-500 dark:text-slate-400 font-mono font-medium">
                     Bugün: {{ (courier.todayIndoorPackages || 0) + (courier.todayOutdoorPackages || 0) }} Pkt
                   </span>
                 </div>
@@ -1419,7 +1420,7 @@ onUnmounted(() => {
                       class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-sans font-bold text-[9px] border border-emerald-500/30"
                       title="Haftalık Toplam Paket"
                     >
-                      <Package class="w-2.5 h-2.5 text-emerald-600" />
+                      <Package class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                       <span>{{ courier.weeklyTotalPackages || 0 }} Pkt</span>
                     </span>
                     <span
@@ -1451,8 +1452,8 @@ onUnmounted(() => {
                   </div>
 
                   <div class="inline-flex items-center gap-1">
-                    <!-- Hızlı Avans Giriş Kutusu -->
-                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-800/90 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all max-w-[100px]">
+                    <!-- Hızlı Avans Giriş Kutusu (Fintech Dark Input) -->
+                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-950/80 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700/80 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all max-w-[100px]">
                       <span class="text-[10px] font-semibold text-slate-400 shrink-0">₺</span>
                       <input
                         :ref="(el) => setPaidInputRef(courier.id, el)"
@@ -1470,7 +1471,7 @@ onUnmounted(() => {
                         v-if="courierPaidInputs[courier.id]"
                         type="button"
                         :disabled="savingPaidCourierId === courier.id"
-                        class="ml-1 p-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+                        class="ml-1 p-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
                         title="Kaydet"
                         @mousedown.prevent="savePaidAmount(courier)"
                       >
@@ -1482,7 +1483,7 @@ onUnmounted(() => {
                     <!-- Avans Geçmişi & Açıklama Ekle Butonu -->
                     <button
                       type="button"
-                      class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all shrink-0 cursor-pointer"
+                      class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95"
                       title="Avans Geçmişi & Açıklama Ekle"
                       @click="openAdvanceHistoryModal(courier)"
                     >
@@ -1502,7 +1503,7 @@ onUnmounted(() => {
                 </div>
               </td>
 
-              <!-- 6. Kalan Bakiye -->
+              <!-- 6. Kalan Bakiye (Dark Glow Badge) -->
               <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-right font-mono">
                 <div v-if="getCourierRemainingBalance(courier) < 0" class="inline-flex flex-col items-end">
                   <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-extrabold text-xs border border-amber-200 dark:border-amber-800 shadow-2xs">
@@ -1511,7 +1512,7 @@ onUnmounted(() => {
                 </div>
                 <!-- Pozitif / Sıfır bakiye -->
                 <div v-else class="inline-flex flex-col items-end">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono font-extrabold text-xs border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-mono font-extrabold text-xs border border-emerald-200 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10">
                     {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
                 </div>
@@ -1523,7 +1524,7 @@ onUnmounted(() => {
                   <!-- WhatsApp Raporu (Hızlı 1-Tık Buton) -->
                   <button
                     type="button"
-                    class="p-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 hover:shadow-2xs transition-all cursor-pointer"
+                    class="p-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 hover:shadow-2xs transition-all active:scale-95 cursor-pointer"
                     title="Kuryeye WhatsApp Hakediş Raporu Gönder"
                     @click="openWhatsAppModal(courier)"
                   >
@@ -1533,7 +1534,7 @@ onUnmounted(() => {
                   <!-- + Paket Gir (Primary Action) -->
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                    class="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                     title="Bu kurye için hızlı paket gir"
                     @click="openQuickDeliveryModal(courier)"
                   >
@@ -1544,7 +1545,7 @@ onUnmounted(() => {
                   <!-- Hakediş Ödemesi / Sıfırla (Wallet) -->
                   <button
                     type="button"
-                    class="p-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 hover:shadow-2xs transition-all cursor-pointer"
+                    class="p-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 hover:shadow-2xs transition-all active:scale-95 cursor-pointer"
                     title="Kurye Hakedişini Sıfırla / Ödeme Yap"
                     @click="openSettleModal(courier)"
                   >
@@ -1554,7 +1555,7 @@ onUnmounted(() => {
                   <!-- Detay (Eye) -->
                   <button
                     type="button"
-                    class="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                    class="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all active:scale-95 cursor-pointer"
                     title="Hakediş ve Paket Detayları"
                     @click="openDetailModal(courier)"
                   >
@@ -1657,9 +1658,7 @@ onUnmounted(() => {
                 <span class="text-slate-300 dark:text-slate-700">|</span>
                 <span>Toplam Hakediş: <strong class="text-slate-900 dark:text-slate-100 font-mono font-bold">{{ totalCumulativeEarningsAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
                 <span class="text-slate-300 dark:text-slate-700">|</span>
-                <span>Ödenen Avans: <strong class="text-amber-700 dark:text-amber-400 font-mono font-bold">{{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
-                <span class="text-slate-300 dark:text-slate-700">|</span>
-                <span>Kalan Bakiye: <strong :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'text-emerald-700 dark:text-emerald-400 font-mono font-bold'">{{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
+                <span>Kalan Bakiye: <strong :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'text-emerald-600 dark:text-emerald-400 font-mono font-bold'">{{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong></span>
               </div>
             </div>
           </template>
@@ -1672,7 +1671,7 @@ onUnmounted(() => {
           v-for="courier in filteredCouriers"
           :key="courier.id"
           :class="[
-            'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-4 sm:p-5 transition-all space-y-4',
+            'bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-800/90 shadow-xs dark:shadow-lg dark:shadow-black/20 hover:shadow-md dark:hover:border-emerald-500/40 p-4 sm:p-5 transition-all space-y-4',
             !courier.isActive ? 'opacity-75 bg-slate-50/50 dark:bg-slate-900/50' : ''
           ]"
         >
@@ -1684,7 +1683,7 @@ onUnmounted(() => {
                   :class="[
                     'w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shadow-2xs',
                     courier.isActive
-                      ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white dark:from-slate-700 dark:to-slate-800 dark:text-emerald-400'
+                      ? 'bg-gradient-to-br from-emerald-500/20 via-slate-50 to-teal-500/10 text-emerald-600 border border-emerald-500/30 dark:from-emerald-950/60 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-700/50 shadow-xs shadow-emerald-500/5'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                   ]"
                 >
@@ -1701,17 +1700,17 @@ onUnmounted(() => {
                 <div class="flex items-center gap-2">
                   <button
                     type="button"
-                    class="font-bold text-base text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 truncate text-left"
+                    class="font-bold text-base text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 truncate text-left cursor-pointer transition-colors"
                     @click="openDetailModal(courier)"
                   >
                     {{ courier.name }}
                   </button>
                   <span
                     :class="[
-                      'text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0',
+                      'text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 shadow-2xs',
                       courier.isActive
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                     ]"
                   >
                     {{ courier.isActive ? 'Aktif' : 'Pasif' }}
@@ -1721,7 +1720,7 @@ onUnmounted(() => {
                   <a
                     v-if="courier.phone"
                     :href="'tel:' + courier.phone"
-                    class="text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-mono flex items-center gap-1 transition-colors"
+                    class="text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 font-mono flex items-center gap-1 transition-colors"
                   >
                     <Phone class="w-3 h-3 text-slate-400" />
                     <span>{{ courier.phone }}</span>
@@ -1736,7 +1735,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 :class="[
-                  'p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors',
+                  'p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer',
                   activeActionDropdownId === courier.id ? 'bg-slate-100 dark:bg-slate-800 ring-2 ring-emerald-500/20' : ''
                 ]"
                 title="İşlemler Menüsü"
@@ -1753,7 +1752,7 @@ onUnmounted(() => {
               >
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); openSettleModal(courier)"
                 >
                   <Wallet class="w-3.5 h-3.5" />
@@ -1763,7 +1762,7 @@ onUnmounted(() => {
                 <button
                   v-if="courier.lastSettledAt"
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); undoCourierSettle(courier)"
                 >
                   <RotateCcw class="w-3.5 h-3.5" />
@@ -1772,7 +1771,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); openWhatsAppModal(courier)"
                 >
                   <MessageSquare class="w-3.5 h-3.5" />
@@ -1781,7 +1780,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-400 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); openTransactionModal(courier)"
                 >
                   <Plus class="w-3.5 h-3.5" />
@@ -1790,7 +1789,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); openEditModal(courier)"
                 >
                   <Edit2 class="w-3.5 h-3.5" />
@@ -1799,7 +1798,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors cursor-pointer"
                   :class="courier.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'"
                   @click="closeAllDropdowns(); toggleCourierStatus(courier)"
                 >
@@ -1811,7 +1810,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-medium transition-colors"
+                  class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
                   @click="closeAllDropdowns(); openDeleteConfirm(courier)"
                 >
                   <Trash2 class="w-3.5 h-3.5" />
@@ -1824,7 +1823,7 @@ onUnmounted(() => {
           <!-- 3-Column Stats Grid -->
           <div class="grid grid-cols-3 gap-2 text-center">
             <div
-              class="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 rounded-xl p-2.5 cursor-pointer hover:border-emerald-300 transition-colors"
+              class="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 rounded-xl p-2.5 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700/60 transition-colors shadow-2xs"
               title="Haftalık İç Mekan Paketleri (Pazartesi 03:00'te sıfırlanır) - Tıkla paket gir"
               @click="openQuickDeliveryModal(courier)"
             >
@@ -1838,7 +1837,7 @@ onUnmounted(() => {
             </div>
 
             <div
-              class="bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60 rounded-xl p-2.5 cursor-pointer hover:border-sky-300 transition-colors"
+              class="bg-sky-50/70 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60 rounded-xl p-2.5 cursor-pointer hover:border-sky-300 dark:hover:border-sky-700/60 transition-colors shadow-2xs"
               title="Haftalık Dış Mekan Paketleri (Pazartesi 03:00'te sıfırlanır) - Tıkla paket gir"
               @click="openQuickDeliveryModal(courier)"
             >
@@ -1853,7 +1852,7 @@ onUnmounted(() => {
 
             <!-- Toplam Hakediş (Kümülatif Hakediş ve Toplam Paket) -->
             <div
-              class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 transition-colors"
+              class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-2xs"
               :title="`Haftalık: ${courier.weeklyTotalPackages || 0} Pkt`"
               @click="openQuickDeliveryModal(courier)"
             >
@@ -1868,7 +1867,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Financial Breakdown Box -->
-          <div class="bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3 space-y-2.5">
+          <div class="bg-slate-50 dark:bg-slate-850/80 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3 space-y-2.5 shadow-2xs">
             <div class="flex items-center justify-between text-xs">
               <span class="text-slate-500 dark:text-slate-400 font-medium">Toplam Hakediş:</span>
               <div class="text-right">
@@ -1903,7 +1902,7 @@ onUnmounted(() => {
               </div>
 
               <div class="flex items-center gap-1">
-                <div class="inline-flex items-center bg-white dark:bg-slate-900 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500">
+                <div class="inline-flex items-center bg-white dark:bg-slate-950/80 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700/80 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/30">
                   <span class="text-xs font-semibold text-slate-400">+₺</span>
                   <input
                     :ref="(el) => setPaidInputRef(courier.id + '_mobile', el)"
@@ -1929,7 +1928,7 @@ onUnmounted(() => {
                     v-if="courierPaidInputs[courier.id]"
                     type="button"
                     :disabled="savingPaidCourierId === courier.id"
-                    class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+                    class="ml-1 p-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs cursor-pointer"
                     title="Kaydet"
                     @mousedown.prevent="savePaidAmount(courier)"
                   >
@@ -1939,7 +1938,7 @@ onUnmounted(() => {
                 </div>
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer"
+                  class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer shadow-2xs active:scale-95"
                   title="Avans Geçmişi & Açıklamalar"
                   @click="openAdvanceHistoryModal(courier)"
                 >
@@ -1951,12 +1950,12 @@ onUnmounted(() => {
             <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800">
               <span class="text-slate-500 dark:text-slate-400 font-medium">Kalan Hakediş:</span>
               <div v-if="getCourierRemainingBalance(courier) < 0" class="text-right">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs border border-amber-200 dark:border-amber-800">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-mono font-bold text-xs border border-amber-200 dark:border-amber-800 shadow-2xs">
                   {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
               </div>
               <div v-else>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200 dark:border-emerald-800">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-mono font-bold text-xs border border-emerald-200 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10">
                   {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                 </span>
               </div>
@@ -1967,7 +1966,7 @@ onUnmounted(() => {
           <div class="grid grid-cols-3 gap-2 pt-1">
             <button
               type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs shadow-emerald-600/30 transition-all cursor-pointer active:scale-95"
               @click="openQuickDeliveryModal(courier)"
             >
               <Plus class="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1976,16 +1975,16 @@ onUnmounted(() => {
 
             <button
               type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-medium text-xs transition-all cursor-pointer active:scale-95 border border-transparent dark:border-slate-700/60 shadow-2xs"
               @click="openDetailModal(courier)"
             >
-              <Eye class="w-3.5 h-3.5 text-slate-500" />
+              <Eye class="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Detay</span>
             </button>
 
             <button
               type="button"
-              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-colors"
+              class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-medium text-xs transition-all cursor-pointer active:scale-95 shadow-2xs"
               @click="openWhatsAppModal(courier)"
             >
               <MessageSquare class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -1995,10 +1994,10 @@ onUnmounted(() => {
         </div>
 
         <!-- Card View Summary Footer -->
-        <div class="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-2">
+        <div class="p-4 bg-white/70 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400 space-y-2.5 shadow-sm">
           <div class="flex items-center justify-between font-medium">
             <span>Toplam Listelenen:</span>
-            <strong class="text-slate-900 dark:text-slate-100">{{ filteredCouriers.length }} Kurye</strong>
+            <strong class="text-slate-900 dark:text-slate-100 font-semibold">{{ filteredCouriers.length }} Kurye</strong>
           </div>
           <div class="flex items-center justify-between font-medium">
             <span>Seçilen Gün:</span>
@@ -2010,11 +2009,11 @@ onUnmounted(() => {
           </div>
           <div class="flex items-center justify-between font-medium">
             <span>Ödenen Avans:</span>
-            <strong class="text-amber-700 dark:text-amber-400 font-mono">{{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
+            <strong class="text-amber-600 dark:text-amber-400 font-mono font-semibold">{{ totalPaidAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
           </div>
-          <div class="flex items-center justify-between font-medium pt-1.5 border-t border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between font-medium pt-2 border-t border-slate-200/80 dark:border-slate-800">
             <span>Kalan Genel Bakiye:</span>
-            <strong :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'text-emerald-700 dark:text-emerald-400 font-mono font-bold'">{{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
+            <strong :class="totalRemainingBalanceAcrossCouriers < 0 ? 'text-rose-600 dark:text-rose-400 font-mono font-bold' : 'text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm'">{{ totalRemainingBalanceAcrossCouriers.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
           </div>
         </div>
       </div>

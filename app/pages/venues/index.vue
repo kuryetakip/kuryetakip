@@ -862,26 +862,26 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- KPI Summary Cards (Modern Bento Fintech Cards) -->
+    <!-- KPI Summary Cards (Ultra-Modern Bento Fintech Dark Mode) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- 1. Toplam Mekan Sayısı -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-slate-300 dark:hover:border-slate-700/80 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Kayıtlı Mekanlar
             </span>
-            <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/60">
-              <Store class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:scale-110 transition-transform border border-slate-200/60 dark:border-slate-700/70 shadow-2xs">
+              <Store class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-3 font-mono tracking-tight">
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 font-mono tracking-tight">
             <CountUp :value="totalVenuesCount" :decimals="0" /> <span class="text-sm font-semibold text-slate-400 font-sans">Mekan</span>
           </div>
         </div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <span>Aktif Mekan:</span>
-          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <CountUp :value="activeVenuesCount" :decimals="0" /> Aktif
           </span>
@@ -889,69 +889,74 @@ onMounted(() => {
       </div>
 
       <!-- 2. Toplam Atılan Paket Sayısı -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 border-l-4 border-l-emerald-500 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-emerald-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>Toplam Atılan Paket</span>
             </span>
-            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/20">
-              <Package class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/30 shadow-2xs">
+              <Package class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-3 font-mono tracking-tight">
-            <CountUp :value="totalPackagesAcrossVenues" :decimals="0" /> <span class="text-sm font-semibold font-sans">Adet</span>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3 font-mono tracking-tight drop-shadow-xs">
+            <CountUp :value="totalPackagesAcrossVenues" :decimals="0" /> <span class="text-sm font-semibold font-sans text-slate-400">Adet</span>
           </div>
         </div>
-        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-          <span class="font-mono text-[11px]">İç: {{ totalIndoorPackages }} · Dış: {{ totalOutdoorPackages }}</span>
-          <span class="font-mono font-bold">{{ totalPackagesAcrossVenues }} Pkt</span>
+        <div class="text-xs font-medium text-emerald-700/90 dark:text-emerald-400/90 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+          <span class="font-mono text-[11px] text-slate-400">İç: {{ totalIndoorPackages }} · Dış: {{ totalOutdoorPackages }}</span>
+          <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ totalPackagesAcrossVenues }} Pkt</span>
         </div>
       </div>
 
       <!-- 3. İç Mekan / Dış Mekan Dağılımı -->
-      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-sky-500 shadow-xs flex flex-col justify-between group hover:border-sky-500/40 transition-all duration-200">
+      <div class="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 border-l-4 border-l-sky-500 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between group hover:border-sky-500/40 transition-all duration-200">
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">
               Teslimat Türü Dağılımı
             </span>
-            <div class="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform border border-sky-500/20">
-              <Layers class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform border border-sky-500/30 shadow-2xs">
+              <Layers class="w-4.5 h-4.5" />
             </div>
           </div>
           <div class="mt-3 space-y-1.5">
             <div class="flex items-center justify-between text-xs">
               <span class="text-slate-600 dark:text-slate-400 font-medium">İç Mekan:</span>
-              <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60"><CountUp :value="totalIndoorPackages" :decimals="0" /> Paket</span>
+              <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60">
+                <CountUp :value="totalIndoorPackages" :decimals="0" /> Paket
+              </span>
             </div>
             <div class="flex items-center justify-between text-xs">
               <span class="text-slate-600 dark:text-slate-400 font-medium">Dış Mekan:</span>
-              <span class="font-mono font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded border border-sky-200/60 dark:border-sky-800/60"><CountUp :value="totalOutdoorPackages" :decimals="0" /> Paket</span>
+              <span class="font-mono font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded-lg border border-sky-200/60 dark:border-sky-800/60">
+                <CountUp :value="totalOutdoorPackages" :decimals="0" /> Paket
+              </span>
             </div>
           </div>
         </div>
-        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/60">
+        <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
           Birim fiyatlar üzerinden anlık hesaplanır
         </div>
       </div>
 
-      <!-- 4. Toplam Tutar / Hakediş (Tahsilat Durumu) -->
-      <div class="bg-gradient-to-br from-slate-900 to-slate-950 dark:from-slate-900 dark:to-slate-950 text-white p-5 rounded-2xl border border-slate-800/90 shadow-xs flex flex-col justify-between group hover:border-emerald-500/50 transition-all duration-200">
+      <!-- 4. Toplam Tutar / Hakediş (Tahsilat Durumu - Dark Mode Hero Card) -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/50 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/60 text-white p-5 rounded-2xl border border-slate-800 dark:border-emerald-500/30 shadow-lg dark:shadow-xl dark:shadow-emerald-950/20 flex flex-col justify-between group hover:border-emerald-400/50 transition-all duration-200 relative overflow-hidden">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
         <div>
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
               {{ currentFilterMode === 'pending' ? 'Bekleyen Tahsilat' : 'Toplam Ciro' }}
             </span>
-            <div class="w-9 h-9 rounded-xl bg-slate-800/90 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-700/60">
-              <Wallet class="w-4 h-4" />
+            <div class="w-10 h-10 rounded-xl bg-slate-800/90 dark:bg-emerald-950/60 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-slate-700/60 dark:border-emerald-700/60 shadow-2xs">
+              <Wallet class="w-4.5 h-4.5" />
             </div>
           </div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-400 mt-3 font-mono tracking-tight">
+          <div class="text-2xl sm:text-3xl font-black text-emerald-300 dark:text-emerald-400 mt-3 font-mono tracking-tight drop-shadow-sm">
             <CountUp :value="totalAmountAcrossVenues" :decimals="2" /> ₺
           </div>
         </div>
-        <div class="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div class="text-xs text-slate-300 dark:text-slate-400 mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between relative z-10">
           <span v-if="currentFilterMode === 'pending'">Tahsil Edilen: {{ totalCollectedAcrossVenues.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
           <span v-else>Aktif Dönem</span>
           <span class="font-mono text-emerald-300 font-bold">{{ totalPackagesAcrossVenues }} Paket</span>
@@ -959,8 +964,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Search & Unified Action Toolbar -->
-    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
+    <!-- Search & Unified Action Toolbar (Dark Mode Glassmorphism) -->
+    <div class="bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-xs dark:shadow-lg dark:shadow-black/20 space-y-3">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <!-- Search Input -->
         <div class="lg:col-span-2">
@@ -1003,7 +1008,7 @@ onMounted(() => {
       </div>
 
       <!-- Quick Date Shortcuts & Manuel Reset Indicator -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs">
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs">
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1">
             <Filter class="w-3.5 h-3.5 text-slate-400" />
@@ -1014,10 +1019,10 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5',
+              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer',
               currentFilterMode === 'pending'
-                ? 'bg-emerald-600 text-white shadow-emerald-500/20 ring-2 ring-emerald-500/30'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40'
+                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateQuickFilter('pending')"
           >
@@ -1029,10 +1034,10 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               currentFilterMode === 'today'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-2xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateQuickFilter('today')"
           >
@@ -1043,10 +1048,10 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               currentFilterMode === 'yesterday'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-2xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateQuickFilter('yesterday')"
           >
@@ -1057,10 +1062,10 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               currentFilterMode === 'thisWeek'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-2xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateQuickFilter('thisWeek')"
           >
@@ -1071,10 +1076,10 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
               currentFilterMode === 'all'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-2xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
             ]"
             @click="setDateQuickFilter('all')"
           >
@@ -1084,17 +1089,17 @@ onMounted(() => {
 
         <!-- Aktif Dönem & Kayıt Bilgisi Rozeti + Görünüm Seçici -->
         <div class="flex items-center gap-2">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold font-mono">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold font-mono shadow-2xs">
             <Calendar class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>{{ activePeriodLabel }}</span>
           </div>
 
           <!-- View Mode Toggle (Tablo / Kartlar) -->
-          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-750">
+          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
             <button
               type="button"
               :class="[
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer',
                 venueViewMode === 'table'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -1108,7 +1113,7 @@ onMounted(() => {
             <button
               type="button"
               :class="[
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer',
                 venueViewMode === 'cards'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -1164,9 +1169,9 @@ onMounted(() => {
               v-for="venue in filteredVenues"
               :key="venue.id"
               :class="[
-                'group transition-all duration-150 border-b border-slate-100/90 dark:border-slate-800/60',
+                'group transition-all duration-150 border-b border-slate-100/90 dark:border-slate-800/80',
                 venue.isActive
-                  ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
+                  ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
                   : 'bg-slate-50/40 dark:bg-slate-900/30 opacity-75 hover:opacity-100'
               ]"
             >
@@ -1177,7 +1182,7 @@ onMounted(() => {
                     :class="[
                       'w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-200 group-hover:scale-105',
                       venue.isActive
-                        ? 'bg-gradient-to-br from-emerald-500/10 via-slate-50 to-teal-500/10 text-emerald-600 border-emerald-500/20 dark:from-emerald-950/40 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-700/40 shadow-2xs'
+                        ? 'bg-gradient-to-br from-emerald-500/15 via-slate-50 to-teal-500/10 text-emerald-600 border-emerald-500/30 dark:from-emerald-950/60 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/5'
                         : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-850 dark:text-slate-600 dark:border-slate-800'
                     ]"
                   >
@@ -1185,13 +1190,13 @@ onMounted(() => {
                   </div>
                   <div class="min-w-0">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      <span class="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm tracking-tight truncate max-w-[140px] sm:max-w-none">
+                      <span class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate max-w-[140px] sm:max-w-none group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                         {{ venue.name }}
                       </span>
                       <!-- Durum Rozeti -->
                       <span
                         v-if="!venue.isActive"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/60"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/80 shadow-2xs"
                       >
                         Pasif
                       </span>
@@ -1202,7 +1207,7 @@ onMounted(() => {
                       <button
                         v-if="venue.phone"
                         type="button"
-                        class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-mono font-semibold hover:underline"
+                        class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-mono font-semibold hover:underline cursor-pointer"
                         title="Bu numaraya WhatsApp raporu gönder"
                         @click.stop="openVenueWhatsAppModal(venue)"
                       >
@@ -1212,7 +1217,7 @@ onMounted(() => {
                       <button
                         v-else
                         type="button"
-                        class="inline-flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-emerald-600 transition-colors"
+                        class="inline-flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
                         title="WhatsApp için telefon numarası kaydet"
                         @click.stop="openEditModal(venue)"
                       >
@@ -1251,7 +1256,7 @@ onMounted(() => {
               <!-- 4. Toplam Atılan Paket Sayısı -->
               <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right whitespace-nowrap">
                 <div class="flex flex-col items-end">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold text-xs sm:text-sm border border-slate-200/70 dark:border-slate-700/70">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 font-mono font-bold text-xs sm:text-sm border border-slate-200/70 dark:border-slate-700/80 shadow-2xs">
                     {{ venue.totalPackageCount || 0 }} Pkt
                   </span>
                   <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
@@ -1260,15 +1265,15 @@ onMounted(() => {
                 </div>
               </td>
 
-              <!-- 5. Toplam Tutar / Hakediş -->
+              <!-- 5. Toplam Tutar / Hakediş (Fintech Dark Glow Badge) -->
               <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right whitespace-nowrap">
                 <div class="flex flex-col items-end gap-1">
                   <!-- Tutar Kutusu -->
                   <span :class="[
-                    'inline-flex items-center px-2.5 py-1 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-all duration-200 shadow-2xs',
+                    'inline-flex items-center px-2.5 py-1 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-all duration-200',
                     (venue.totalAmount || 0) > 0
-                      ? 'bg-slate-900 text-emerald-400 dark:bg-slate-950 dark:text-emerald-400 border-slate-800 dark:border-slate-700 shadow-emerald-500/5 group-hover:scale-[1.02]'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      ? 'bg-slate-900 text-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-300 border-slate-800 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10 group-hover:scale-[1.02]'
+                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/70 shadow-2xs'
                   ]">
                     {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
@@ -1276,7 +1281,7 @@ onMounted(() => {
                   <!-- Sıfırlandı Rozeti -->
                   <span
                     v-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs"
                   >
                     <CheckCircle2 class="w-2.5 h-2.5 text-emerald-500" />
                     <span>Sıfırlandı</span>
@@ -1285,7 +1290,7 @@ onMounted(() => {
                   <!-- Nakit / Havale Rozetleri -->
                   <span
                     v-else-if="venue.lastPaymentMethod === 'CASH' && (venue.lastCashAmount || venue.lastSettledAmount || 0) > 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/80"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
                     :title="`Son tahsilat nakit alındı: ${(venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                   >
                     <Banknote class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
@@ -1294,7 +1299,7 @@ onMounted(() => {
 
                   <span
                     v-else-if="venue.lastPaymentMethod === 'TRANSFER' && (venue.lastTransferAmount || venue.lastSettledAmount || 0) > 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 font-mono text-[9px] font-bold border border-sky-200 dark:border-sky-800/80"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono text-[9px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
                     :title="`Son tahsilat havale alındı: ${(venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
                   >
                     <CreditCard class="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
@@ -1310,7 +1315,7 @@ onMounted(() => {
                   <BaseButton
                     variant="outline"
                     size="sm"
-                    class="!text-xs !py-1 !px-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent font-bold shadow-2xs hover:shadow-xs transition-all active:scale-95"
+                    class="!text-xs !py-1 !px-2 bg-emerald-600 hover:bg-emerald-500 text-white border-transparent font-bold shadow-xs shadow-emerald-600/30 hover:shadow-emerald-600/50 transition-all active:scale-95"
                     :title="venue.phone ? `${venue.name} için WhatsApp (${venue.phone}) ile rapor gönder` : `${venue.name} için WhatsApp raporu gönder`"
                     @click="openVenueWhatsAppModal(venue)"
                   >
@@ -1325,12 +1330,12 @@ onMounted(() => {
                     v-if="(venue.totalAmount || 0) > 0"
                     variant="outline"
                     size="sm"
-                    class="!text-xs !py-1 !px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 font-bold shadow-2xs transition-all active:scale-95"
+                    class="!text-xs !py-1 !px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/70 dark:text-indigo-300 dark:border-indigo-700/70 font-bold shadow-2xs transition-all active:scale-95"
                     title="Mekandan tahsilat al ve ana paradan düş veya sıfırla"
                     @click="openSettleModal(venue)"
                   >
                     <template #leading>
-                      <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-indigo-400" />
                     </template>
                     Tahsilat
                   </BaseButton>
@@ -1339,7 +1344,7 @@ onMounted(() => {
                   <BaseButton
                     variant="outline"
                     size="sm"
-                    class="!text-xs !py-1 !px-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 font-medium transition-all"
+                    class="!text-xs !py-1 !px-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700/80 font-medium transition-all active:scale-95 shadow-2xs"
                     title="Günlük Paket Girişi Yap"
                     @click="openQuickDelivery(venue)"
                   >
@@ -1353,7 +1358,7 @@ onMounted(() => {
                   <BaseButton
                     variant="outline"
                     size="sm"
-                    class="!text-xs !py-1 !px-2 text-sky-700 hover:bg-sky-50 border-sky-200 dark:text-sky-300 dark:border-sky-900/60 dark:hover:bg-sky-950/40 font-medium transition-all"
+                    class="!text-xs !py-1 !px-2 text-sky-700 hover:bg-sky-50 border-sky-200 dark:text-sky-300 dark:border-sky-800/60 dark:hover:bg-sky-950/60 font-medium transition-all active:scale-95 shadow-2xs"
                     title="Günlük Paket Dökümünü ve Hesaplamalarını Gör"
                     @click="openHistoryModal(venue)"
                   >
@@ -1454,27 +1459,27 @@ onMounted(() => {
           v-for="venue in filteredVenues"
           :key="venue.id"
           :class="[
-            'bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between shadow-xs hover:shadow-md',
+            'bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border transition-all duration-200 p-4 sm:p-5 flex flex-col justify-between shadow-xs dark:shadow-lg dark:shadow-black/20 hover:shadow-md dark:hover:shadow-emerald-500/5',
             venue.isActive
-              ? 'border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/40'
+              ? 'border-slate-200/90 dark:border-slate-800/90 hover:border-emerald-500/40 dark:hover:border-emerald-500/40'
               : 'border-slate-200/50 dark:border-slate-800/50 opacity-80'
           ]"
         >
           <div>
             <!-- Card Header: Mekan Adı, Durum, Telefon, Aksiyonlar -->
-            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
               <div class="flex items-center gap-3 min-w-0">
-                <div class="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs shrink-0">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30 dark:border-emerald-700/50 shadow-2xs shrink-0">
                   <Store class="w-5 h-5" />
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
-                    <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base truncate">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base truncate">
                       {{ venue.name }}
                     </h3>
                     <span
                       v-if="!venue.isActive"
-                      class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 shrink-0"
+                      class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/80 shrink-0"
                     >
                       Pasif
                     </span>
@@ -1485,7 +1490,7 @@ onMounted(() => {
                     <button
                       v-if="venue.phone"
                       type="button"
-                      class="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                      class="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
                       title="Bu numaraya WhatsApp raporu gönder"
                       @click="openVenueWhatsAppModal(venue)"
                     >
@@ -1495,7 +1500,7 @@ onMounted(() => {
                     <button
                       v-else
                       type="button"
-                      class="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-600"
+                      class="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
                       title="Telefon numarası ekle"
                       @click="openEditModal(venue)"
                     >
@@ -1510,7 +1515,7 @@ onMounted(() => {
               <div class="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                   title="Düzenle"
                   @click="openEditModal(venue)"
                 >
@@ -1518,7 +1523,7 @@ onMounted(() => {
                 </button>
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                   title="Sil"
                   @click="openDeleteConfirm(venue)"
                 >
@@ -1529,8 +1534,8 @@ onMounted(() => {
 
             <!-- Card Body: Paket Fiyatları & Adetleri -->
             <div class="grid grid-cols-2 gap-2.5 my-3.5">
-              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">İç Mekan</span>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+                <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block tracking-wider">İç Mekan</span>
                 <div class="flex items-baseline justify-between mt-1">
                   <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm">
                     {{ venue.indoorPrice.toFixed(2) }} ₺
@@ -1541,8 +1546,8 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Dış Mekan</span>
+              <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80">
+                <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block tracking-wider">Dış Mekan</span>
                 <div class="flex items-baseline justify-between mt-1">
                   <span class="font-mono font-bold text-sky-700 dark:text-sky-400 text-sm">
                     {{ venue.outdoorPrice.toFixed(2) }} ₺
@@ -1554,8 +1559,8 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Card Financial Bar: Toplam Tutar & Toplam Paket -->
-            <div class="p-3.5 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 text-white flex items-center justify-between mb-4">
+            <!-- Card Financial Bar: Toplam Tutar & Toplam Paket (Fintech Glow Bar) -->
+            <div class="p-3.5 rounded-xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 text-white flex items-center justify-between mb-4 border border-slate-800 dark:border-emerald-900/40 shadow-xs">
               <div>
                 <span class="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">Kalan Tahsilat</span>
                 <span class="text-xl font-mono font-black text-emerald-400">
@@ -1572,11 +1577,11 @@ onMounted(() => {
           </div>
 
           <!-- Card Action Buttons -->
-          <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <!-- WhatsApp Rapor Gönder Butonu (Tam Genişlik) -->
             <button
               type="button"
-              class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs hover:shadow-md"
+              class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs shadow-emerald-600/30 hover:shadow-emerald-600/50 cursor-pointer active:scale-95"
               @click="openVenueWhatsAppModal(venue)"
             >
               <MessageSquare class="w-4 h-4" />
@@ -1589,10 +1594,10 @@ onMounted(() => {
               <button
                 v-if="(venue.totalAmount || 0) > 0"
                 type="button"
-                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-bold transition-colors"
+                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/70 text-emerald-800 dark:text-indigo-300 border border-emerald-300 dark:border-indigo-750 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
                 @click="openSettleModal(venue)"
               >
-                <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-indigo-400" />
                 <span>Tahsilat</span>
               </button>
               <button
@@ -1607,19 +1612,19 @@ onMounted(() => {
 
               <button
                 type="button"
-                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold transition-colors"
+                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer border border-transparent dark:border-slate-700/60 shadow-2xs"
                 @click="openQuickDelivery(venue)"
               >
-                <Plus class="w-3.5 h-3.5 text-emerald-600" />
+                <Plus class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>+ Paket</span>
               </button>
 
               <button
                 type="button"
-                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-semibold transition-colors"
+                class="flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-medium transition-all active:scale-95 cursor-pointer border border-transparent dark:border-slate-700/60 shadow-2xs"
                 @click="openHistoryModal(venue)"
               >
-                <FileText class="w-3.5 h-3.5 text-sky-600" />
+                <FileText class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                 <span>Döküm</span>
               </button>
             </div>
