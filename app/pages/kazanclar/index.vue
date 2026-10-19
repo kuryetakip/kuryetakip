@@ -700,13 +700,6 @@ const columns = [
                   <div class="text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
                     {{ (v.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </div>
-                  <span
-                    v-if="v.carriedBalance && v.carriedBalance > 0"
-                    class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[9px] border border-amber-200/70 mt-0.5"
-                    title="Önceki Tahsilattan Devreden Tutar Dahildir"
-                  >
-                    +{{ v.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devir
-                  </span>
                 </div>
               </td>
 
@@ -730,12 +723,21 @@ const columns = [
 
               <!-- 6. Kalan Bakiye (₺) -->
               <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-right font-mono">
-                <span
-                  class="inline-flex items-center px-2 py-0.5 rounded-xl text-xs font-black border shadow-2xs"
-                  :class="(v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount || 0)) > 0 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/80' : 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'"
-                >
-                  {{ (v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
-                </span>
+                <div class="inline-flex flex-col items-end">
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-xl text-xs font-black border shadow-2xs"
+                    :class="(v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount || 0)) > 0 ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/80' : 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'"
+                  >
+                    {{ (v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+                  </span>
+                  <span
+                    v-if="v.carriedBalance && v.carriedBalance > 0"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono font-bold text-[9px] border border-amber-200/70 mt-0.5"
+                    title="Önceki Tahsilattan Devreden Tutar Dahildir"
+                  >
+                    {{ v.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺ Devir Dahil
+                  </span>
+                </div>
               </td>
 
               <!-- 7. İşlemler -->
@@ -896,13 +898,21 @@ const columns = [
 
             <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
               <span class="text-slate-500 dark:text-slate-400 font-medium">Net Kâr / Kasa Farkı:</span>
-              <span class="font-mono font-extrabold text-teal-600 dark:text-teal-400 text-sm">
-                +{{ (v.netProfit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
+              <span class="font-mono font-extrabold text-sm" :class="(v.netProfit || 0) >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'">
+                {{ (v.netProfit || 0) >= 0 ? '+' : '' }}{{ (v.netProfit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
               </span>
             </div>
 
             <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
-              <span class="text-slate-500 dark:text-slate-400 font-medium">Kalan Alınacak Bakiye:</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Kalan Alınacak Bakiye:</span>
+                <span
+                  v-if="v.carriedBalance && v.carriedBalance > 0"
+                  class="px-1 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono text-[9px] border border-amber-200/70"
+                >
+                  Devir Dahil
+                </span>
+              </div>
               <span class="font-mono font-bold text-amber-700 dark:text-amber-400 text-sm">
                 {{ (v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺
               </span>

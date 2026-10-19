@@ -123,9 +123,11 @@ export default defineEventHandler(async (event) => {
         const amount = Number(rec.venueTotalAmount || 0) > 0
           ? Number(rec.venueTotalAmount)
           : Number(rec.totalAmount || 0)
-        const courierCost = Number(rec.courierTotalAmount || 0) > 0
-          ? Number(rec.courierTotalAmount)
-          : Number(rec.totalAmount || 0)
+        const courierCost = rec.courierId
+          ? (Number(rec.courierTotalAmount || 0) > 0
+              ? Number(rec.courierTotalAmount)
+              : (Number(rec.courierPriceSnapshot || 0) > 0 ? Number(rec.courierPriceSnapshot) * count : 0))
+          : 0
         const dateKey = rec.date.toISOString().substring(0, 10)
         const isRecSettled = !!rec.isSettled
 
@@ -290,14 +292,14 @@ export default defineEventHandler(async (event) => {
         outdoorAmount = filteredOutdoorAmount
         courierAmount = filteredCourierAmount
       } else if (startDateStr || endDateStr) {
-        // Haftalık veya tarih aralığı filtresinde o aralıktaki paketler ve geçmiş devir borcu eklenir
-        totalAmount = Number((filteredTotalAmount + uncollectedPriorBalance).toFixed(2))
+        // Haftalık veya belirli tarih aralığı filtresinde o periyottaki gerçek teslimatlar ve hakedişler gösterilir
+        totalAmount = Number(filteredTotalAmount.toFixed(2))
         totalPackageCount = filteredPackageCount
         indoorPackageCount = filteredIndoorPackageCount
         outdoorPackageCount = filteredOutdoorPackageCount
         indoorAmount = filteredIndoorAmount
         outdoorAmount = filteredOutdoorAmount
-        courierAmount = Number((filteredCourierAmount + priorUnsettledCourierAmount).toFixed(2))
+        courierAmount = Number(filteredCourierAmount.toFixed(2))
       } else {
         // Varsayılan: Bekleyen Tahsilat (Aktif Döngü)
         // Paketler Pazartesi 03:00'ten itibaren sıfırlanıp yeni haftaya geçer;
@@ -311,7 +313,10 @@ export default defineEventHandler(async (event) => {
         courierAmount = Number((currentCycleCourierAmount + priorUnsettledCourierAmount).toFixed(2))
       }
 
-      const netProfit = Number((totalAmount - courierAmount).toFixed(2))
+      // Net kâr teslimat cirosu eksi kurye hakedişidir; geçmiş devir borcu asla kâr sayılamaz
+      const netProfit = (startDateStr || endDateStr)
+        ? Number((filteredTotalAmount - filteredCourierAmount).toFixed(2))
+        : Number((currentCycleTotalAmount - currentCycleCourierAmount).toFixed(2))
 
       return {
         id: v.id,
