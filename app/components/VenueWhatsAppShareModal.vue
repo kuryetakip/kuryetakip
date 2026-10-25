@@ -33,7 +33,7 @@ const emit = defineEmits<{
 const toast = useToast()
 const isCopied = ref(false)
 const localPhone = ref('')
-const selectedScope = ref<'weekly' | 'lastWeek' | 'pending' | 'daily'>('weekly')
+const selectedScope = ref<'current' | 'lastWeek' | 'pending' | 'daily'>('current')
 
 // Load phone from venue record (database) or localStorage when modal opens
 watch(
@@ -43,7 +43,7 @@ watch(
       const savedPhone = (typeof window !== 'undefined' ? localStorage.getItem(`venue_phone_${v.id}`) : '') || ''
       localPhone.value = v.phone || savedPhone || ''
     }
-    selectedScope.value = 'weekly'
+    selectedScope.value = 'current'
   },
   { immediate: true }
 )
@@ -81,7 +81,7 @@ const formatDayName = (dateStr: string) => {
 
 // Date Range calculations
 const dateRange = computed(() => {
-  if (selectedScope.value === 'weekly') {
+  if (selectedScope.value === 'current') {
     const mondayStr = getBusinessThisWeekMonday()
     const [y, m, d] = mondayStr.split('-').map(Number)
     const monday = new Date(Date.UTC(y, m - 1, d))
@@ -122,11 +122,20 @@ const dateRange = computed(() => {
 // Filtered daily breakdown according to selected scope
 const filteredDays = computed<VenueDailyStat[]>(() => {
   if (!props.venue) return []
+
+  // Tablodaki güncel verileri doğrudan baz al
+  if (selectedScope.value === 'current') {
+    const days = (props.venue.dailyBreakdown && props.venue.dailyBreakdown.length > 0)
+      ? props.venue.dailyBreakdown
+      : (props.venue.allDailyBreakdown || [])
+    return [...days].sort((a, b) => a.date.localeCompare(b.date))
+  }
+
   const allDays = (props.venue.allDailyBreakdown && props.venue.allDailyBreakdown.length > 0)
     ? props.venue.allDailyBreakdown
     : (props.venue.dailyBreakdown || [])
 
-  if (selectedScope.value === 'weekly' || selectedScope.value === 'lastWeek') {
+  if (selectedScope.value === 'lastWeek') {
     const { start, end } = dateRange.value
     return allDays
       .filter(d => d.date >= start && d.date <= end)
@@ -137,6 +146,7 @@ const filteredDays = computed<VenueDailyStat[]>(() => {
   } else {
     // Pending
     return allDays.filter(d => !d.isSettled && (d.totalCount > 0 || (d.pendingAmount || 0) > 0))
+      .sort((a, b) => a.date.localeCompare(b.date))
   }
 })
 
@@ -150,22 +160,27 @@ const reportSummary = computed(() => {
       totalCount: 0,
       indoorAmount: 0,
       outdoorAmount: 0,
+      deliveriesAmount: 0,
+      carriedBalance: 0,
       totalAmount: 0,
       settledAmount: 0,
       remainingAmount: 0
     }
   }
 
-  if (selectedScope.value === 'pending') {
-    const indoorCount = v.pendingIndoorCount || 0
-    const outdoorCount = v.pendingOutdoorCount || 0
-    const totalCount = v.pendingPackageCount || (indoorCount + outdoorCount)
-    const totalAmount = Number(v.totalAmount || v.pendingAmount || 0)
+  // 1. Tablodaki Güncel Verileri Baz Al (Varsayılan ve Kullanıcı İsteği)
+  if (selectedScope.value === 'current') {
+    const indoorCount = v.indoorPackageCount || 0
+    const outdoorCount = v.outdoorPackageCount || 0
+    const totalCount = v.totalPackageCount || (indoorCount + outdoorCount)
     const indoorPrice = Number(v.indoorPrice || 0)
     const outdoorPrice = Number(v.outdoorPrice || 0)
-    const indoorAmount = v.pendingIndoorAmount || (indoorCount * indoorPrice)
-    const outdoorAmount = v.pendingOutdoorAmount || (outdoorCount * outdoorPrice)
-    const settledAmount = Number(v.totalCollectedAmount || 0)
+    const indoorAmount = v.indoorAmount !== undefined ? Number(v.indoorAmount) : (indoorCount * indoorPrice)
+    const outdoorAmount = v.outdoorAmount !== undefined ? Number(v.outdoorAmount) : (outdoorCount * outdoorPrice)
+    const deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
+    const carriedBalance = Number(v.carriedBalance || 0)
+    const totalAmount = Number((v.totalAmount !== undefined ? v.totalAmount : (deliveriesAmount + carriedBalance)).toFixed(2))
+    const settledAmount = totalAmount === 0 ? Number(v.lastSettledAmount || 0) : 0
     const remainingAmount = totalAmount
 
     return {
@@ -174,13 +189,43 @@ const reportSummary = computed(() => {
       totalCount,
       indoorAmount,
       outdoorAmount,
+      deliveriesAmount,
+      carriedBalance,
       totalAmount,
       settledAmount,
       remainingAmount
     }
   }
 
-  // Sum from filteredDays
+  if (selectedScope.value === 'pending') {
+    const indoorCount = v.pendingIndoorCount || v.indoorPackageCount || 0
+    const outdoorCount = v.pendingOutdoorCount || v.outdoorPackageCount || 0
+    const totalCount = v.pendingPackageCount || (indoorCount + outdoorCount)
+    const indoorPrice = Number(v.indoorPrice || 0)
+    const outdoorPrice = Number(v.outdoorPrice || 0)
+    const indoorAmount = v.pendingIndoorAmount || (indoorCount * indoorPrice)
+    const outdoorAmount = v.pendingOutdoorAmount || (outdoorCount * outdoorPrice)
+    const deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
+    const carriedBalance = Number(v.carriedBalance || 0)
+    const totalAmount = Number((v.totalAmount || v.pendingAmount || (deliveriesAmount + carriedBalance)).toFixed(2))
+    const settledAmount = totalAmount === 0 ? Number(v.lastSettledAmount || 0) : 0
+    const remainingAmount = totalAmount
+
+    return {
+      indoorCount,
+      outdoorCount,
+      totalCount,
+      indoorAmount,
+      outdoorAmount,
+      deliveriesAmount,
+      carriedBalance,
+      totalAmount,
+      settledAmount,
+      remainingAmount
+    }
+  }
+
+  // Geçen hafta veya Bugün: filteredDays üzerinden topla
   let indoorCount = 0
   let outdoorCount = 0
   let totalCount = 0
@@ -207,9 +252,11 @@ const reportSummary = computed(() => {
     totalCount,
     indoorAmount,
     outdoorAmount,
-    totalAmount,
-    settledAmount,
-    remainingAmount
+    deliveriesAmount: Number((indoorAmount + outdoorAmount).toFixed(2)),
+    carriedBalance: 0,
+    totalAmount: Number(totalAmount.toFixed(2)),
+    settledAmount: Number(settledAmount.toFixed(2)),
+    remainingAmount: Number(remainingAmount.toFixed(2))
   }
 })
 
@@ -231,7 +278,12 @@ const formattedMessage = computed(() => {
   lines.push(`• *Toplam Paket:* ${s.totalCount} Paket`)
   lines.push(``)
   lines.push(`💰 *ALACAK / VERECEK HESAP DURUMU*`)
-  lines.push(`• Toplam Hizmet Tutarı: ${s.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
+  if (s.carriedBalance > 0) {
+    lines.push(`• Bu Hafta Hizmet Tutarı: ${s.deliveriesAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
+    lines.push(`• Geçmiş Dönemden Devreden Bakiye: ${s.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
+  } else {
+    lines.push(`• Toplam Hizmet Tutarı: ${s.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
+  }
   if (s.settledAmount > 0) {
     lines.push(`• Tahsil Edilen / Ödenen: ${s.settledAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
   }
@@ -338,13 +390,13 @@ const handleOpenWhatsApp = () => {
             type="button"
             :class="[
               'py-1.5 px-2 rounded-lg text-xs font-semibold transition-all text-center border',
-              selectedScope === 'weekly'
+              selectedScope === 'current'
                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50'
             ]"
-            @click="selectedScope = 'weekly'"
+            @click="selectedScope = 'current'"
           >
-            Bu Hafta
+            Tablodaki Veriler (Bu Hafta)
           </button>
           <button
             type="button"
@@ -399,9 +451,12 @@ const handleOpenWhatsApp = () => {
           <div class="p-2 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-800">
             <span class="text-[10px] text-slate-500 dark:text-slate-400 block font-sans font-medium">Hizmet Bedeli</span>
             <span class="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-              {{ reportSummary.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺
+              {{ (reportSummary.deliveriesAmount || reportSummary.totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺
             </span>
-            <span v-if="reportSummary.settledAmount > 0" class="text-[9px] text-emerald-600 dark:text-emerald-400 block font-sans">
+            <span v-if="reportSummary.carriedBalance > 0" class="text-[9px] text-amber-600 dark:text-amber-400 block font-sans font-semibold">
+              +{{ reportSummary.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺ Devir
+            </span>
+            <span v-else-if="reportSummary.settledAmount > 0" class="text-[9px] text-emerald-600 dark:text-emerald-400 block font-sans">
               Ödenen: {{ reportSummary.settledAmount.toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺
             </span>
             <span v-else class="text-[9px] text-slate-400 block font-sans">
