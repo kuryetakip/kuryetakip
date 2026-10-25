@@ -123,29 +123,25 @@ const dateRange = computed(() => {
 const filteredDays = computed<VenueDailyStat[]>(() => {
   if (!props.venue) return []
 
-  // Tablodaki güncel verileri doğrudan baz al
-  if (selectedScope.value === 'current') {
-    const days = (props.venue.dailyBreakdown && props.venue.dailyBreakdown.length > 0)
-      ? props.venue.dailyBreakdown
-      : (props.venue.allDailyBreakdown || [])
-    return [...days].sort((a, b) => a.date.localeCompare(b.date))
-  }
-
   const allDays = (props.venue.allDailyBreakdown && props.venue.allDailyBreakdown.length > 0)
     ? props.venue.allDailyBreakdown
     : (props.venue.dailyBreakdown || [])
 
-  if (selectedScope.value === 'lastWeek') {
+  if (selectedScope.value === 'current' || selectedScope.value === 'lastWeek') {
     const { start, end } = dateRange.value
+    if (!start || !end) return []
     return allDays
-      .filter(d => d.date >= start && d.date <= end)
+      .filter(d => d.date >= start && d.date <= end && (d.totalCount > 0 || (d.totalAmount || 0) > 0))
       .sort((a, b) => a.date.localeCompare(b.date))
   } else if (selectedScope.value === 'daily') {
     const { start } = dateRange.value
-    return allDays.filter(d => d.date === start)
+    return allDays
+      .filter(d => d.date === start && (d.totalCount > 0 || (d.totalAmount || 0) > 0))
+      .sort((a, b) => a.date.localeCompare(b.date))
   } else {
-    // Pending
-    return allDays.filter(d => !d.isSettled && (d.totalCount > 0 || (d.pendingAmount || 0) > 0))
+    // Pending (Aktif / Bekleyen Tüm Açık Hesap)
+    return allDays
+      .filter(d => !d.isSettled && (d.totalCount > 0 || (d.pendingAmount || 0) > 0 || (d.totalAmount || 0) > 0))
       .sort((a, b) => a.date.localeCompare(b.date))
   }
 })
@@ -191,6 +187,7 @@ const reportSummary = computed(() => {
   }
 
   // 1. Teslimatları Topla
+  // 1. Teslimatları Topla (Yalnızca seçili kapsama ait filtrelenmiş günler)
   let indoorCount = 0
   let outdoorCount = 0
   let totalCount = 0
@@ -207,24 +204,13 @@ const reportSummary = computed(() => {
       outdoorAmount += day.outdoorAmount || 0
       deliveriesAmount += day.totalAmount || 0
     }
-  } else if (selectedScope.value === 'current') {
-    indoorCount = v.indoorPackageCount || 0
-    outdoorCount = v.outdoorPackageCount || 0
-    totalCount = v.totalPackageCount || (indoorCount + outdoorCount)
-    indoorAmount = Number(v.indoorAmount || 0)
-    outdoorAmount = Number(v.outdoorAmount || 0)
-    deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
   }
 
-  // 2. Tahsilatları Topla (Gerçek ödeme kayıtları baz alınır)
+  // 2. Tahsilatları Topla (Yalnızca seçili kapsama ait filtrelenmiş ödemeler)
   let settledAmount = 0
   if (filteredPayments.value && filteredPayments.value.length > 0) {
     settledAmount = filteredPayments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-  } else if (selectedScope.value === 'current' && v.periodCollectedAmount !== undefined) {
-    settledAmount = Number(v.periodCollectedAmount || 0)
   } else if (selectedScope.value === 'pending' && v.totalCollectedAmount !== undefined) {
-    settledAmount = Number(v.totalCollectedAmount || 0)
-  } else if (v.totalCollectedAmount !== undefined) {
     settledAmount = Number(v.totalCollectedAmount || 0)
   }
 
@@ -394,7 +380,7 @@ const handleOpenWhatsApp = () => {
             ]"
             @click="selectedScope = 'current'"
           >
-            Tablodaki Veriler (Bu Hafta)
+            Bu Hafta
           </button>
           <button
             type="button"
