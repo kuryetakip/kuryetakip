@@ -364,7 +364,7 @@ export default defineEventHandler(async (event) => {
         lastPaymentMethod: (v as any).lastPaymentMethod || null,
         lastCashAmount: (v as any).lastCashAmount ? Number((v as any).lastCashAmount) : null,
         lastTransferAmount: (v as any).lastTransferAmount ? Number((v as any).lastTransferAmount) : null,
-        totalCollectedAmount: fromCents(allTimeCollectedCents),
+        totalCollectedAmount: fromCents(totalPaymentCents),
         totalCashAmount: Number((v as any).totalCashAmount || 0),
         totalTransferAmount: Number((v as any).totalTransferAmount || 0),
         periodDeliveriesAmount,
