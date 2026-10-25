@@ -86,6 +86,16 @@ export default defineEventHandler(async (event) => {
       let weeklyOutdoorPackages = 0
       let weeklyEarnings = 0
 
+      // Önceki haftalardan kapanmamış / devreden hakediş ve avanslar
+      let priorUnsettledEarnings = 0
+
+      // Aktif hakediş döngüsü (hesap kapatılana veya devredilene kadar tüm kapanmamış kayıtlar)
+      let cycleIndoorPackages = 0
+      let cycleOutdoorPackages = 0
+      let cycleIndoorAmount = 0
+      let cycleOutdoorAmount = 0
+      let cycleEarnings = 0
+
       // Tüm zamanlar toplam paket
       let allTimeTotalPackages = 0
 
@@ -111,6 +121,20 @@ export default defineEventHandler(async (event) => {
           } else {
             weeklyOutdoorPackages += count
           }
+        } else if (!rec.isCourierSettled && recDateStr < mondayDateStr) {
+          priorUnsettledEarnings += amount
+        }
+
+        // Only unsettled records count towards the full unclosed cycle
+        if (!rec.isCourierSettled) {
+          cycleEarnings += amount
+          if (rec.deliveryType === 'INDOOR') {
+            cycleIndoorPackages += count
+            cycleIndoorAmount += amount
+          } else {
+            cycleOutdoorPackages += count
+            cycleOutdoorAmount += amount
+          }
         }
 
         if (recDateStr === dateStr) {
@@ -129,6 +153,7 @@ export default defineEventHandler(async (event) => {
       let activeAdvanceAmount = 0
       let totalAdvanceAmount = 0
       let weeklyAdvanceAmount = 0
+      let priorActiveAdvances = 0
 
       for (const adv of c.advances) {
         const advAmt = Number(adv.amount || 0)
@@ -144,6 +169,8 @@ export default defineEventHandler(async (event) => {
           activeAdvanceAmount += advAmt
           if (isAdvWithinWeeklyCycle) {
             weeklyAdvanceAmount += advAmt
+          } else if (advDateStr < mondayDateStr) {
+            priorActiveAdvances += advAmt
           }
         }
 
@@ -158,17 +185,21 @@ export default defineEventHandler(async (event) => {
       // Haftalık sıfırlanan toplam paket (Pazartesi 03:00'te sıfırlanır)
       const weeklyTotalPackages = weeklyIndoorPackages + weeklyOutdoorPackages
 
-      // Kuryenin resmi devreden bakiyesi
+      // Aktif hakediş döngüsü paket ve tutarları
+      const cumulativeTotalPackages = cycleIndoorPackages + cycleOutdoorPackages
       const carriedBalance = Number(c.carriedBalance || 0)
 
+      // Önceki dönemlerden devreden bakiye ve kapanmamış net fark
+      const priorNetBalance = Number((priorUnsettledEarnings - priorActiveAdvances + carriedBalance).toFixed(2))
+
       // Toplam Hakediş = Bu haftanın hakedişi + (Varsa önceki dönemlerden kalan pozitif devir hakedişi)
-      const cumulativeTotalAmount = Number((weeklyEarnings + (carriedBalance > 0 ? carriedBalance : 0)).toFixed(2))
+      const cumulativeTotalAmount = Number((weeklyEarnings + (priorNetBalance > 0 ? priorNetBalance : 0)).toFixed(2))
 
       // Bu hafta verilen avans tutarı
       const paidAmount = Number(weeklyAdvanceAmount.toFixed(2))
 
       // Kalan bakiye (Kuryeye Ödenecek Net Tutar) = Bu haftaki hakediş - bu haftaki avans + devreden net bakiye
-      const remainingBalance = Number((weeklyEarnings - weeklyAdvanceAmount + carriedBalance).toFixed(2))
+      const remainingBalance = Number((weeklyEarnings - weeklyAdvanceAmount + priorNetBalance).toFixed(2))
 
       return {
         id: c.id,
@@ -178,7 +209,7 @@ export default defineEventHandler(async (event) => {
         outdoorPrice: Number(c.outdoorPrice || 0),
         paidAmount,
         carriedBalance: Number(carriedBalance.toFixed(2)),
-        priorNetBalance: carriedBalance,
+        priorNetBalance,
         lastSettledAt: c.lastSettledAt,
         lastSettledAmount: Number(c.lastSettledAmount || 0),
         todayAdvanceAmount: Number(todayAdvanceAmount.toFixed(2)),
@@ -212,10 +243,10 @@ export default defineEventHandler(async (event) => {
         weeklyTotalPackages,
         weeklyEarnings: Number(weeklyEarnings.toFixed(2)),
         allTimeTotalPackages,
-        cycleIndoorPackages: weeklyIndoorPackages,
-        cycleOutdoorPackages: weeklyOutdoorPackages,
-        cycleEarnings: Number(weeklyEarnings.toFixed(2)),
-        cumulativeTotalPackages: weeklyTotalPackages,
+        cycleIndoorPackages,
+        cycleOutdoorPackages,
+        cycleEarnings: Number(cycleEarnings.toFixed(2)),
+        cumulativeTotalPackages,
         cumulativeTotalAmount,
         totalEarnings: cumulativeTotalAmount,
         remainingBalance
