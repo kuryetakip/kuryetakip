@@ -576,9 +576,23 @@ const existingDeliveryForQuickModal = computed(() => {
   return allDays.find(d => d.date === quickDeliveryForm.value.date) || null
 })
 
+const returnToHistoryAfterQuick = ref(false)
+
+const cancelQuickDelivery = () => {
+  isQuickDeliveryOpen.value = false
+  if (returnToHistoryAfterQuick.value) {
+    returnToHistoryAfterQuick.value = false
+    if (historyVenue.value) {
+      isHistoryModalOpen.value = true
+    }
+  }
+}
+
 const editDayFromHistory = (date: string) => {
   if (!historyVenue.value) return
   const venue = historyVenue.value
+  returnToHistoryAfterQuick.value = true
+  isHistoryModalOpen.value = false
   openQuickDelivery(venue, date)
 }
 
@@ -695,7 +709,14 @@ const handleQuickDeliverySubmit = async () => {
       courierIndoorPrice: '',
       courierOutdoorPrice: ''
     }
-    if (historyVenue.value && historyVenue.value.id === venueId) {
+    if (returnToHistoryAfterQuick.value) {
+      returnToHistoryAfterQuick.value = false
+      const refreshed = venues.value.find(v => v.id === venueId)
+      if (refreshed) {
+        historyVenue.value = refreshed
+        isHistoryModalOpen.value = true
+      }
+    } else if (historyVenue.value && historyVenue.value.id === venueId) {
       const refreshed = venues.value.find(v => v.id === venueId)
       if (refreshed) historyVenue.value = refreshed
     }
@@ -1816,6 +1837,7 @@ onMounted(() => {
       z-index="z-[60]"
       :title="`Paket Girişi — ${targetVenue?.name || 'Mekan'}`"
       description="Mekan için paket sayılarını girin, mekan tahsilat ücretlerini ve kurye hakediş ücretlerini ayrı ayrı belirleyin."
+      @close="cancelQuickDelivery"
     >
       <form class="space-y-4" @submit.prevent="handleQuickDeliverySubmit">
         <BaseInput
@@ -1946,7 +1968,7 @@ onMounted(() => {
             variant="outline"
             size="sm"
             type="button"
-            @click="isQuickDeliveryOpen = false"
+            @click="cancelQuickDelivery"
           >
             Vazgeç
           </BaseButton>
@@ -2506,7 +2528,7 @@ onMounted(() => {
                   variant="primary"
                   size="sm"
                   class="font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
-                  @click="isHistoryModalOpen = false; openQuickDelivery(historyVenue)"
+                  @click="returnToHistoryAfterQuick = true; isHistoryModalOpen = false; openQuickDelivery(historyVenue)"
                 >
                   <template #leading>
                     <Plus class="w-3.5 h-3.5" />
