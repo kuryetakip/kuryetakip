@@ -37,6 +37,7 @@ export default defineEventHandler(async () => {
         totalPackages: p.totalPackages,
         totalEarnings: Number(p.totalEarnings),
         totalAdvance: Number(p.totalAdvance),
+        paidAmount: Number(p.paidAmount),
         remainingBalance: Number(p.remainingBalance),
         closedAtFormatted: closedFormatted,
         note: p.note,

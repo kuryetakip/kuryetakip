@@ -1,4 +1,5 @@
 import { prisma, DeliveryType } from '../../utils/prisma'
+import { getCurrentCycleStart, getBusinessDateString } from '../../utils/period'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,22 +11,23 @@ export default defineEventHandler(async (event) => {
     const venueId = typeof query.venueId === 'string' ? query.venueId.trim() : ''
     const deliveryType = typeof query.deliveryType === 'string' ? query.deliveryType.trim() : ''
 
-    // 1. Calculate date ranges based on period
+    // 1. Calculate date ranges based on period (Grounded in Europe/Istanbul Monday 03:00 standard)
     const now = new Date()
     let fromDate: Date
     let toDate: Date
 
     if (period === 'today') {
-      fromDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-      toDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+      const todayDateStr = getBusinessDateString(now)
+      const [ty, tm, td] = todayDateStr.split('-').map(Number)
+      fromDate = new Date(Date.UTC(ty, tm - 1, td))
+      toDate = new Date(Date.UTC(ty, tm - 1, td))
     } else if (period === 'week') {
-      // Start of current week (Monday)
-      const day = now.getDay()
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
-      const monday = new Date(now)
-      monday.setDate(diff)
-      fromDate = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()))
-      toDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+      const { mondayDateStr } = getCurrentCycleStart(now)
+      const [my, mm, md] = mondayDateStr.split('-').map(Number)
+      fromDate = new Date(Date.UTC(my, mm - 1, md))
+      const todayDateStr = getBusinessDateString(now)
+      const [ty, tm, td] = todayDateStr.split('-').map(Number)
+      toDate = new Date(Date.UTC(ty, tm - 1, td))
     } else if (period === 'month') {
       // Start of current month (1st day)
       fromDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1))

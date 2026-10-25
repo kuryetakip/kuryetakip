@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
 
     // Monday 03:00 boundary for weekly cycle reset
     const { cycleStartUtc, mondayDateStr } = getCurrentCycleStart(new Date())
+    const sundayDateStr = new Date(cycleStartUtc.getTime() + 6 * 86400000).toISOString().substring(0, 10)
 
     const where: any = {}
 
@@ -131,24 +132,25 @@ export default defineEventHandler(async (event) => {
         const dateKey = rec.date.toISOString().substring(0, 10)
         const isRecSettled = !!rec.isSettled
 
-        // Record timestamp checking for Monday 03:00 reset
-        const recCreatedAt = rec.createdAt ? new Date(rec.createdAt) : (rec.date instanceof Date ? rec.date : new Date(rec.date))
-        const isWithinCurrentCycle = recCreatedAt >= cycleStartUtc || dateKey >= mondayDateStr
+        // Current cycle checking for Monday 03:00 reset (only unsettled deliveries are active)
+        const isWithinCurrentCycle = dateKey >= mondayDateStr && dateKey <= sundayDateStr
 
-        if (isWithinCurrentCycle) {
-          currentCycleTotalCount += count
-          currentCycleTotalAmount += amount
-          currentCycleCourierAmount += courierCost
-          if (rec.deliveryType === 'INDOOR') {
-            currentCycleIndoorCount += count
-            currentCycleIndoorAmount += amount
+        if (!isRecSettled) {
+          if (isWithinCurrentCycle) {
+            currentCycleTotalCount += count
+            currentCycleTotalAmount += amount
+            currentCycleCourierAmount += courierCost
+            if (rec.deliveryType === 'INDOOR') {
+              currentCycleIndoorCount += count
+              currentCycleIndoorAmount += amount
+            } else {
+              currentCycleOutdoorCount += count
+              currentCycleOutdoorAmount += amount
+            }
           } else {
-            currentCycleOutdoorCount += count
-            currentCycleOutdoorAmount += amount
+            priorUnsettledAmount += amount
+            priorUnsettledCourierAmount += courierCost
           }
-        } else if (!isRecSettled) {
-          priorUnsettledAmount += amount
-          priorUnsettledCourierAmount += courierCost
         }
 
         // All-time aggregation

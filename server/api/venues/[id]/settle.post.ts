@@ -235,7 +235,9 @@ export default defineEventHandler(async (event) => {
 
     // Log settlement into SettlementPeriod for comprehensive collection reporting
     try {
-      const weekCode = getISOWeekString(now)
+      const shifted = new Date(now.getTime() - 3 * 3600 * 1000)
+      const bDateStr = shifted.toISOString().substring(0, 10)
+      const weekCode = getISOWeekString(bDateStr)
       const weekRange = getWeekDateRange(weekCode)
       await prisma.settlementPeriod.create({
         data: {
