@@ -291,12 +291,11 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // Legacy fallback
-      const legacyCollectedCents = toCents(v.totalCollectedAmount || 0)
-      const allTimeCollectedCents = Math.max(totalPaymentCents, legacyCollectedCents)
-      const allTimeDeliveriesCents = toCents(allTimeTotalAmount)
-      const actualPendingDebt = fromCents(Math.max(0, allTimeDeliveriesCents - allTimeCollectedCents))
-      const carriedBalance = actualPendingDebt
+      // Gerçek bekleyen borç: Açıkta kalan teslimat tutarları + devreden bakiye
+      const pendingCents = toCents(pendingAmount)
+      const venueCarriedCents = toCents(v.carriedBalance || 0)
+      const actualPendingDebt = fromCents(pendingCents + venueCarriedCents)
+      const carriedBalance = Number(v.carriedBalance || 0)
 
       const periodDeliveriesAmount = Number(filteredTotalAmount.toFixed(2))
       const periodCollectedAmount = fromCents(periodPaymentCents)

@@ -218,25 +218,28 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Mekanın tüm teslimat kayıtlarını topla
-    const allRecords = await prisma.deliveryRecord.findMany({
-      where: { venueId: id },
+    // Mekanın açıkta (ödenmemiş) teslimat kayıtlarını topla
+    const unsettledRecords = await prisma.deliveryRecord.findMany({
+      where: {
+        venueId: id,
+        isSettled: false
+      },
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
     })
 
-    let totalDeliveriesCents = 0
+    let unsettledDeliveriesCents = 0
     let totalPackages = 0
     let indoorPackages = 0
     let outdoorPackages = 0
 
-    for (const rec of allRecords) {
+    for (const rec of unsettledRecords) {
       const count = rec.packageCount || 0
       const amt = Number(rec.venueTotalAmount || 0) > 0
         ? Number(rec.venueTotalAmount)
         : Number(rec.totalAmount || 0)
 
       totalPackages += count
-      totalDeliveriesCents += toCents(amt)
+      unsettledDeliveriesCents += toCents(amt)
       if (rec.deliveryType === 'INDOOR') {
         indoorPackages += count
       } else {
@@ -244,23 +247,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Mevcut tahsilat toplamı (venue_payments tablosundan)
-    const existingPaymentsRes: any = await prisma.$queryRawUnsafe(
-      `SELECT COALESCE(SUM(amount), 0)::text as "totalCollected"
-       FROM venue_payments
-       WHERE venue_id = $1`,
-      id
-    )
-
-    let currentCollectedCents = toCents(existingPaymentsRes[0]?.totalCollected || 0)
-    // Fallback: Eğer henüz venue_payments'a kaydedilmemiş legacy veri varsa venue.totalCollectedAmount ile senkronize et
-    const venueLegacyCollectedCents = toCents(venue.totalCollectedAmount || 0)
-    if (venueLegacyCollectedCents > currentCollectedCents) {
-      currentCollectedCents = venueLegacyCollectedCents
-    }
-
-    // Güncel bekleyen net borç
-    const currentDueCents = Math.max(0, totalDeliveriesCents - currentCollectedCents)
+    const currentCarriedCents = toCents(venue.carriedBalance || 0)
+    // Mekanın şu anki bekleyen net borcu: Açık Teslimatlar + Devreden Bakiye
+    const currentDueCents = unsettledDeliveriesCents + currentCarriedCents
     const collectedCents = toCents(parsedAmount)
 
     // Fazla tahsilat kontrolü: Tahsilat tutarı kalan bakiyeden büyükse engelle
@@ -274,7 +263,6 @@ export default defineEventHandler(async (event) => {
     const collectedAmount = fromCents(collectedCents)
     const newRemainingCents = Math.max(0, currentDueCents - collectedCents)
     const remainingBalance = fromCents(newRemainingCents)
-    const newTotalCollected = fromCents(currentCollectedCents + collectedCents)
 
     // Ödeme Yöntemi Belirleme (CASH, TRANSFER, SPLIT)
     let paymentMethod: string = body?.paymentMethod || 'CASH'
@@ -314,30 +302,33 @@ export default defineEventHandler(async (event) => {
         notes: body?.notes
       })
 
-      // B. FIFO Teslimat Kayıtları Kapatma
-      let runningBudgetCents = toCents(newTotalCollected)
-      for (const rec of allRecords) {
-        const amtCents = toCents(Number(rec.venueTotalAmount || 0) > 0 ? Number(rec.venueTotalAmount) : Number(rec.totalAmount || 0))
-        if (runningBudgetCents >= amtCents && amtCents > 0) {
-          if (!rec.isSettled) {
+      // B. Teslimat Kayıtları Kapatma
+      if (remainingBalance === 0) {
+        // Tam Tahsilat: Mekanın açık olan TÜM teslimatları kapatılır ve borç sıfırlanır!
+        await tx.deliveryRecord.updateMany({
+          where: {
+            venueId: id,
+            isSettled: false
+          },
+          data: {
+            isSettled: true,
+            settledAt: now
+          }
+        })
+      } else {
+        // Kısmi Tahsilat: Alınan tahsilat tutarı kadar en eskiden başlayarak teslimat kayıtları kapatılır
+        let runningBudgetCents = collectedCents
+        for (const rec of unsettledRecords) {
+          const amtCents = toCents(Number(rec.venueTotalAmount || 0) > 0 ? Number(rec.venueTotalAmount) : Number(rec.totalAmount || 0))
+          if (runningBudgetCents >= amtCents && amtCents > 0) {
             await tx.deliveryRecord.update({
               where: { id: rec.id },
               data: {
                 isSettled: true,
-                settledAt: rec.settledAt || now
+                settledAt: now
               }
             })
-          }
-          runningBudgetCents -= amtCents
-        } else {
-          if (rec.isSettled) {
-            await tx.deliveryRecord.update({
-              where: { id: rec.id },
-              data: {
-                isSettled: false,
-                settledAt: null
-              }
-            })
+            runningBudgetCents -= amtCents
           }
         }
       }
@@ -353,7 +344,9 @@ export default defineEventHandler(async (event) => {
           lastTransferAmount: new Prisma.Decimal(transferAmount.toFixed(2)),
           carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
           prevCarriedBalance: venue.carriedBalance,
-          totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
+          totalCollectedAmount: {
+            increment: new Prisma.Decimal(collectedAmount.toFixed(2))
+          },
           totalCashAmount: {
             increment: new Prisma.Decimal(cashAmount.toFixed(2))
           },
