@@ -1,5 +1,7 @@
 import { prisma, Prisma } from '../../../utils/prisma'
 import { getISOWeekString, getWeekDateRange } from '../../../utils/period'
+import { toCents, fromCents } from '../../../utils/venueFinance'
+import { createVenuePaymentRecord } from '../../../utils/venuePayments'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -26,7 +28,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 1. Kalan Borcu Sıfırla / Sil İşlemi
+    // 1. Kalan Borcu Manuel Sıfırla / Sil İşlemi (Ayrı Onay Penceresi ile)
     if (isClearCarried) {
       const currentCarried = Number(venue.carriedBalance || 0)
       if (currentCarried <= 0) {
@@ -38,139 +40,191 @@ export default defineEventHandler(async (event) => {
 
       const now = new Date()
 
-      // Açıkta kalan tüm teslimat kayıtlarını da kapat
-      await prisma.deliveryRecord.updateMany({
-        where: {
-          venueId: id,
-          isSettled: false
-        },
-        data: {
-          isSettled: true,
-          settledAt: now
+      return await prisma.$transaction(async (tx) => {
+        // Açıkta kalan tüm teslimat kayıtlarını kapat
+        await tx.deliveryRecord.updateMany({
+          where: {
+            venueId: id,
+            isSettled: false
+          },
+          data: {
+            isSettled: true,
+            settledAt: now
+          }
+        })
+
+        await tx.venue.update({
+          where: { id },
+          data: {
+            carriedBalance: new Prisma.Decimal(0),
+            prevCarriedBalance: new Prisma.Decimal(currentCarried.toFixed(2))
+          }
+        })
+
+        return {
+          success: true,
+          message: `${venue.name} için kalan ${currentCarried.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ borç başarıyla silindi ve sıfırlandı.`,
+          data: {
+            venueId: id,
+            carriedBalance: 0,
+            clearedAmount: currentCarried
+          }
         }
       })
-
-      await prisma.venue.update({
-        where: { id },
-        data: {
-          carriedBalance: new Prisma.Decimal(0),
-          prevCarriedBalance: new Prisma.Decimal(currentCarried.toFixed(2))
-        }
-      })
-
-      return {
-        success: true,
-        message: `${venue.name} için kalan ${currentCarried.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ borç başarıyla silindi ve sıfırlandı.`,
-        data: {
-          venueId: id,
-          carriedBalance: 0,
-          clearedAmount: currentCarried
-        }
-      }
     }
 
     // 2. Geri alma işlemi (Undo)
     if (isUndo) {
-      if (!venue.lastSettledAt) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: 'Geri alınabilecek bir tahsilat kaydı bulunamadı.'
+      // En son yapılan tahsilat kaydını bul
+      const latestPayments: any = await prisma.$queryRawUnsafe(
+        `SELECT id, amount::text as amount, cash_amount::text as "cashAmount", transfer_amount::text as "transferAmount"
+         FROM venue_payments
+         WHERE venue_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        id
+      )
+
+      if (!latestPayments || latestPayments.length === 0) {
+        if (!venue.lastSettledAt) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: 'Geri alınabilecek bir tahsilat kaydı bulunamadı.'
+          })
+        }
+      }
+
+      const latestPayment = latestPayments && latestPayments.length > 0 ? latestPayments[0] : null
+      const revertAmount = latestPayment ? Number(latestPayment.amount) : Number(venue.lastSettledAmount || 0)
+      const revertCash = latestPayment ? Number(latestPayment.cashAmount || 0) : Number((venue as any).lastCashAmount || 0)
+      const revertTransfer = latestPayment ? Number(latestPayment.transferAmount || 0) : Number((venue as any).lastTransferAmount || 0)
+
+      return await prisma.$transaction(async (tx) => {
+        if (latestPayment) {
+          await tx.$executeRawUnsafe(`DELETE FROM venue_payments WHERE id = $1`, latestPayment.id)
+        }
+
+        // Tüm teslimatları topla
+        const allRecords = await tx.deliveryRecord.findMany({
+          where: { venueId: id },
+          orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
         })
-      }
 
-      const lastAmount = Number(venue.lastSettledAmount || 0)
-      const currentTotalCollected = Number(venue.totalCollectedAmount || 0)
-      const newTotalCollected = Math.max(0, Number((currentTotalCollected - lastAmount).toFixed(2)))
+        // Kalan ödemeleri topla
+        const remainingPaymentsRes: any = await tx.$queryRawUnsafe(
+          `SELECT COALESCE(SUM(amount), 0)::text as "totalCollected",
+                  COALESCE(SUM(cash_amount), 0)::text as "totalCash",
+                  COALESCE(SUM(transfer_amount), 0)::text as "totalTransfer"
+           FROM venue_payments
+           WHERE venue_id = $1`,
+          id
+        )
 
-      const lastCash = Number((venue as any).lastCashAmount || 0)
-      const lastTransfer = Number((venue as any).lastTransferAmount || 0)
-      const newTotalCash = Math.max(0, Number(((venue as any).totalCashAmount || 0) - lastCash))
-      const newTotalTransfer = Math.max(0, Number(((venue as any).totalTransferAmount || 0) - lastTransfer))
+        const newTotalCollected = Number(remainingPaymentsRes[0]?.totalCollected || 0)
+        const newTotalCash = Number(remainingPaymentsRes[0]?.totalCash || 0)
+        const newTotalTransfer = Number(remainingPaymentsRes[0]?.totalTransfer || 0)
 
-      // Teslimat kayıtlarını FIFO ile yeni toplam tahsilata göre tekrar ayarla
-      const allRecords = await prisma.deliveryRecord.findMany({
-        where: { venueId: id },
-        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
-      })
+        let totalDeliveriesCents = 0
+        for (const rec of allRecords) {
+          const amt = Number(rec.venueTotalAmount || 0) > 0
+            ? Number(rec.venueTotalAmount)
+            : Number(rec.totalAmount || 0)
+          totalDeliveriesCents += toCents(amt)
+        }
 
-      let runningBudget = newTotalCollected
-      let totalDeliveriesSum = 0
+        const newCollectedCents = toCents(newTotalCollected)
+        const restoredCarriedBalance = fromCents(Math.max(0, totalDeliveriesCents - newCollectedCents))
 
-      for (const rec of allRecords) {
-        const amt = Number(rec.venueTotalAmount || 0) > 0
-          ? Number(rec.venueTotalAmount)
-          : Number(rec.totalAmount || 0)
-        totalDeliveriesSum += amt
-
-        if (runningBudget >= amt && amt > 0) {
-          if (!rec.isSettled) {
-            await prisma.deliveryRecord.update({
-              where: { id: rec.id },
-              data: { isSettled: true, settledAt: rec.settledAt || new Date() }
-            })
+        // FIFO teslimat kayıtlarını yeni toplama göre güncelle
+        let runningBudgetCents = newCollectedCents
+        for (const rec of allRecords) {
+          const amtCents = toCents(Number(rec.venueTotalAmount || 0) > 0 ? Number(rec.venueTotalAmount) : Number(rec.totalAmount || 0))
+          if (runningBudgetCents >= amtCents && amtCents > 0) {
+            if (!rec.isSettled) {
+              await tx.deliveryRecord.update({
+                where: { id: rec.id },
+                data: { isSettled: true, settledAt: rec.settledAt || new Date() }
+              })
+            }
+            runningBudgetCents -= amtCents
+          } else {
+            if (rec.isSettled) {
+              await tx.deliveryRecord.update({
+                where: { id: rec.id },
+                data: { isSettled: false, settledAt: null }
+              })
+            }
           }
-          runningBudget -= amt
-        } else {
-          if (rec.isSettled) {
-            await prisma.deliveryRecord.update({
-              where: { id: rec.id },
-              data: { isSettled: false, settledAt: null }
-            })
+        }
+
+        // En son settlementPeriod kaydını sil
+        const latestPeriod = await tx.settlementPeriod.findFirst({
+          where: {
+            type: 'VENUE',
+            note: { contains: `"venueId":"${id}"` }
+          },
+          orderBy: { closedAt: 'desc' }
+        })
+
+        if (latestPeriod) {
+          await tx.settlementPeriod.delete({
+            where: { id: latestPeriod.id }
+          }).catch(() => {})
+        }
+
+        await tx.venue.update({
+          where: { id },
+          data: {
+            lastSettledAt: null,
+            lastSettledAmount: null,
+            lastPaymentMethod: null,
+            lastCashAmount: null,
+            lastTransferAmount: null,
+            carriedBalance: new Prisma.Decimal(restoredCarriedBalance.toFixed(2)),
+            prevCarriedBalance: new Prisma.Decimal(0),
+            totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
+            totalCashAmount: new Prisma.Decimal(newTotalCash.toFixed(2)),
+            totalTransferAmount: new Prisma.Decimal(newTotalTransfer.toFixed(2))
+          }
+        })
+
+        return {
+          success: true,
+          message: `${venue.name} için son tahsilat işlemi (${revertAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺) geri alındı. Kalan borç güncellendi.`,
+          data: {
+            venueId: id,
+            carriedBalance: restoredCarriedBalance,
+            totalCollectedAmount: newTotalCollected
           }
         }
-      }
-
-      const restoredCarriedBalance = Math.max(0, Number((totalDeliveriesSum - newTotalCollected).toFixed(2)))
-
-      // En son loglanan settlementPeriod kaydını sil
-      const latestPeriod = await prisma.settlementPeriod.findFirst({
-        where: {
-          type: 'VENUE',
-          note: { contains: `"venueId":"${id}"` }
-        },
-        orderBy: { closedAt: 'desc' }
       })
-
-      if (latestPeriod) {
-        await prisma.settlementPeriod.delete({
-          where: { id: latestPeriod.id }
-        }).catch(() => {})
-      }
-
-      await prisma.venue.update({
-        where: { id },
-        data: {
-          lastSettledAt: null,
-          lastSettledAmount: null,
-          lastPaymentMethod: null,
-          lastCashAmount: null,
-          lastTransferAmount: null,
-          carriedBalance: new Prisma.Decimal(restoredCarriedBalance.toFixed(2)),
-          prevCarriedBalance: new Prisma.Decimal(0),
-          totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
-          totalCashAmount: new Prisma.Decimal(newTotalCash.toFixed(2)),
-          totalTransferAmount: new Prisma.Decimal(newTotalTransfer.toFixed(2))
-        }
-      })
-
-      return {
-        success: true,
-        message: `${venue.name} için son tahsilat işlemi (${lastAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺) geri alındı. Kalan borç ve kayıtlar güncellendi.`,
-        data: {
-          venueId: id,
-          carriedBalance: restoredCarriedBalance,
-          totalCollectedAmount: newTotalCollected
-        }
-      }
     }
 
     // 3. Normal veya Kısmi Tahsilat İşlemi
+    // Doğrulama: Tutar boş, 0, negatif veya sayı olmama durumu
+    if (body?.collectedAmount === undefined || body?.collectedAmount === null || body?.collectedAmount === '') {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Lütfen tahsilat tutarını giriniz.'
+      })
+    }
+
+    const cleanInput = String(body.collectedAmount).trim().replace(',', '.')
+    const parsedAmount = parseFloat(cleanInput)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Tahsilat tutarı 0\'dan büyük geçerli bir sayı olmalıdır.'
+      })
+    }
+
+    // Mekanın tüm teslimat kayıtlarını topla
     const allRecords = await prisma.deliveryRecord.findMany({
       where: { venueId: id },
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
     })
 
-    let totalDeliveriesAmount = 0
+    let totalDeliveriesCents = 0
     let totalPackages = 0
     let indoorPackages = 0
     let outdoorPackages = 0
@@ -182,7 +236,7 @@ export default defineEventHandler(async (event) => {
         : Number(rec.totalAmount || 0)
 
       totalPackages += count
-      totalDeliveriesAmount += amt
+      totalDeliveriesCents += toCents(amt)
       if (rec.deliveryType === 'INDOOR') {
         indoorPackages += count
       } else {
@@ -190,30 +244,37 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    totalDeliveriesAmount = Number(totalDeliveriesAmount.toFixed(2))
-    const currentTotalCollected = Math.max(0, Number(venue.totalCollectedAmount || 0))
+    // Mevcut tahsilat toplamı (venue_payments tablosundan)
+    const existingPaymentsRes: any = await prisma.$queryRawUnsafe(
+      `SELECT COALESCE(SUM(amount), 0)::text as "totalCollected"
+       FROM venue_payments
+       WHERE venue_id = $1`,
+      id
+    )
 
-    // Mekanın şu anki bekleyen net borcu
-    const currentPendingDue = Math.max(0, Number((totalDeliveriesAmount - currentTotalCollected).toFixed(2)))
-    const totalDue = currentPendingDue
-
-    // Kullanıcının ödediği tutar ve yeni kalan borç
-    let collectedAmount = totalDue
-    let remainingBalance = 0
-
-    if (body?.collectedAmount !== undefined && body?.collectedAmount !== null && !isNaN(Number(body.collectedAmount))) {
-      collectedAmount = Math.max(0, Number(body.collectedAmount))
-      remainingBalance = Math.max(0, Number((totalDue - collectedAmount).toFixed(2)))
-    } else if (body?.remainingBalance !== undefined && body?.remainingBalance !== null && !isNaN(Number(body.remainingBalance))) {
-      remainingBalance = Math.max(0, Number(body.remainingBalance))
-      collectedAmount = Math.max(0, Number((totalDue - remainingBalance).toFixed(2)))
+    let currentCollectedCents = toCents(existingPaymentsRes[0]?.totalCollected || 0)
+    // Fallback: Eğer henüz venue_payments'a kaydedilmemiş legacy veri varsa venue.totalCollectedAmount ile senkronize et
+    const venueLegacyCollectedCents = toCents(venue.totalCollectedAmount || 0)
+    if (venueLegacyCollectedCents > currentCollectedCents) {
+      currentCollectedCents = venueLegacyCollectedCents
     }
 
-    collectedAmount = Number(collectedAmount.toFixed(2))
-    remainingBalance = Number(remainingBalance.toFixed(2))
+    // Güncel bekleyen net borç
+    const currentDueCents = Math.max(0, totalDeliveriesCents - currentCollectedCents)
+    const collectedCents = toCents(parsedAmount)
 
-    // Yeni toplam tahsilat
-    const newTotalCollected = Number((currentTotalCollected + collectedAmount).toFixed(2))
+    // Fazla tahsilat kontrolü: Tahsilat tutarı kalan bakiyeden büyükse engelle
+    if (collectedCents > currentDueCents && currentDueCents > 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Girilen tahsilat tutarı (${fromCents(collectedCents).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺), mekanın kalan borcundan (${fromCents(currentDueCents).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺) fazla olamaz.`
+      })
+    }
+
+    const collectedAmount = fromCents(collectedCents)
+    const newRemainingCents = Math.max(0, currentDueCents - collectedCents)
+    const remainingBalance = fromCents(newRemainingCents)
+    const newTotalCollected = fromCents(currentCollectedCents + collectedCents)
 
     // Ödeme Yöntemi Belirleme (CASH, TRANSFER, SPLIT)
     let paymentMethod: string = body?.paymentMethod || 'CASH'
@@ -226,7 +287,7 @@ export default defineEventHandler(async (event) => {
     } else if (paymentMethod === 'SPLIT') {
       cashAmount = Number(body?.cashAmount || 0)
       transferAmount = Number(body?.transferAmount || 0)
-      if (cashAmount + transferAmount === 0 && collectedAmount > 0) {
+      if (toCents(cashAmount + transferAmount) === 0 && collectedAmount > 0) {
         cashAmount = collectedAmount
         paymentMethod = 'CASH'
       }
@@ -238,127 +299,136 @@ export default defineEventHandler(async (event) => {
 
     cashAmount = Number(cashAmount.toFixed(2))
     transferAmount = Number(transferAmount.toFixed(2))
-
     const now = new Date()
 
-    // 4. FIFO (First-In, First-Out) Teslimat Kayıtları Kapatma
-    // Toplam tahsilat tutarına göre en eski tarihten başlayarak gerçekten karşılanan teslimat kayıtları kapatılır.
-    // Karşılanmayan kayıtlar açık (isSettled: false) kalır ve dökümde "Bekliyor" görünür!
-    let runningBudget = newTotalCollected
-
-    for (const rec of allRecords) {
-      const amt = Number(rec.venueTotalAmount || 0) > 0
-        ? Number(rec.venueTotalAmount)
-        : Number(rec.totalAmount || 0)
-
-      if (runningBudget >= amt && amt > 0) {
-        if (!rec.isSettled) {
-          await prisma.deliveryRecord.update({
-            where: { id: rec.id },
-            data: {
-              isSettled: true,
-              settledAt: rec.settledAt || now
-            }
-          })
-        }
-        runningBudget -= amt
-      } else {
-        if (rec.isSettled) {
-          await prisma.deliveryRecord.update({
-            where: { id: rec.id },
-            data: {
-              isSettled: false,
-              settledAt: null
-            }
-          })
-        }
-      }
-    }
-
-    // 5. Mekan kaydını güncelle
-    const updatedVenue = await prisma.venue.update({
-      where: { id },
-      data: {
-        lastSettledAt: now,
-        lastSettledAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
-        lastPaymentMethod: paymentMethod,
-        lastCashAmount: new Prisma.Decimal(cashAmount.toFixed(2)),
-        lastTransferAmount: new Prisma.Decimal(transferAmount.toFixed(2)),
-        carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
-        prevCarriedBalance: venue.carriedBalance,
-        totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
-        totalCashAmount: {
-          increment: new Prisma.Decimal(cashAmount.toFixed(2))
-        },
-        totalTransferAmount: {
-          increment: new Prisma.Decimal(transferAmount.toFixed(2))
-        }
-      }
-    })
-
-    // 6. SettlementPeriod log kaydı
-    try {
-      const shifted = new Date(now.getTime() - 3 * 3600 * 1000)
-      const bDateStr = shifted.toISOString().substring(0, 10)
-      const weekCode = getISOWeekString(bDateStr)
-      const weekRange = getWeekDateRange(weekCode)
-      await prisma.settlementPeriod.create({
-        data: {
-          type: 'VENUE',
-          week: weekCode,
-          startDate: weekRange.startDate,
-          endDate: weekRange.endDate,
-          totalPackages,
-          totalEarnings: new Prisma.Decimal(totalDue.toFixed(2)),
-          totalAdvance: new Prisma.Decimal(0),
-          paidAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
-          remainingBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
-          closedAt: now,
-          note: JSON.stringify({
-            venueId: id,
-            venueName: venue.name,
-            paymentMethod,
-            cashAmount,
-            transferAmount,
-            collectedAmount,
-            remainingBalance,
-            totalDue,
-            notes: body?.notes || ''
-          })
-        }
-      })
-    } catch (spErr) {
-      console.warn('Could not create settlementPeriod log for venue:', spErr)
-    }
-
-    const paymentMethodLabel = paymentMethod === 'TRANSFER'
-      ? 'Havale ile'
-      : paymentMethod === 'SPLIT'
-        ? `(${cashAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${transferAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale)`
-        : 'Nakit olarak'
-
-    const message = remainingBalance > 0
-      ? `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı. Kalan ${remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ borç olarak devredildi.`
-      : `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı ve toplam tutar sıfırlandı.`
-
-    return {
-      success: true,
-      message,
-      data: {
+    // 4. Veritabanı İşlemleri (Tek Transaction İçinde)
+    return await prisma.$transaction(async (tx) => {
+      // A. Yeni Tahsilat Kaydını venue_payments tablosuna ekle
+      const paymentRecord = await createVenuePaymentRecord(tx, {
         venueId: id,
-        settledAmount: collectedAmount,
-        remainingBalance,
-        totalDue,
+        amount: collectedAmount,
         paymentMethod,
         cashAmount,
         transferAmount,
-        settledPackages: totalPackages,
-        indoorPackages,
-        outdoorPackages,
-        lastSettledAt: now,
-        totalCollectedAmount: Number(updatedVenue.totalCollectedAmount)
+        date: body?.date || now,
+        notes: body?.notes
+      })
+
+      // B. FIFO Teslimat Kayıtları Kapatma
+      let runningBudgetCents = toCents(newTotalCollected)
+      for (const rec of allRecords) {
+        const amtCents = toCents(Number(rec.venueTotalAmount || 0) > 0 ? Number(rec.venueTotalAmount) : Number(rec.totalAmount || 0))
+        if (runningBudgetCents >= amtCents && amtCents > 0) {
+          if (!rec.isSettled) {
+            await tx.deliveryRecord.update({
+              where: { id: rec.id },
+              data: {
+                isSettled: true,
+                settledAt: rec.settledAt || now
+              }
+            })
+          }
+          runningBudgetCents -= amtCents
+        } else {
+          if (rec.isSettled) {
+            await tx.deliveryRecord.update({
+              where: { id: rec.id },
+              data: {
+                isSettled: false,
+                settledAt: null
+              }
+            })
+          }
+        }
       }
-    }
+
+      // C. Mekan kaydını güncelle
+      const updatedVenue = await tx.venue.update({
+        where: { id },
+        data: {
+          lastSettledAt: now,
+          lastSettledAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
+          lastPaymentMethod: paymentMethod,
+          lastCashAmount: new Prisma.Decimal(cashAmount.toFixed(2)),
+          lastTransferAmount: new Prisma.Decimal(transferAmount.toFixed(2)),
+          carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
+          prevCarriedBalance: venue.carriedBalance,
+          totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
+          totalCashAmount: {
+            increment: new Prisma.Decimal(cashAmount.toFixed(2))
+          },
+          totalTransferAmount: {
+            increment: new Prisma.Decimal(transferAmount.toFixed(2))
+          }
+        }
+      })
+
+      // D. SettlementPeriod log kaydı (Geriye dönük uyumluluk ve denetim logu)
+      try {
+        const shifted = new Date(now.getTime() - 3 * 3600 * 1000)
+        const bDateStr = shifted.toISOString().substring(0, 10)
+        const weekCode = getISOWeekString(bDateStr)
+        const weekRange = getWeekDateRange(weekCode)
+        await tx.settlementPeriod.create({
+          data: {
+            type: 'VENUE',
+            week: weekCode,
+            startDate: weekRange.startDate,
+            endDate: weekRange.endDate,
+            totalPackages,
+            totalEarnings: new Prisma.Decimal(fromCents(currentDueCents).toFixed(2)),
+            totalAdvance: new Prisma.Decimal(0),
+            paidAmount: new Prisma.Decimal(collectedAmount.toFixed(2)),
+            remainingBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
+            closedAt: now,
+            note: JSON.stringify({
+              paymentId: paymentRecord.id,
+              venueId: id,
+              venueName: venue.name,
+              paymentMethod,
+              cashAmount,
+              transferAmount,
+              collectedAmount,
+              remainingBalance,
+              totalDue: fromCents(currentDueCents),
+              notes: body?.notes || ''
+            })
+          }
+        })
+      } catch (spErr) {
+        console.warn('Could not create settlementPeriod log for venue:', spErr)
+      }
+
+      const paymentMethodLabel = paymentMethod === 'TRANSFER'
+        ? 'Havale ile'
+        : paymentMethod === 'SPLIT'
+          ? `(${cashAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${transferAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale)`
+          : 'Nakit olarak'
+
+      const message = remainingBalance > 0
+        ? `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı. Kalan bakiye: ${remainingBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺.`
+        : `${venue.name} için ${collectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ ${paymentMethodLabel} tahsilat alındı ve mekanın borcu tamamen kapatıldı.`
+
+      return {
+        success: true,
+        message,
+        data: {
+          paymentId: paymentRecord.id,
+          venueId: id,
+          settledAmount: collectedAmount,
+          remainingBalance,
+          totalDue: fromCents(currentDueCents),
+          paymentMethod,
+          cashAmount,
+          transferAmount,
+          settledPackages: totalPackages,
+          indoorPackages,
+          outdoorPackages,
+          lastSettledAt: now,
+          totalCollectedAmount: Number(updatedVenue.totalCollectedAmount)
+        }
+      }
+    })
   } catch (error: any) {
     console.error('Venue settle error:', error)
     throw createError({

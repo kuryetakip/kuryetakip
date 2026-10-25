@@ -150,6 +150,28 @@ const filteredDays = computed<VenueDailyStat[]>(() => {
   }
 })
 
+// Filtered payments according to selected scope
+const filteredPayments = computed(() => {
+  if (!props.venue) return []
+  const payments = props.venue.payments || []
+  if (selectedScope.value === 'current' || selectedScope.value === 'lastWeek') {
+    const { start, end } = dateRange.value
+    if (!start || !end) return payments
+    return payments.filter(p => {
+      const pDate = p.date ? p.date.substring(0, 10) : ''
+      return pDate >= start && pDate <= end
+    })
+  } else if (selectedScope.value === 'daily') {
+    const { start } = dateRange.value
+    return payments.filter(p => {
+      const pDate = p.date ? p.date.substring(0, 10) : ''
+      return pDate === start
+    })
+  }
+  // pending veya all
+  return payments
+})
+
 // Metrics summary computed for the active scope
 const reportSummary = computed(() => {
   const v = props.venue
@@ -168,69 +190,66 @@ const reportSummary = computed(() => {
     }
   }
 
-  // 1. Tablodaki Güncel Verileri Baz Al (Varsayılan ve Kullanıcı İsteği)
-  if (selectedScope.value === 'current' || selectedScope.value === 'pending') {
-    const indoorCount = v.indoorPackageCount || v.pendingIndoorCount || 0
-    const outdoorCount = v.outdoorPackageCount || v.pendingOutdoorCount || 0
-    const totalCount = v.totalPackageCount || v.pendingPackageCount || (indoorCount + outdoorCount)
-    const indoorPrice = Number(v.indoorPrice || 0)
-    const outdoorPrice = Number(v.outdoorPrice || 0)
-    const indoorAmount = v.indoorAmount !== undefined && Number(v.indoorAmount) > 0
-      ? Number(v.indoorAmount)
-      : (indoorCount * indoorPrice)
-    const outdoorAmount = v.outdoorAmount !== undefined && Number(v.outdoorAmount) > 0
-      ? Number(v.outdoorAmount)
-      : (outdoorCount * outdoorPrice)
-    const deliveriesAmount = Number((v.allTimeTotalAmount || (indoorAmount + outdoorAmount)).toFixed(2))
-    const settledAmount = Number(v.totalCollectedAmount || v.lastSettledAmount || 0)
-    const remainingAmount = Math.max(0, Number((v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount !== undefined ? v.totalAmount : (deliveriesAmount - settledAmount))).toFixed(2)))
-
-    return {
-      indoorCount,
-      outdoorCount,
-      totalCount,
-      indoorAmount,
-      outdoorAmount,
-      deliveriesAmount,
-      carriedBalance: 0,
-      totalAmount: deliveriesAmount,
-      settledAmount,
-      remainingAmount
-    }
-  }
-
-  // Geçen hafta veya Bugün: filteredDays üzerinden topla
+  // 1. Teslimatları Topla
   let indoorCount = 0
   let outdoorCount = 0
   let totalCount = 0
   let indoorAmount = 0
   let outdoorAmount = 0
-  let totalAmount = 0
-  let settledAmount = 0
-  let remainingAmount = 0
+  let deliveriesAmount = 0
 
-  for (const day of filteredDays.value) {
-    indoorCount += day.indoorCount || 0
-    outdoorCount += day.outdoorCount || 0
-    totalCount += day.totalCount || ((day.indoorCount || 0) + (day.outdoorCount || 0))
-    indoorAmount += day.indoorAmount || 0
-    outdoorAmount += day.outdoorAmount || 0
-    totalAmount += day.totalAmount || 0
-    settledAmount += day.settledAmount || 0
-    remainingAmount += (day.pendingAmount !== undefined ? day.pendingAmount : (day.isSettled ? 0 : day.totalAmount))
+  if (filteredDays.value && filteredDays.value.length > 0) {
+    for (const day of filteredDays.value) {
+      indoorCount += day.indoorCount || 0
+      outdoorCount += day.outdoorCount || 0
+      totalCount += day.totalCount || ((day.indoorCount || 0) + (day.outdoorCount || 0))
+      indoorAmount += day.indoorAmount || 0
+      outdoorAmount += day.outdoorAmount || 0
+      deliveriesAmount += day.totalAmount || 0
+    }
+  } else if (selectedScope.value === 'current') {
+    indoorCount = v.indoorPackageCount || 0
+    outdoorCount = v.outdoorPackageCount || 0
+    totalCount = v.totalPackageCount || (indoorCount + outdoorCount)
+    indoorAmount = Number(v.indoorAmount || 0)
+    outdoorAmount = Number(v.outdoorAmount || 0)
+    deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
+  }
+
+  // 2. Tahsilatları Topla (Gerçek ödeme kayıtları baz alınır)
+  let settledAmount = 0
+  if (filteredPayments.value && filteredPayments.value.length > 0) {
+    settledAmount = filteredPayments.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+  } else if (selectedScope.value === 'current' && v.periodCollectedAmount !== undefined) {
+    settledAmount = Number(v.periodCollectedAmount || 0)
+  } else if (selectedScope.value === 'pending' && v.totalCollectedAmount !== undefined) {
+    settledAmount = Number(v.totalCollectedAmount || 0)
+  } else if (v.totalCollectedAmount !== undefined) {
+    settledAmount = Number(v.totalCollectedAmount || 0)
+  }
+
+  deliveriesAmount = Number(deliveriesAmount.toFixed(2))
+  settledAmount = Number(settledAmount.toFixed(2))
+
+  // 3. Kalan Borç Hesaplama
+  let remainingAmount = 0
+  if (selectedScope.value === 'pending' && v.actualPendingDebt !== undefined) {
+    remainingAmount = Number(v.actualPendingDebt.toFixed(2))
+  } else {
+    remainingAmount = Math.max(0, Number((deliveriesAmount - settledAmount).toFixed(2)))
   }
 
   return {
     indoorCount,
     outdoorCount,
     totalCount,
-    indoorAmount,
-    outdoorAmount,
-    deliveriesAmount: Number((indoorAmount + outdoorAmount).toFixed(2)),
+    indoorAmount: Number(indoorAmount.toFixed(2)),
+    outdoorAmount: Number(outdoorAmount.toFixed(2)),
+    deliveriesAmount,
     carriedBalance: 0,
-    totalAmount: Number(totalAmount.toFixed(2)),
-    settledAmount: Number(settledAmount.toFixed(2)),
-    remainingAmount: Number(remainingAmount.toFixed(2))
+    totalAmount: deliveriesAmount,
+    settledAmount,
+    remainingAmount
   }
 })
 
@@ -252,12 +271,7 @@ const formattedMessage = computed(() => {
   lines.push(`• *Toplam Paket:* ${s.totalCount} Paket`)
   lines.push(``)
   lines.push(`💰 *ALACAK / VERECEK HESAP DURUMU*`)
-  if (s.carriedBalance > 0) {
-    lines.push(`• Bu Hafta Hizmet Tutarı: ${s.deliveriesAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
-    lines.push(`• Geçmiş Dönemden Devreden Bakiye: ${s.carriedBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
-  } else {
-    lines.push(`• Toplam Hizmet Tutarı: ${s.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
-  }
+  lines.push(`• Toplam Hizmet Tutarı: ${s.totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
   if (s.settledAmount > 0) {
     lines.push(`• Tahsil Edilen / Ödenen: ${s.settledAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`)
   }
@@ -265,7 +279,17 @@ const formattedMessage = computed(() => {
   lines.push(`🔥 *KALAN ÖDENECEK TUTAR: ${s.remainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺*`)
   lines.push(`━━━━━━━━━━━━━━━━━━━━`)
 
-  if (filteredDays.value.length > 0) {
+  if (filteredPayments.value && filteredPayments.value.length > 0) {
+    lines.push(`💳 *ALINAN TAHSİLATLAR*`)
+    for (const p of filteredPayments.value) {
+      const pDate = p.date ? formatToDisplayDate(p.date) : ''
+      const methodLabel = p.paymentMethod === 'TRANSFER' ? 'Havale/EFT' : p.paymentMethod === 'SPLIT' ? 'Karma' : 'Nakit'
+      lines.push(`• ${pDate}: ${Number(p.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ (${methodLabel})`)
+    }
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`)
+  }
+
+  if (filteredDays.value && filteredDays.value.length > 0) {
     lines.push(`🗓️ *GÜNLÜK TESLİMAT DÖKÜMÜ*`)
     for (const d of filteredDays.value) {
       const dayName = formatDayName(d.date)

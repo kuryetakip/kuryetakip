@@ -49,6 +49,19 @@ export interface VenueItem {
   outdoorAmount?: number
   allTimePackageCount?: number
   allTimeTotalAmount?: number
+  periodDeliveriesAmount?: number
+  periodCollectedAmount?: number
+  periodRemainingAmount?: number
+  payments?: Array<{
+    id: string
+    amount: number
+    paymentMethod: string
+    cashAmount: number
+    transferAmount: number
+    date: string
+    notes?: string | null
+    createdAt: string
+  }>
   dailyBreakdown?: VenueDailyStat[]
   allDailyBreakdown?: VenueDailyStat[]
   createdAt?: string

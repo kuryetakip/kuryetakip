@@ -34,6 +34,7 @@ import {
   X
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
+import { useToast } from '~/composables/useToast'
 
 useHead({
   title: 'Mekan Yönetimi & Günlük Paket Takibi — KuryeTakip'
@@ -55,6 +56,8 @@ const {
   clearCarriedBalance,
   deleteVenue
 } = useVenues()
+
+const toast = useToast()
 
 // Modal states
 const isModalOpen = ref(false)
@@ -88,7 +91,9 @@ const settleTransferAmount = ref<string | number>('')
 const settleNote = ref('')
 
 const settleTotalDue = computed(() => {
-  return Number(venueToSettle.value?.totalAmount || 0)
+  if (!venueToSettle.value) return 0
+  const v = venueToSettle.value
+  return Number(v.actualPendingDebt ?? v.pendingAmount ?? v.totalAmount ?? 0)
 })
 
 const numericCollectedAmount = computed(() => {
@@ -190,6 +195,14 @@ const onSplitTransferInput = (val: string | number) => {
   const total = numericCollectedAmount.value
   const cashRem = Math.max(0, Number((total - trVal).toFixed(2)))
   settleCashAmount.value = cashRem
+}
+
+const resetSettleForm = () => {
+  settleCollectedAmount.value = ''
+  settleRemainingAmount.value = settleTotalDue.value
+  settleCashAmount.value = ''
+  settleTransferAmount.value = ''
+  settleNote.value = ''
 }
 
 const setFullSettlement = () => {
@@ -725,11 +738,11 @@ const handleQuickDeliverySubmit = async () => {
 
 const openSettleModal = (venue: VenueItem) => {
   venueToSettle.value = venue
-  const total = Number(venue.totalAmount || 0)
-  settleCollectedAmount.value = total > 0 ? total : 0
-  settleRemainingAmount.value = 0
+  const total = Number(venue.actualPendingDebt ?? venue.pendingAmount ?? venue.totalAmount ?? 0)
+  settleCollectedAmount.value = ''
+  settleRemainingAmount.value = total
   settlePaymentMethod.value = 'CASH'
-  settleCashAmount.value = total > 0 ? total : ''
+  settleCashAmount.value = ''
   settleTransferAmount.value = ''
   settleNote.value = ''
   isSettleModalOpen.value = true
@@ -737,23 +750,41 @@ const openSettleModal = (venue: VenueItem) => {
 
 const handleConfirmSettle = async () => {
   if (!venueToSettle.value) return
+
+  const colAmount = numericCollectedAmount.value
+  if (!colAmount || colAmount <= 0) {
+    toast.error('Lütfen 0\'dan büyük geçerli bir tahsilat tutarı giriniz.')
+    return
+  }
+
+  if (colAmount > settleTotalDue.value + 0.001) {
+    toast.error(`Girilen tahsilat tutarı (${colAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺), mekanın kalan borcundan (${settleTotalDue.value.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺) fazla olamaz!`)
+    return
+  }
+
   settlingVenue.value = true
   try {
     let finalCash = 0
     let finalTransfer = 0
     if (settlePaymentMethod.value === 'CASH') {
-      finalCash = numericCollectedAmount.value
+      finalCash = colAmount
       finalTransfer = 0
     } else if (settlePaymentMethod.value === 'TRANSFER') {
       finalCash = 0
-      finalTransfer = numericCollectedAmount.value
+      finalTransfer = colAmount
     } else {
       finalCash = parseFloat(String(settleCashAmount.value).trim().replace(',', '.')) || 0
       finalTransfer = parseFloat(String(settleTransferAmount.value).trim().replace(',', '.')) || 0
+      const sumSplit = Number((finalCash + finalTransfer).toFixed(2))
+      if (Math.abs(sumSplit - colAmount) > 0.01) {
+        toast.error(`Nakit (${finalCash} ₺) ve Havale (${finalTransfer} ₺) toplamı, tahsil edilen tutara (${colAmount} ₺) eşit olmalıdır.`)
+        settlingVenue.value = false
+        return
+      }
     }
 
     const ok = await settleVenue(venueToSettle.value.id, {
-      collectedAmount: numericCollectedAmount.value,
+      collectedAmount: colAmount,
       remainingBalance: numericRemainingAmount.value,
       paymentMethod: settlePaymentMethod.value,
       cashAmount: finalCash,
@@ -763,6 +794,7 @@ const handleConfirmSettle = async () => {
     if (ok) {
       isSettleModalOpen.value = false
       venueToSettle.value = null
+      await fetchVenues()
     }
   } finally {
     settlingVenue.value = false
@@ -2575,7 +2607,15 @@ onMounted(() => {
             <div class="flex items-center gap-1.5">
               <button
                 type="button"
-                class="px-2.5 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 transition-colors shadow-2xs"
+                class="px-2.5 py-1 rounded-md bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 transition-colors shadow-2xs cursor-pointer"
+                title="Girilen tahsilat miktarını sıfırlar ve formu temizler"
+                @click="resetSettleForm"
+              >
+                Sıfırla (Formu Temizle)
+              </button>
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-md bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 transition-colors shadow-2xs cursor-pointer"
                 @click="setFullSettlement"
               >
                 Tamamı ({{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
@@ -2737,27 +2777,56 @@ onMounted(() => {
         </div>
 
         <!-- Dinamik Canlı Bilgilendirme Durum Kartı -->
-        <!-- Durum 1: Kalan Tutar 0 (Tam Tahsilat & Sıfırlama) -->
+        <!-- Dinamik Canlı Bilgilendirme Durum Kartı -->
+        <!-- Durum 0: Henüz Tutar Girilmedi -->
         <div
-          v-if="numericRemainingAmount === 0"
+          v-if="numericCollectedAmount === 0"
+          class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-1"
+        >
+          <div class="font-bold flex items-center gap-1.5">
+            <Info class="w-4 h-4 text-slate-500" />
+            <span>Tahsilat Bekleniyor</span>
+          </div>
+          <p class="text-[11.5px] leading-relaxed text-slate-600 dark:text-slate-400">
+            Mekandan alınan ödeme tutarını giriniz. Borcun tamamını tahsil etmek için <strong>"Tamamı"</strong> butonunu kullanabilirsiniz.
+          </p>
+        </div>
+
+        <!-- Durum 1: Fazla Tahsilat (Engellenen Durum) -->
+        <div
+          v-else-if="numericCollectedAmount > settleTotalDue"
+          class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1"
+        >
+          <div class="font-bold flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+            <XCircle class="w-4 h-4" />
+            <span>Fazla Tahsilat Girişi</span>
+          </div>
+          <p class="text-[11.5px] leading-relaxed text-rose-800 dark:text-rose-300">
+            Girilen tahsilat tutarı (<strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong>), mekanın kalan toplam borcundan (<strong>{{ settleTotalDue.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</strong>) fazladır. Lütfen borç tutarını aşmayan bir miktar giriniz.
+          </p>
+        </div>
+
+        <!-- Durum 2: Kalan Tutar 0 (Tam Tahsilat & Borç Kapatma) -->
+        <div
+          v-else-if="numericRemainingAmount === 0"
           class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1"
         >
           <div class="font-bold flex items-center gap-1.5">
             <CheckCircle2 class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Tam Tahsilat: Mekanın Hesabı Sıfırlanacaktır</span>
+            <span>Tam Tahsilat: Mekanın Borcu Kapanacaktır</span>
           </div>
           <p class="text-[11.5px] leading-relaxed text-emerald-800/90 dark:text-emerald-300/90">
             Mekandan toplam <strong>{{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong>
             <span class="font-semibold text-emerald-700 dark:text-emerald-300">
               ({{ settlePaymentMethod === 'TRANSFER' ? 'Havale/EFT ile' : settlePaymentMethod === 'SPLIT' ? `${(parseFloat(String(settleCashAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${(parseFloat(String(settleTransferAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale` : 'Nakit olarak' }})
             </span>
-            tahsil edilmiş olarak kaydedilir ve güncel hesaplanan toplam borç <strong>0,00 ₺</strong> olarak sıfırlanır. Kalan borç etiketi tamamen kalkar.
+            tahsil edilmiş olarak kaydedilir ve güncel hesaplanan kalan borç <strong>0,00 ₺</strong> olarak sıfırlanır.
           </p>
         </div>
 
-        <!-- Durum 2: Kalan Tutar > 0 (Kısmi Tahsilat ve Ana Paradan Düşme) -->
+        <!-- Durum 3: Kalan Tutar > 0 (Kısmi Tahsilat ve Ana Paradan Düşme) -->
         <div
-          v-else-if="numericRemainingAmount > 0"
+          v-else
           class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1"
         >
           <div class="font-bold flex items-center gap-1.5">
@@ -2770,20 +2839,6 @@ onMounted(() => {
               ({{ settlePaymentMethod === 'TRANSFER' ? 'Havale/EFT ile' : settlePaymentMethod === 'SPLIT' ? `${(parseFloat(String(settleCashAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Nakit + ${(parseFloat(String(settleTransferAmount)) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ Havale` : 'Nakit olarak' }})
             </span>
             ana paradan düşülür. Kalan <strong>{{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺</strong> tutar mekanın borcu olarak kalmaya devam eder.
-          </p>
-        </div>
-
-        <!-- Durum 3: Fazla Tahsilat (Gelen para borçtan fazla) -->
-        <div
-          v-else
-          class="p-3.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 space-y-1"
-        >
-          <div class="font-bold flex items-center gap-1.5">
-            <Info class="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <span>Fazla Tahsilat</span>
-          </div>
-          <p class="text-[11.5px] leading-relaxed text-sky-800/90 dark:text-sky-300/90">
-            Mekanın borcundan daha fazla ödeme alındı. Artan tutar mekanın sonraki paketleri için artı bakiye olarak devredecektir.
           </p>
         </div>
 
@@ -2802,17 +2857,24 @@ onMounted(() => {
             :variant="numericRemainingAmount > 0 ? 'primary' : 'success'"
             size="md"
             :loading="settlingVenue"
+            :disabled="settlingVenue || numericCollectedAmount <= 0 || numericCollectedAmount > settleTotalDue"
             :class="numericRemainingAmount > 0 ? '!bg-amber-600 hover:!bg-amber-700 !text-white' : ''"
             @click="handleConfirmSettle"
           >
             <template #leading>
               <Wallet class="w-4 h-4" />
             </template>
-            <span v-if="numericRemainingAmount > 0">
-              Kısmi Tahsilatı Düş (Kalan Borç: {{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
+            <span v-if="numericCollectedAmount > settleTotalDue">
+              Fazla Tahsilat Engellendi
+            </span>
+            <span v-else-if="numericCollectedAmount <= 0">
+              Tahsilat Tutarı Giriniz
+            </span>
+            <span v-else-if="numericRemainingAmount > 0">
+              Kısmi Tahsilatı Kaydet (Kalan Borç: {{ numericRemainingAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
             </span>
             <span v-else>
-              Tahsilatı Onayla ve Tutarı Sıfırla
+              Tahsilatı Kaydet ve Borcu Kapat ({{ numericCollectedAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺)
             </span>
           </BaseButton>
         </div>

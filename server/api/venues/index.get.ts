@@ -1,5 +1,7 @@
 import { prisma } from '../../utils/prisma'
 import { getCurrentCycleStart } from '../../utils/period'
+import { getAllVenuePaymentsGrouped } from '../../utils/venuePayments'
+import { toCents, fromCents } from '../../utils/venueFinance'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -58,7 +60,10 @@ export default defineEventHandler(async (event) => {
       }
     })
 
+    const paymentsByVenue = await getAllVenuePaymentsGrouped()
+
     const formattedVenues = venues.map(v => {
+      const venuePayments = paymentsByVenue.get(v.id) || []
       let filteredPackageCount = 0
       let filteredIndoorPackageCount = 0
       let filteredOutdoorPackageCount = 0
@@ -274,11 +279,28 @@ export default defineEventHandler(async (event) => {
       const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
       const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
-      // Doğru Cari Hesaplama:
-      // Toplam Teslimat Tutarı eksi Bugüne Kadar Yapılan Toplam Tahsilat = Gerçek Bekleyen Borç
-      const totalCollectedAmount = Math.max(0, Number(v.totalCollectedAmount || 0))
-      const actualPendingDebt = Math.max(0, Number((allTimeTotalAmount - totalCollectedAmount).toFixed(2)))
+      // venue_payments tablosundaki ödemeleri kuruş hassasiyetinde topla
+      let totalPaymentCents = 0
+      let periodPaymentCents = 0
+
+      for (const p of venuePayments) {
+        const pCents = toCents(p.amount)
+        totalPaymentCents += pCents
+        if ((!startDateStr || p.date >= startDateStr) && (!endDateStr || p.date <= endDateStr)) {
+          periodPaymentCents += pCents
+        }
+      }
+
+      // Legacy fallback
+      const legacyCollectedCents = toCents(v.totalCollectedAmount || 0)
+      const allTimeCollectedCents = Math.max(totalPaymentCents, legacyCollectedCents)
+      const allTimeDeliveriesCents = toCents(allTimeTotalAmount)
+      const actualPendingDebt = fromCents(Math.max(0, allTimeDeliveriesCents - allTimeCollectedCents))
       const carriedBalance = actualPendingDebt
+
+      const periodDeliveriesAmount = Number(filteredTotalAmount.toFixed(2))
+      const periodCollectedAmount = fromCents(periodPaymentCents)
+      const periodRemainingAmount = fromCents(Math.max(0, toCents(filteredTotalAmount) - periodPaymentCents))
 
       let totalAmount = 0
       let totalPackageCount = 0
@@ -307,8 +329,8 @@ export default defineEventHandler(async (event) => {
         outdoorAmount = filteredOutdoorAmount
         courierAmount = filteredCourierAmount
       } else if (startDateStr || endDateStr) {
-        // Tarih aralığı (örn. Bu Hafta / Geçen Hafta): O aralıktaki gerçek teslimat tutarı
-        totalAmount = Number(filteredTotalAmount.toFixed(2))
+        // Tarih aralığı (örn. Bu Hafta / Geçen Hafta): Mekanın güncel bekleyen borcu
+        totalAmount = actualPendingDebt
         totalPackageCount = filteredPackageCount
         indoorPackageCount = filteredIndoorPackageCount
         outdoorPackageCount = filteredOutdoorPackageCount
@@ -317,7 +339,6 @@ export default defineEventHandler(async (event) => {
         courierAmount = Number(filteredCourierAmount.toFixed(2))
       } else {
         // Varsayılan: Bekleyen Tahsilat (Aktif Hesap)
-        // Mekanın kalan net borcunu gösterir. Asla teslimat cirosu ile kalan borcu toplayıp çift saymaz!
         totalAmount = actualPendingDebt
         totalPackageCount = actualPendingDebt > 0 ? (pendingPackageCount > 0 ? pendingPackageCount : allTimePackageCount) : 0
         indoorPackageCount = actualPendingDebt > 0 ? (pendingIndoorCount > 0 ? pendingIndoorCount : allTimeIndoorCount) : 0
@@ -344,9 +365,13 @@ export default defineEventHandler(async (event) => {
         lastPaymentMethod: (v as any).lastPaymentMethod || null,
         lastCashAmount: (v as any).lastCashAmount ? Number((v as any).lastCashAmount) : null,
         lastTransferAmount: (v as any).lastTransferAmount ? Number((v as any).lastTransferAmount) : null,
-        totalCollectedAmount,
+        totalCollectedAmount: fromCents(allTimeCollectedCents),
         totalCashAmount: Number((v as any).totalCashAmount || 0),
         totalTransferAmount: Number((v as any).totalTransferAmount || 0),
+        periodDeliveriesAmount,
+        periodCollectedAmount,
+        periodRemainingAmount,
+        payments: venuePayments,
         pendingPackageCount,
         pendingIndoorCount,
         pendingOutdoorCount,
