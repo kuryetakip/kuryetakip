@@ -10,13 +10,15 @@ interface Props {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
   persistent?: boolean
+  zIndex?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   isOpen: undefined,
   maxWidth: 'md',
-  persistent: false
+  persistent: false,
+  zIndex: 'z-50'
 })
 
 const isVisible = computed(() => (props.isOpen !== undefined ? props.isOpen : props.modelValue))
@@ -103,7 +105,7 @@ const maxWidthClasses = computed(() => {
     >
       <div
         v-if="isVisible"
-        class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+        :class="['fixed inset-0 overflow-y-auto bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6', props.zIndex || 'z-50']"
         @click="onBackdropClick"
       >
         <Transition

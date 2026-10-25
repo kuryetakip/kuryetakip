@@ -1813,6 +1813,7 @@ onMounted(() => {
     <!-- 2. HIZLI GÜNLÜK PAKET GİRİŞİ MODAL -->
     <BaseModal
       v-model="isQuickDeliveryOpen"
+      z-index="z-[60]"
       :title="`Paket Girişi — ${targetVenue?.name || 'Mekan'}`"
       description="Mekan için paket sayılarını girin, mekan tahsilat ücretlerini ve kurye hakediş ücretlerini ayrı ayrı belirleyin."
     >
@@ -2522,6 +2523,7 @@ onMounted(() => {
     <!-- 4. MEKAN TAHSİLAT & MANUEL SIFIRLAMA MODAL -->
     <BaseModal
       v-model="isSettleModalOpen"
+      z-index="z-[60]"
       :title="`Tahsilat Al — ${venueToSettle?.name || 'Mekan'}`"
       description="Mekandan alınan ödemeyi kaydedin. Girilen tutar ana paradan düşülür; ödemenin tamamı tahsil edildiğinde toplam tutar sıfırlanır, kısmi ödemede ise kalan borç kalmaya devam eder."
     >
