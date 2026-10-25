@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Kalan Borcu Sıfırla / Sil İşlemi
+    // 1. Kalan Borcu Sıfırla / Sil İşlemi
     if (isClearCarried) {
       const currentCarried = Number(venue.carriedBalance || 0)
       if (currentCarried <= 0) {
@@ -35,6 +35,20 @@ export default defineEventHandler(async (event) => {
           statusMessage: 'Mekanda silinebilecek aktif bir kalan borç bulunmuyor.'
         })
       }
+
+      const now = new Date()
+
+      // Açıkta kalan tüm teslimat kayıtlarını da kapat
+      await prisma.deliveryRecord.updateMany({
+        where: {
+          venueId: id,
+          isSettled: false
+        },
+        data: {
+          isSettled: true,
+          settledAt: now
+        }
+      })
 
       await prisma.venue.update({
         where: { id },
@@ -55,7 +69,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Geri alma işlemi (Undo)
+    // 2. Geri alma işlemi (Undo)
     if (isUndo) {
       if (!venue.lastSettledAt) {
         throw createError({
@@ -64,32 +78,64 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      // En son tahsilat tarihine yakın settled olan kayıtları tekrar aç (unsettled yap)
-      const lastSettledDate = new Date(venue.lastSettledAt)
-      const windowStart = new Date(lastSettledDate.getTime() - 60000) // 1 dk tolerans
-
-      const revertedRecords = await prisma.deliveryRecord.updateMany({
-        where: {
-          venueId: id,
-          isSettled: true,
-          settledAt: {
-            gte: windowStart
-          }
-        },
-        data: {
-          isSettled: false,
-          settledAt: null
-        }
-      })
-
       const lastAmount = Number(venue.lastSettledAmount || 0)
-      const newTotalCollected = Math.max(0, Number(venue.totalCollectedAmount || 0) - lastAmount)
-      const restoredCarriedBalance = Number(venue.prevCarriedBalance || 0)
+      const currentTotalCollected = Number(venue.totalCollectedAmount || 0)
+      const newTotalCollected = Math.max(0, Number((currentTotalCollected - lastAmount).toFixed(2)))
 
       const lastCash = Number((venue as any).lastCashAmount || 0)
       const lastTransfer = Number((venue as any).lastTransferAmount || 0)
-      const newTotalCash = Math.max(0, Number((venue as any).totalCashAmount || 0) - lastCash)
-      const newTotalTransfer = Math.max(0, Number((venue as any).totalTransferAmount || 0) - lastTransfer)
+      const newTotalCash = Math.max(0, Number(((venue as any).totalCashAmount || 0) - lastCash))
+      const newTotalTransfer = Math.max(0, Number(((venue as any).totalTransferAmount || 0) - lastTransfer))
+
+      // Teslimat kayıtlarını FIFO ile yeni toplam tahsilata göre tekrar ayarla
+      const allRecords = await prisma.deliveryRecord.findMany({
+        where: { venueId: id },
+        orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
+      })
+
+      let runningBudget = newTotalCollected
+      let totalDeliveriesSum = 0
+
+      for (const rec of allRecords) {
+        const amt = Number(rec.venueTotalAmount || 0) > 0
+          ? Number(rec.venueTotalAmount)
+          : Number(rec.totalAmount || 0)
+        totalDeliveriesSum += amt
+
+        if (runningBudget >= amt && amt > 0) {
+          if (!rec.isSettled) {
+            await prisma.deliveryRecord.update({
+              where: { id: rec.id },
+              data: { isSettled: true, settledAt: rec.settledAt || new Date() }
+            })
+          }
+          runningBudget -= amt
+        } else {
+          if (rec.isSettled) {
+            await prisma.deliveryRecord.update({
+              where: { id: rec.id },
+              data: { isSettled: false, settledAt: null }
+            })
+          }
+        }
+      }
+
+      const restoredCarriedBalance = Math.max(0, Number((totalDeliveriesSum - newTotalCollected).toFixed(2)))
+
+      // En son loglanan settlementPeriod kaydını sil
+      const latestPeriod = await prisma.settlementPeriod.findFirst({
+        where: {
+          type: 'VENUE',
+          note: { contains: `"venueId":"${id}"` }
+        },
+        orderBy: { closedAt: 'desc' }
+      })
+
+      if (latestPeriod) {
+        await prisma.settlementPeriod.delete({
+          where: { id: latestPeriod.id }
+        }).catch(() => {})
+      }
 
       await prisma.venue.update({
         where: { id },
@@ -109,43 +155,34 @@ export default defineEventHandler(async (event) => {
 
       return {
         success: true,
-        message: `${venue.name} için son tahsilat işlemi geri alındı. Tutar ve kayıtlar eski haline döndürüldü.`,
+        message: `${venue.name} için son tahsilat işlemi (${lastAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺) geri alındı. Kalan borç ve kayıtlar güncellendi.`,
         data: {
           venueId: id,
-          revertedCount: revertedRecords.count,
-          carriedBalance: restoredCarriedBalance
+          carriedBalance: restoredCarriedBalance,
+          totalCollectedAmount: newTotalCollected
         }
       }
     }
 
-    // Normal veya Kısmi Tahsilat ve Sıfırlama İşlemi
-    const unsettledRecords = await prisma.deliveryRecord.findMany({
-      where: {
-        venueId: id,
-        isSettled: false
-      },
-      select: {
-        id: true,
-        packageCount: true,
-        venueTotalAmount: true,
-        totalAmount: true,
-        deliveryType: true
-      }
+    // 3. Normal veya Kısmi Tahsilat İşlemi
+    const allRecords = await prisma.deliveryRecord.findMany({
+      where: { venueId: id },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }]
     })
 
+    let totalDeliveriesAmount = 0
     let totalPackages = 0
-    let deliveriesAmount = 0
     let indoorPackages = 0
     let outdoorPackages = 0
 
-    for (const rec of unsettledRecords) {
+    for (const rec of allRecords) {
       const count = rec.packageCount || 0
       const amt = Number(rec.venueTotalAmount || 0) > 0
         ? Number(rec.venueTotalAmount)
         : Number(rec.totalAmount || 0)
 
       totalPackages += count
-      deliveriesAmount += amt
+      totalDeliveriesAmount += amt
       if (rec.deliveryType === 'INDOOR') {
         indoorPackages += count
       } else {
@@ -153,24 +190,30 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const currentCarriedBalance = Number(venue.carriedBalance || 0)
-    // Mekanın toplam tahsil edilecek ana tutarı (teslimat tutarları + önceki devir)
-    const totalDue = Number((deliveriesAmount + currentCarriedBalance).toFixed(2))
+    totalDeliveriesAmount = Number(totalDeliveriesAmount.toFixed(2))
+    const currentTotalCollected = Math.max(0, Number(venue.totalCollectedAmount || 0))
 
-    // Tahsil edilen tutar ve kalan tutar hesaplaması
+    // Mekanın şu anki bekleyen net borcu
+    const currentPendingDue = Math.max(0, Number((totalDeliveriesAmount - currentTotalCollected).toFixed(2)))
+    const totalDue = currentPendingDue
+
+    // Kullanıcının ödediği tutar ve yeni kalan borç
     let collectedAmount = totalDue
     let remainingBalance = 0
 
     if (body?.collectedAmount !== undefined && body?.collectedAmount !== null && !isNaN(Number(body.collectedAmount))) {
       collectedAmount = Math.max(0, Number(body.collectedAmount))
-      remainingBalance = Number((totalDue - collectedAmount).toFixed(2))
+      remainingBalance = Math.max(0, Number((totalDue - collectedAmount).toFixed(2)))
     } else if (body?.remainingBalance !== undefined && body?.remainingBalance !== null && !isNaN(Number(body.remainingBalance))) {
       remainingBalance = Math.max(0, Number(body.remainingBalance))
-      collectedAmount = Number((totalDue - remainingBalance).toFixed(2))
+      collectedAmount = Math.max(0, Number((totalDue - remainingBalance).toFixed(2)))
     }
 
     collectedAmount = Number(collectedAmount.toFixed(2))
     remainingBalance = Number(remainingBalance.toFixed(2))
+
+    // Yeni toplam tahsilat
+    const newTotalCollected = Number((currentTotalCollected + collectedAmount).toFixed(2))
 
     // Ödeme Yöntemi Belirleme (CASH, TRANSFER, SPLIT)
     let paymentMethod: string = body?.paymentMethod || 'CASH'
@@ -198,19 +241,41 @@ export default defineEventHandler(async (event) => {
 
     const now = new Date()
 
-    if (unsettledRecords.length > 0) {
-      await prisma.deliveryRecord.updateMany({
-        where: {
-          venueId: id,
-          isSettled: false
-        },
-        data: {
-          isSettled: true,
-          settledAt: now
+    // 4. FIFO (First-In, First-Out) Teslimat Kayıtları Kapatma
+    // Toplam tahsilat tutarına göre en eski tarihten başlayarak gerçekten karşılanan teslimat kayıtları kapatılır.
+    // Karşılanmayan kayıtlar açık (isSettled: false) kalır ve dökümde "Bekliyor" görünür!
+    let runningBudget = newTotalCollected
+
+    for (const rec of allRecords) {
+      const amt = Number(rec.venueTotalAmount || 0) > 0
+        ? Number(rec.venueTotalAmount)
+        : Number(rec.totalAmount || 0)
+
+      if (runningBudget >= amt && amt > 0) {
+        if (!rec.isSettled) {
+          await prisma.deliveryRecord.update({
+            where: { id: rec.id },
+            data: {
+              isSettled: true,
+              settledAt: rec.settledAt || now
+            }
+          })
         }
-      })
+        runningBudget -= amt
+      } else {
+        if (rec.isSettled) {
+          await prisma.deliveryRecord.update({
+            where: { id: rec.id },
+            data: {
+              isSettled: false,
+              settledAt: null
+            }
+          })
+        }
+      }
     }
 
+    // 5. Mekan kaydını güncelle
     const updatedVenue = await prisma.venue.update({
       where: { id },
       data: {
@@ -220,10 +285,8 @@ export default defineEventHandler(async (event) => {
         lastCashAmount: new Prisma.Decimal(cashAmount.toFixed(2)),
         lastTransferAmount: new Prisma.Decimal(transferAmount.toFixed(2)),
         carriedBalance: new Prisma.Decimal(remainingBalance.toFixed(2)),
-        prevCarriedBalance: new Prisma.Decimal(currentCarriedBalance.toFixed(2)),
-        totalCollectedAmount: {
-          increment: new Prisma.Decimal(collectedAmount.toFixed(2))
-        },
+        prevCarriedBalance: venue.carriedBalance,
+        totalCollectedAmount: new Prisma.Decimal(newTotalCollected.toFixed(2)),
         totalCashAmount: {
           increment: new Prisma.Decimal(cashAmount.toFixed(2))
         },
@@ -233,7 +296,7 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    // Log settlement into SettlementPeriod for comprehensive collection reporting
+    // 6. SettlementPeriod log kaydı
     try {
       const shifted = new Date(now.getTime() - 3 * 3600 * 1000)
       const bDateStr = shifted.toISOString().substring(0, 10)

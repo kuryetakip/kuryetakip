@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
           }
         },
         deliveryRecords: {
-          orderBy: { date: 'desc' },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
           select: {
             id: true,
             date: true,
@@ -45,6 +45,8 @@ export default defineEventHandler(async (event) => {
             totalAmount: true,
             venueTotalAmount: true,
             courierTotalAmount: true,
+            courierPriceSnapshot: true,
+            courierId: true,
             deliveryType: true,
             venuePriceSnapshot: true,
             unitPriceSnapshot: true,
@@ -89,7 +91,12 @@ export default defineEventHandler(async (event) => {
 
       // All-time metrics
       let allTimePackageCount = 0
+      let allTimeIndoorCount = 0
+      let allTimeOutdoorCount = 0
+      let allTimeIndoorAmount = 0
+      let allTimeOutdoorAmount = 0
       let allTimeTotalAmount = 0
+      let allTimeCourierAmount = 0
 
       // Filtered daily breakdown map
       const dailyMap = new Map<string, {
@@ -151,14 +158,7 @@ export default defineEventHandler(async (event) => {
             priorUnsettledAmount += amount
             priorUnsettledCourierAmount += courierCost
           }
-        }
 
-        // All-time aggregation
-        allTimePackageCount += count
-        allTimeTotalAmount += amount
-
-        // Pending aggregation (unsettled)
-        if (!isRecSettled) {
           pendingPackageCount += count
           pendingAmount += amount
           pendingCourierAmount += courierCost
@@ -169,6 +169,18 @@ export default defineEventHandler(async (event) => {
             pendingOutdoorCount += count
             pendingOutdoorAmount += amount
           }
+        }
+
+        // All-time aggregation
+        allTimePackageCount += count
+        allTimeTotalAmount += amount
+        allTimeCourierAmount += courierCost
+        if (rec.deliveryType === 'INDOOR') {
+          allTimeIndoorCount += count
+          allTimeIndoorAmount += amount
+        } else {
+          allTimeOutdoorCount += count
+          allTimeOutdoorAmount += amount
         }
 
         // All-time daily map
@@ -262,11 +274,11 @@ export default defineEventHandler(async (event) => {
       const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
       const allDailyBreakdown = Array.from(allDailyMap.values()).sort((a, b) => b.date.localeCompare(a.date))
 
-      // Devreden ve önceki kapanmamış borçların toplamı (carriedBalance + geçmiş haftaların tahsil edilmemiş teslimat tutarları)
-      const carriedBalance = Number(v.carriedBalance || 0)
-      const uncollectedPriorBalance = Number((priorUnsettledAmount + carriedBalance).toFixed(2))
-      const pendingDeliveriesAmount = Number(pendingAmount.toFixed(2))
-      const pendingTotalWithCarried = Number((pendingDeliveriesAmount + carriedBalance).toFixed(2))
+      // Doğru Cari Hesaplama:
+      // Toplam Teslimat Tutarı eksi Bugüne Kadar Yapılan Toplam Tahsilat = Gerçek Bekleyen Borç
+      const totalCollectedAmount = Math.max(0, Number(v.totalCollectedAmount || 0))
+      const actualPendingDebt = Math.max(0, Number((allTimeTotalAmount - totalCollectedAmount).toFixed(2)))
+      const carriedBalance = actualPendingDebt
 
       let totalAmount = 0
       let totalPackageCount = 0
@@ -277,13 +289,14 @@ export default defineEventHandler(async (event) => {
       let courierAmount = 0
 
       if (scope === 'all') {
+        // Tüm Zamanlar Seçildiğinde: Genel Toplam Hacim
         totalAmount = allTimeTotalAmount
         totalPackageCount = allTimePackageCount
-        indoorPackageCount = filteredIndoorPackageCount
-        outdoorPackageCount = filteredOutdoorPackageCount
-        indoorAmount = filteredIndoorAmount
-        outdoorAmount = filteredOutdoorAmount
-        courierAmount = filteredCourierAmount
+        indoorPackageCount = allTimeIndoorCount
+        outdoorPackageCount = allTimeOutdoorCount
+        indoorAmount = allTimeIndoorAmount
+        outdoorAmount = allTimeOutdoorAmount
+        courierAmount = allTimeCourierAmount
       } else if (dateStr) {
         // Belirli tek bir gün seçildiğinde o günün değerleri
         totalAmount = filteredTotalAmount
@@ -294,7 +307,7 @@ export default defineEventHandler(async (event) => {
         outdoorAmount = filteredOutdoorAmount
         courierAmount = filteredCourierAmount
       } else if (startDateStr || endDateStr) {
-        // Haftalık veya belirli tarih aralığı filtresinde o periyottaki gerçek teslimatlar ve hakedişler gösterilir
+        // Tarih aralığı (örn. Bu Hafta / Geçen Hafta): O aralıktaki gerçek teslimat tutarı
         totalAmount = Number(filteredTotalAmount.toFixed(2))
         totalPackageCount = filteredPackageCount
         indoorPackageCount = filteredIndoorPackageCount
@@ -303,22 +316,20 @@ export default defineEventHandler(async (event) => {
         outdoorAmount = filteredOutdoorAmount
         courierAmount = Number(filteredCourierAmount.toFixed(2))
       } else {
-        // Varsayılan: Bekleyen Tahsilat (Aktif Döngü)
-        // Paketler Pazartesi 03:00'ten itibaren sıfırlanıp yeni haftaya geçer;
-        // Önceki haftadan kalan tüm borçlar doğrudan tahsil edilecek toplam tutara eklenir.
-        totalAmount = Number((currentCycleTotalAmount + uncollectedPriorBalance).toFixed(2))
-        totalPackageCount = currentCycleTotalCount
-        indoorPackageCount = currentCycleIndoorCount
-        outdoorPackageCount = currentCycleOutdoorCount
-        indoorAmount = currentCycleIndoorAmount
-        outdoorAmount = currentCycleOutdoorAmount
+        // Varsayılan: Bekleyen Tahsilat (Aktif Hesap)
+        // Mekanın kalan net borcunu gösterir. Asla teslimat cirosu ile kalan borcu toplayıp çift saymaz!
+        totalAmount = actualPendingDebt
+        totalPackageCount = actualPendingDebt > 0 ? (pendingPackageCount > 0 ? pendingPackageCount : allTimePackageCount) : 0
+        indoorPackageCount = actualPendingDebt > 0 ? (pendingIndoorCount > 0 ? pendingIndoorCount : allTimeIndoorCount) : 0
+        outdoorPackageCount = actualPendingDebt > 0 ? (pendingOutdoorCount > 0 ? pendingOutdoorCount : allTimeOutdoorCount) : 0
+        indoorAmount = actualPendingDebt > 0 ? (pendingIndoorAmount > 0 ? pendingIndoorAmount : allTimeIndoorAmount) : 0
+        outdoorAmount = actualPendingDebt > 0 ? (pendingOutdoorAmount > 0 ? pendingOutdoorAmount : allTimeOutdoorAmount) : 0
         courierAmount = Number((currentCycleCourierAmount + priorUnsettledCourierAmount).toFixed(2))
       }
 
-      // Net kâr teslimat cirosu eksi kurye hakedişidir; geçmiş devir borcu asla kâr sayılamaz
       const netProfit = (startDateStr || endDateStr)
         ? Number((filteredTotalAmount - filteredCourierAmount).toFixed(2))
-        : Number((currentCycleTotalAmount - currentCycleCourierAmount).toFixed(2))
+        : Number((allTimeTotalAmount - allTimeCourierAmount).toFixed(2))
 
       return {
         id: v.id,
@@ -333,14 +344,14 @@ export default defineEventHandler(async (event) => {
         lastPaymentMethod: (v as any).lastPaymentMethod || null,
         lastCashAmount: (v as any).lastCashAmount ? Number((v as any).lastCashAmount) : null,
         lastTransferAmount: (v as any).lastTransferAmount ? Number((v as any).lastTransferAmount) : null,
-        totalCollectedAmount: Number(v.totalCollectedAmount || 0),
+        totalCollectedAmount,
         totalCashAmount: Number((v as any).totalCashAmount || 0),
         totalTransferAmount: Number((v as any).totalTransferAmount || 0),
         pendingPackageCount,
         pendingIndoorCount,
         pendingOutdoorCount,
-        pendingAmount: pendingTotalWithCarried,
-        pendingDeliveriesAmount,
+        pendingAmount: actualPendingDebt,
+        pendingDeliveriesAmount: actualPendingDebt,
         pendingIndoorAmount: Number(pendingIndoorAmount.toFixed(2)),
         pendingOutdoorAmount: Number(pendingOutdoorAmount.toFixed(2)),
         totalPackageCount,
@@ -355,7 +366,7 @@ export default defineEventHandler(async (event) => {
         allTimeTotalAmount: Number(allTimeTotalAmount.toFixed(2)),
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
-        hasRecords: (v._count.deliveryRecords + v._count.courierVenuePrices) > 0 || carriedBalance > 0,
+        hasRecords: (v._count.deliveryRecords + v._count.courierVenuePrices) > 0 || actualPendingDebt > 0,
         recordCount: v._count.deliveryRecords,
         filteredRecordCount: totalPackageCount,
         dailyBreakdown,

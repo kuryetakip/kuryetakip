@@ -169,19 +169,21 @@ const reportSummary = computed(() => {
   }
 
   // 1. Tablodaki Güncel Verileri Baz Al (Varsayılan ve Kullanıcı İsteği)
-  if (selectedScope.value === 'current') {
-    const indoorCount = v.indoorPackageCount || 0
-    const outdoorCount = v.outdoorPackageCount || 0
-    const totalCount = v.totalPackageCount || (indoorCount + outdoorCount)
+  if (selectedScope.value === 'current' || selectedScope.value === 'pending') {
+    const indoorCount = v.indoorPackageCount || v.pendingIndoorCount || 0
+    const outdoorCount = v.outdoorPackageCount || v.pendingOutdoorCount || 0
+    const totalCount = v.totalPackageCount || v.pendingPackageCount || (indoorCount + outdoorCount)
     const indoorPrice = Number(v.indoorPrice || 0)
     const outdoorPrice = Number(v.outdoorPrice || 0)
-    const indoorAmount = v.indoorAmount !== undefined ? Number(v.indoorAmount) : (indoorCount * indoorPrice)
-    const outdoorAmount = v.outdoorAmount !== undefined ? Number(v.outdoorAmount) : (outdoorCount * outdoorPrice)
-    const deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
-    const carriedBalance = Number(v.carriedBalance || 0)
-    const totalAmount = Number((v.totalAmount !== undefined ? v.totalAmount : (deliveriesAmount + carriedBalance)).toFixed(2))
-    const settledAmount = totalAmount === 0 ? Number(v.lastSettledAmount || 0) : 0
-    const remainingAmount = totalAmount
+    const indoorAmount = v.indoorAmount !== undefined && Number(v.indoorAmount) > 0
+      ? Number(v.indoorAmount)
+      : (indoorCount * indoorPrice)
+    const outdoorAmount = v.outdoorAmount !== undefined && Number(v.outdoorAmount) > 0
+      ? Number(v.outdoorAmount)
+      : (outdoorCount * outdoorPrice)
+    const deliveriesAmount = Number((v.allTimeTotalAmount || (indoorAmount + outdoorAmount)).toFixed(2))
+    const settledAmount = Number(v.totalCollectedAmount || v.lastSettledAmount || 0)
+    const remainingAmount = Math.max(0, Number((v.pendingAmount !== undefined ? v.pendingAmount : (v.totalAmount !== undefined ? v.totalAmount : (deliveriesAmount - settledAmount))).toFixed(2)))
 
     return {
       indoorCount,
@@ -190,36 +192,8 @@ const reportSummary = computed(() => {
       indoorAmount,
       outdoorAmount,
       deliveriesAmount,
-      carriedBalance,
-      totalAmount,
-      settledAmount,
-      remainingAmount
-    }
-  }
-
-  if (selectedScope.value === 'pending') {
-    const indoorCount = v.pendingIndoorCount || v.indoorPackageCount || 0
-    const outdoorCount = v.pendingOutdoorCount || v.outdoorPackageCount || 0
-    const totalCount = v.pendingPackageCount || (indoorCount + outdoorCount)
-    const indoorPrice = Number(v.indoorPrice || 0)
-    const outdoorPrice = Number(v.outdoorPrice || 0)
-    const indoorAmount = v.pendingIndoorAmount || (indoorCount * indoorPrice)
-    const outdoorAmount = v.pendingOutdoorAmount || (outdoorCount * outdoorPrice)
-    const deliveriesAmount = Number((indoorAmount + outdoorAmount).toFixed(2))
-    const carriedBalance = Number(v.carriedBalance || 0)
-    const totalAmount = Number((v.totalAmount || v.pendingAmount || (deliveriesAmount + carriedBalance)).toFixed(2))
-    const settledAmount = totalAmount === 0 ? Number(v.lastSettledAmount || 0) : 0
-    const remainingAmount = totalAmount
-
-    return {
-      indoorCount,
-      outdoorCount,
-      totalCount,
-      indoorAmount,
-      outdoorAmount,
-      deliveriesAmount,
-      carriedBalance,
-      totalAmount,
+      carriedBalance: 0,
+      totalAmount: deliveriesAmount,
       settledAmount,
       remainingAmount
     }
