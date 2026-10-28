@@ -281,13 +281,25 @@ export default defineEventHandler(async (event) => {
 
       // venue_payments tablosundaki ödemeleri kuruş hassasiyetinde topla
       let totalPaymentCents = 0
+      let totalCashCents = 0
+      let totalTransferCents = 0
       let periodPaymentCents = 0
+      let periodCashCents = 0
+      let periodTransferCents = 0
 
       for (const p of venuePayments) {
         const pCents = toCents(p.amount)
+        const cashCents = toCents(p.cashAmount || 0)
+        const transferCents = toCents(p.transferAmount || 0)
+
         totalPaymentCents += pCents
+        totalCashCents += cashCents
+        totalTransferCents += transferCents
+
         if ((!startDateStr || p.date >= startDateStr) && (!endDateStr || p.date <= endDateStr)) {
           periodPaymentCents += pCents
+          periodCashCents += cashCents
+          periodTransferCents += transferCents
         }
       }
 
@@ -351,6 +363,9 @@ export default defineEventHandler(async (event) => {
         ? Number((filteredTotalAmount - filteredCourierAmount).toFixed(2))
         : Number((allTimeTotalAmount - allTimeCourierAmount).toFixed(2))
 
+      // Aktif döngüde sıfırlanmışlık kontrolü: Mekanın bekleyen borcu varsa eski haftanın sıfırlama bilgisi gösterilmez
+      const showSettledInfo = actualPendingDebt === 0 && Boolean(v.lastSettledAt)
+
       return {
         id: v.id,
         name: v.name,
@@ -359,16 +374,18 @@ export default defineEventHandler(async (event) => {
         outdoorPrice: Number(v.outdoorPrice),
         isActive: v.isActive,
         carriedBalance,
-        lastSettledAt: v.lastSettledAt ? v.lastSettledAt.toISOString() : null,
-        lastSettledAmount: v.lastSettledAmount ? Number(v.lastSettledAmount) : null,
-        lastPaymentMethod: (v as any).lastPaymentMethod || null,
-        lastCashAmount: (v as any).lastCashAmount ? Number((v as any).lastCashAmount) : null,
-        lastTransferAmount: (v as any).lastTransferAmount ? Number((v as any).lastTransferAmount) : null,
+        lastSettledAt: showSettledInfo && v.lastSettledAt ? v.lastSettledAt.toISOString() : null,
+        lastSettledAmount: showSettledInfo && v.lastSettledAmount ? Number(v.lastSettledAmount) : null,
+        lastPaymentMethod: showSettledInfo ? ((v as any).lastPaymentMethod || null) : null,
+        lastCashAmount: showSettledInfo && (v as any).lastCashAmount ? Number((v as any).lastCashAmount) : null,
+        lastTransferAmount: showSettledInfo && (v as any).lastTransferAmount ? Number((v as any).lastTransferAmount) : null,
         totalCollectedAmount: fromCents(totalPaymentCents),
-        totalCashAmount: Number((v as any).totalCashAmount || 0),
-        totalTransferAmount: Number((v as any).totalTransferAmount || 0),
+        totalCashAmount: fromCents(totalCashCents),
+        totalTransferAmount: fromCents(totalTransferCents),
         periodDeliveriesAmount,
         periodCollectedAmount,
+        periodCashAmount: fromCents(periodCashCents),
+        periodTransferAmount: fromCents(periodTransferCents),
         periodRemainingAmount,
         payments: venuePayments,
         pendingPackageCount,

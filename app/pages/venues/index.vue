@@ -1343,33 +1343,58 @@ onMounted(() => {
                     {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
 
-                  <!-- Sıfırlandı Rozeti -->
-                  <span
-                    v-if="venue.lastSettledAt && (venue.totalAmount || 0) === 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs"
+                  <!-- Sıfırlandı & Tahsilat Rozeti (Yalnızca borç kalmadığında ve hesap sıfırlandığında gösterilir) -->
+                  <div
+                    v-if="(venue.totalAmount || 0) === 0 && venue.lastSettledAt"
+                    class="flex items-center gap-1"
                   >
-                    <CheckCircle2 class="w-2.5 h-2.5 text-emerald-500" />
-                    <span>Sıfırlandı</span>
-                  </span>
+                    <span
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs"
+                    >
+                      <CheckCircle2 class="w-2.5 h-2.5 text-emerald-500" />
+                      <span>Sıfırlandı</span>
+                    </span>
 
-                  <!-- Nakit / Havale Rozetleri -->
-                  <span
-                    v-else-if="venue.lastPaymentMethod === 'CASH' && (venue.lastCashAmount || venue.lastSettledAmount || 0) > 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
-                    :title="`Son tahsilat nakit alındı: ${(venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
-                  >
-                    <Banknote class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Nakit: {{ (venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
-                  </span>
+                    <span
+                      v-if="venue.lastPaymentMethod === 'CASH' && (venue.lastCashAmount || venue.lastSettledAmount || 0) > 0"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
+                      :title="`Son tahsilat nakit alındı: ${(venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                    >
+                      <Banknote class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Nakit: {{ (venue.lastCashAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                    </span>
 
-                  <span
-                    v-else-if="venue.lastPaymentMethod === 'TRANSFER' && (venue.lastTransferAmount || venue.lastSettledAmount || 0) > 0"
-                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono text-[9px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
-                    :title="`Son tahsilat havale alındı: ${(venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
-                  >
-                    <CreditCard class="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
-                    <span>Havale: {{ (venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
-                  </span>
+                    <span
+                      v-else-if="venue.lastPaymentMethod === 'TRANSFER' && (venue.lastTransferAmount || venue.lastSettledAmount || 0) > 0"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-mono text-[9px] font-bold border border-sky-200 dark:border-sky-800/80 shadow-2xs"
+                      :title="`Son tahsilat havale alındı: ${(venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                    >
+                      <CreditCard class="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
+                      <span>Havale: {{ (venue.lastTransferAmount || venue.lastSettledAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                    </span>
+
+                    <div
+                      v-else-if="venue.lastPaymentMethod === 'SPLIT'"
+                      class="inline-flex items-center gap-1 text-[9px] font-mono font-bold"
+                    >
+                      <span
+                        v-if="(venue.lastCashAmount || 0) > 0"
+                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
+                        :title="`Nakit: ${(venue.lastCashAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                      >
+                        <Banknote class="w-2 h-2 text-emerald-600 dark:text-emerald-400" />
+                        <span>Nakit: {{ (venue.lastCashAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                      </span>
+                      <span
+                        v-if="(venue.lastTransferAmount || 0) > 0"
+                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 shadow-2xs"
+                        :title="`Havale: ${(venue.lastTransferAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺`"
+                      >
+                        <CreditCard class="w-2 h-2 text-sky-600 dark:text-sky-400" />
+                        <span>Havale: {{ (venue.lastTransferAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0 }) }} ₺</span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </td>
 

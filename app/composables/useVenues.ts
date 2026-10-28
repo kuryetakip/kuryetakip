@@ -51,6 +51,8 @@ export interface VenueItem {
   allTimeTotalAmount?: number
   periodDeliveriesAmount?: number
   periodCollectedAmount?: number
+  periodCashAmount?: number
+  periodTransferAmount?: number
   periodRemainingAmount?: number
   payments?: Array<{
     id: string
