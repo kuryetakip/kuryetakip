@@ -165,6 +165,7 @@ const savePaidAmount = async (courier: CourierItem) => {
 // Dropdown & responsive view mode state
 const activeActionDropdownId = ref<string | null>(null)
 const viewMode = ref<'table' | 'cards'>('table')
+const hasUserToggledViewMode = ref(false)
 
 const toggleActionDropdown = (id: string, e?: Event) => {
   if (e) {
@@ -907,9 +908,11 @@ const handleQuickDeliverySubmit = async () => {
 }
 
 const handleResize = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !hasUserToggledViewMode.value) {
     if (window.innerWidth < 1024 && viewMode.value !== 'cards') {
       viewMode.value = 'cards'
+    } else if (window.innerWidth >= 1024 && viewMode.value !== 'table') {
+      viewMode.value = 'table'
     }
   }
 }
@@ -1243,7 +1246,7 @@ onUnmounted(() => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
               title="Tablo Görünümü (Masaüstü için kompakt)"
-              @click="viewMode = 'table'"
+              @click="viewMode = 'table'; hasUserToggledViewMode = true"
             >
               <TableIcon class="w-3.5 h-3.5" />
               <span class="hidden sm:inline">Tablo</span>
@@ -1257,7 +1260,7 @@ onUnmounted(() => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
               title="Kart Görünümü (Mobil & Tablet uyumlu)"
-              @click="viewMode = 'cards'"
+              @click="viewMode = 'cards'; hasUserToggledViewMode = true"
             >
               <LayoutGrid class="w-3.5 h-3.5" />
               <span class="hidden sm:inline">Kartlar</span>
@@ -1310,23 +1313,23 @@ onUnmounted(() => {
                 !courier.isActive ? 'bg-slate-50/40 dark:bg-slate-900/30 opacity-75' : ''
               ]"
             >
-              <!-- 1. Kurye Bilgisi & Durum Rozeti (Avatar + İsim + Durum + Telefon & WhatsApp) -->
-              <td class="px-2.5 py-3 sm:px-3 sm:py-3 font-medium text-slate-900 dark:text-slate-100">
+              <!-- 1. Kurye Bilgisi & Durum Rozeti (Sticky Left on Horizontal Scroll) -->
+              <td class="sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50/90 dark:group-hover:bg-slate-850/90 px-3.5 py-3.5 sm:px-4 sm:py-4 font-medium text-slate-900 dark:text-slate-100 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[210px] sm:min-w-[240px]">
                 <div class="flex items-center gap-2.5">
                   <div class="relative shrink-0">
                     <div
                       :class="[
-                        'w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-2xs group-hover:scale-105 transition-all',
+                        'w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-bold text-xs shadow-2xs group-hover:scale-105 transition-all',
                         courier.isActive
                           ? 'bg-gradient-to-br from-emerald-500/15 via-slate-50 to-teal-500/10 text-emerald-600 border border-emerald-500/30 dark:from-emerald-950/60 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/5'
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
                       ]"
                     >
-                      <Bike class="w-4 h-4" />
+                      <Bike class="w-4.5 h-4.5" />
                     </div>
                     <span
                       :class="[
-                        'absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900',
+                        'absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900',
                         courier.isActive ? 'bg-emerald-500' : 'bg-slate-400'
                       ]"
                       :title="courier.isActive ? 'Aktif Kurye' : 'Pasif Kurye'"
@@ -1337,7 +1340,7 @@ onUnmounted(() => {
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
-                        class="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-xs truncate block text-left cursor-pointer"
+                        class="font-bold text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-xs sm:text-sm truncate block text-left cursor-pointer"
                         @click="openDetailModal(courier)"
                       >
                         {{ courier.name }}
@@ -1393,36 +1396,36 @@ onUnmounted(() => {
 
               <!-- 2. Paketler (İç / Dış & Toplam) -->
               <td
-                class="px-2.5 py-3 sm:px-3 sm:py-3 text-center cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-colors group/cell"
+                class="px-3 py-3.5 sm:px-4 text-center cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-colors group/cell whitespace-nowrap"
                 title="Hızlı paket girmek için tıklayın"
                 @click="openQuickDeliveryModal(courier)"
               >
                 <div class="inline-flex flex-col items-center gap-0.5">
                   <div class="flex items-center gap-1 font-mono font-bold text-xs">
                     <span
-                      class="px-1.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 transition-all shadow-2xs"
+                      class="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70 group-hover/cell:border-emerald-400 transition-all shadow-2xs"
                       :title="`Haftalık İç Mekan: ${courier.weeklyIndoorPackages || 0} Paket | Bugün: ${courier.todayIndoorPackages || 0}`"
                     >
                       {{ courier.weeklyIndoorPackages || 0 }} İç
                     </span>
                     <span class="text-slate-300 dark:text-slate-600">·</span>
                     <span
-                      class="px-1.5 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 transition-all shadow-2xs"
+                      class="px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/70 group-hover/cell:border-sky-400 transition-all shadow-2xs"
                       :title="`Haftalık Dış Mekan: ${courier.weeklyOutdoorPackages || 0} Paket | Bugün: ${courier.todayOutdoorPackages || 0}`"
                     >
                       {{ courier.weeklyOutdoorPackages || 0 }} Dış
                     </span>
                   </div>
-                  <span class="text-[9.5px] text-slate-500 dark:text-slate-400 font-mono font-medium">
+                  <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono font-medium">
                     Bugün: {{ (courier.todayIndoorPackages || 0) + (courier.todayOutdoorPackages || 0) }} Pkt
                   </span>
                 </div>
               </td>
 
               <!-- 4. Toplam Hakediş -->
-              <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-right font-mono">
+              <td class="px-3 py-3.5 sm:px-4 text-right font-mono whitespace-nowrap">
                 <div class="inline-flex flex-col items-end">
-                  <div class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  <div class="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">
                     {{ (courier.cumulativeTotalAmount ?? courier.totalEarnings ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </div>
                   <div class="flex items-center justify-end gap-1 mt-0.5 flex-wrap">
@@ -1445,26 +1448,26 @@ onUnmounted(() => {
               </td>
 
               <!-- 5. Verilen Avans (₺) -->
-              <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-center">
+              <td class="px-3 py-3.5 sm:px-4 text-center whitespace-nowrap">
                 <div class="flex flex-col items-center gap-1">
                   <!-- Visual Feedback Badge -->
                   <div
                     v-if="advanceFeedbackMap[courier.id]"
-                    class="animate-bounce inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-600 text-white shadow-xs"
+                    class="animate-bounce inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-600 text-white shadow-xs"
                   >
                     <CheckCircle2 class="w-2.5 h-2.5" />
                     <span>{{ advanceFeedbackMap[courier.id] }}</span>
                   </div>
 
                   <!-- Mevcut Toplam Verilen Avans Değeri -->
-                  <div class="font-mono text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  <div class="font-mono text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">
                     {{ (courier.paidAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </div>
 
                   <div class="inline-flex items-center gap-1">
-                    <!-- Hızlı Avans Giriş Kutusu (Fintech Dark Input) -->
-                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-950/80 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700/80 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all max-w-[100px]">
-                      <span class="text-[10px] font-semibold text-slate-400 shrink-0">₺</span>
+                    <!-- Hızlı Avans Giriş Kutusu -->
+                    <div class="inline-flex items-center bg-slate-50 dark:bg-slate-950/80 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all max-w-[110px]">
+                      <span class="text-[10px] font-bold text-slate-400 shrink-0">₺</span>
                       <input
                         :ref="(el) => setPaidInputRef(courier.id, el)"
                         :value="courierPaidInputs[courier.id] || ''"
@@ -1472,7 +1475,7 @@ onUnmounted(() => {
                         step="0.01"
                         min="0.01"
                         placeholder="Avans"
-                        class="w-12 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none ml-0.5"
+                        class="w-14 bg-transparent text-right font-mono font-bold text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none ml-0.5"
                         title="Avans girip enter'a basınız"
                         @input="onPaidAmountInput(courier.id, ($event.target as HTMLInputElement).value)"
                         @keyup.enter="savePaidAmount(courier)"
@@ -1493,7 +1496,7 @@ onUnmounted(() => {
                     <!-- Avans Geçmişi & Açıklama Ekle Butonu -->
                     <button
                       type="button"
-                      class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                      class="p-1.5 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95"
                       title="Avans Geçmişi & Açıklama Ekle"
                       @click="openAdvanceHistoryModal(courier)"
                     >
@@ -1514,15 +1517,15 @@ onUnmounted(() => {
               </td>
 
               <!-- 6. Kalan Bakiye (Dark Glow Badge) -->
-              <td class="px-2.5 py-3 sm:px-3 sm:py-3 text-right font-mono">
+              <td class="px-3 py-3.5 sm:px-4 text-right font-mono whitespace-nowrap">
                 <div v-if="getCourierRemainingBalance(courier) < 0" class="inline-flex flex-col items-end">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-extrabold text-xs border border-amber-200 dark:border-amber-800 shadow-2xs">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono font-black text-xs border border-amber-200 dark:border-amber-800 shadow-2xs">
                     {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
                 </div>
                 <!-- Pozitif / Sıfır bakiye -->
                 <div v-else class="inline-flex flex-col items-end">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-mono font-extrabold text-xs border border-emerald-200 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-mono font-black text-xs border border-emerald-200 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10">
                     {{ getCourierRemainingBalance(courier).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
                 </div>

@@ -256,6 +256,7 @@ const quickDeliveryForm = ref({
 
 // View mode switcher: Table or Cards
 const venueViewMode = ref<'table' | 'cards'>('table')
+const hasUserToggledViewMode = ref(false)
 
 // Form state
 const formData = ref<VenueFormData>({
@@ -859,10 +860,12 @@ const closeAllVenueDropdowns = () => {
 }
 
 const handleResize = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !hasUserToggledViewMode.value) {
     // Mobil veya tablet boyutunda otomatik kart görünümüne geç
     if (window.innerWidth < 1024 && venueViewMode.value !== 'cards') {
       venueViewMode.value = 'cards'
+    } else if (window.innerWidth >= 1024 && venueViewMode.value !== 'table') {
+      venueViewMode.value = 'table'
     }
   }
 }
@@ -1210,7 +1213,7 @@ onUnmounted(() => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
               title="Tablo Görünümü (Masaüstü için tam liste)"
-              @click="venueViewMode = 'table'"
+              @click="venueViewMode = 'table'; hasUserToggledViewMode = true"
             >
               <TableIcon class="w-3.5 h-3.5" />
               <span class="hidden sm:inline">Tablo</span>
@@ -1224,7 +1227,7 @@ onUnmounted(() => {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
               title="Kart Görünümü (Mobil & Tablet uyumlu)"
-              @click="venueViewMode = 'cards'"
+              @click="venueViewMode = 'cards'; hasUserToggledViewMode = true"
             >
               <LayoutGrid class="w-3.5 h-3.5" />
               <span class="hidden sm:inline">Kartlar</span>
@@ -1274,41 +1277,41 @@ onUnmounted(() => {
               v-for="venue in filteredVenues"
               :key="venue.id"
               :class="[
-                'group transition-all duration-150 border-b border-slate-100/90 dark:border-slate-800/80',
+                'group transition-colors duration-150 border-b border-slate-100 dark:border-slate-800/70',
                 venue.isActive
-                  ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                  ? 'hover:bg-emerald-500/[0.02] dark:hover:bg-emerald-500/[0.03]'
                   : 'bg-slate-50/40 dark:bg-slate-900/30 opacity-75 hover:opacity-100'
               ]"
             >
-              <!-- 1. Mekan Adı & Telefon & Durum -->
-              <td class="px-3.5 py-3 sm:px-4 sm:py-3.5 font-medium text-slate-900 dark:text-slate-100">
-                <div class="flex items-center gap-2.5 sm:gap-3">
+              <!-- 1. Mekan Adı & Telefon & Durum (Sticky Left on Horizontal Scroll) -->
+              <td class="sticky left-0 z-10 bg-white dark:bg-slate-900 group-hover:bg-slate-50/90 dark:group-hover:bg-slate-850/90 px-3.5 py-3.5 sm:px-4 sm:py-4 font-medium text-slate-900 dark:text-slate-100 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] transition-colors min-w-[210px] sm:min-w-[240px]">
+                <div class="flex items-center gap-3">
                   <div
                     :class="[
-                      'w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-200 group-hover:scale-105',
+                      'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105 shadow-2xs',
                       venue.isActive
-                        ? 'bg-gradient-to-br from-emerald-500/15 via-slate-50 to-teal-500/10 text-emerald-600 border-emerald-500/30 dark:from-emerald-950/60 dark:via-slate-850 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/5'
-                        : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-850 dark:text-slate-600 dark:border-slate-800'
+                        ? 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-teal-500/15 text-emerald-600 border-emerald-500/30 dark:from-emerald-950/60 dark:to-teal-950/40 dark:text-emerald-400 dark:border-emerald-600/40'
+                        : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
                     ]"
                   >
-                    <Store class="w-4 h-4 sm:w-5 sm:h-5 stroke-[1.8]" />
+                    <Store class="w-5 h-5 stroke-[1.8]" />
                   </div>
                   <div class="min-w-0">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      <span class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate max-w-[140px] sm:max-w-none group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      <span class="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                         {{ venue.name }}
                       </span>
                       <!-- Durum Rozeti -->
                       <span
                         v-if="!venue.isActive"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/80 shadow-2xs"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/80 shadow-2xs"
                       >
                         Pasif
                       </span>
                     </div>
 
-                    <!-- Telefon & WhatsApp Rozeti veya Ekleme -->
-                    <div class="flex items-center gap-1.5 mt-0.5 text-[11px]">
+                    <!-- Telefon & WhatsApp Rozeti -->
+                    <div class="flex items-center gap-1.5 mt-1 text-[11px]">
                       <button
                         v-if="venue.phone"
                         type="button"
@@ -1335,34 +1338,35 @@ onUnmounted(() => {
               </td>
 
               <!-- 2. İç Teslimat Fiyatı & Atılan Paket -->
-              <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                <div class="flex flex-col items-end">
-                  <span class="font-bold font-mono text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">
+              <td class="px-3 py-3.5 sm:px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-col items-end">
+                  <span class="font-bold font-mono text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs">
                     {{ venue.indoorPrice.toFixed(2) }} ₺
                   </span>
-                  <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                  <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
                     {{ venue.indoorPackageCount || 0 }} İç Pkt
                   </span>
                 </div>
               </td>
 
               <!-- 3. Dış Teslimat Fiyatı & Atılan Paket -->
-              <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                <div class="flex flex-col items-end">
-                  <span class="font-bold font-mono text-xs sm:text-sm text-sky-700 dark:text-sky-400">
+              <td class="px-3 py-3.5 sm:px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-col items-end">
+                  <span class="font-bold font-mono text-xs sm:text-sm text-sky-700 dark:text-sky-400 bg-sky-50/80 dark:bg-sky-950/50 px-2.5 py-0.5 rounded-lg border border-sky-200/60 dark:border-sky-800/60 shadow-2xs">
                     {{ venue.outdoorPrice.toFixed(2) }} ₺
                   </span>
-                  <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                  <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
                     {{ venue.outdoorPackageCount || 0 }} Dış Pkt
                   </span>
                 </div>
               </td>
 
               <!-- 4. Toplam Atılan Paket Sayısı -->
-              <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right whitespace-nowrap">
-                <div class="flex flex-col items-end">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 font-mono font-bold text-xs sm:text-sm border border-slate-200/70 dark:border-slate-700/80 shadow-2xs">
-                    {{ venue.totalPackageCount || 0 }} Pkt
+              <td class="px-3 py-3.5 sm:px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-col items-end">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-black text-xs sm:text-sm border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+                    <Package class="w-3.5 h-3.5 text-slate-400" />
+                    <span>{{ venue.totalPackageCount || 0 }} Pkt</span>
                   </span>
                   <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
                     İç: {{ venue.indoorPackageCount || 0 }} · Dış: {{ venue.outdoorPackageCount || 0 }}
@@ -1371,27 +1375,27 @@ onUnmounted(() => {
               </td>
 
               <!-- 5. Toplam Tutar / Hakediş (Fintech Dark Glow Badge) -->
-              <td class="px-2.5 py-3 sm:px-3.5 sm:py-3.5 text-right whitespace-nowrap">
-                <div class="flex flex-col items-end gap-1">
+              <td class="px-3 py-3.5 sm:px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-col items-end gap-1">
                   <!-- Tutar Kutusu -->
                   <span :class="[
-                    'inline-flex items-center px-2.5 py-1 rounded-xl font-mono font-bold text-xs sm:text-sm border transition-all duration-200',
+                    'inline-flex items-center px-3 py-1 rounded-xl font-mono font-black text-xs sm:text-sm border transition-all duration-200',
                     (venue.totalAmount || 0) > 0
-                      ? 'bg-slate-900 text-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-300 border-slate-800 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10 group-hover:scale-[1.02]'
-                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/70 shadow-2xs'
+                      ? 'bg-slate-900 text-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-300 border-slate-800 dark:border-emerald-600/40 shadow-xs shadow-emerald-500/10'
+                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/70 shadow-2xs'
                   ]">
                     {{ (venue.totalAmount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
                   </span>
 
-                  <!-- Sıfırlandı & Tahsilat Rozeti (Yalnızca borç kalmadığında ve hesap sıfırlandığında gösterilir) -->
+                  <!-- Sıfırlandı & Tahsilat Rozeti -->
                   <div
                     v-if="(venue.totalAmount || 0) === 0 && venue.lastSettledAt"
                     class="flex items-center gap-1"
                   >
                     <span
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60 shadow-2xs"
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[9.5px] font-bold border border-emerald-300 dark:border-emerald-800 shadow-2xs"
                     >
-                      <CheckCircle2 class="w-2.5 h-2.5 text-emerald-500" />
+                      <CheckCircle2 class="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Sıfırlandı</span>
                     </span>
 
