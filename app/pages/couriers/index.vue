@@ -906,9 +906,18 @@ const handleQuickDeliverySubmit = async () => {
   }
 }
 
+const handleResize = () => {
+  if (typeof window !== 'undefined') {
+    if (window.innerWidth < 1024 && viewMode.value !== 'cards') {
+      viewMode.value = 'cards'
+    }
+  }
+}
+
 onMounted(async () => {
   if (typeof window !== 'undefined') {
     window.addEventListener('click', closeAllDropdowns)
+    window.addEventListener('resize', handleResize)
     if (window.innerWidth < 1024) {
       viewMode.value = 'cards'
     }
@@ -922,6 +931,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('click', closeAllDropdowns)
+    window.removeEventListener('resize', handleResize)
   }
 })
 </script>
@@ -1159,14 +1169,14 @@ onUnmounted(() => {
       </div>
 
       <!-- Quick Date Shortcuts & View Mode Switcher -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500 dark:text-slate-400">
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Hızlı Tarih:</span>
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 lg:pb-0 -mx-1 px-1 no-scrollbar flex-nowrap shrink-0">
+          <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">Hızlı Tarih:</span>
           <!-- Bugün -->
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               filterDate === getBusinessDateStr()
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
                 : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
@@ -1179,7 +1189,7 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               filterDate === getBusinessYesterdayStr()
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
                 : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
@@ -1192,7 +1202,7 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               filterDate === getBusinessThisWeekMonday()
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
                 : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
@@ -1205,7 +1215,7 @@ onUnmounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               filterDate === getBusinessLastWeekMonday()
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40 font-bold'
                 : 'bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-transparent dark:border-slate-700/60'
@@ -1216,14 +1226,14 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div class="flex items-center gap-3">
-          <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs">
-            <Calendar class="w-3.5 h-3.5" />
-            <span>Hesaplanan: {{ filterDate }}</span>
+        <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs truncate">
+            <Calendar class="w-3.5 h-3.5 shrink-0" />
+            <span class="truncate">Hesaplanan: {{ filterDate }}</span>
           </div>
 
           <!-- View Mode Toggle -->
-          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs shrink-0">
             <button
               type="button"
               :class="[
@@ -1647,7 +1657,7 @@ onUnmounted(() => {
           </template>
 
           <template #actions>
-            <span class="sr-only">İşlemler</span>
+            İşlemler
           </template>
 
           <template #footer>

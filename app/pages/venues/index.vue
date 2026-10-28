@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import {
   Plus,
   Store,
@@ -31,7 +31,9 @@ import {
   Table as TableIcon,
   MessageSquare,
   Phone,
-  X
+  X,
+  MoreHorizontal,
+  MoreVertical
 } from 'lucide-vue-next'
 import { useVenues, getThisWeekRange, type VenueItem, type VenueFormData } from '~/composables/useVenues'
 import { useToast } from '~/composables/useToast'
@@ -841,9 +843,47 @@ const handleConfirmClearCarried = async () => {
   }
 }
 
+// Dropdown state for venues actions
+const activeVenueDropdownId = ref<string | null>(null)
+
+const toggleVenueActionDropdown = (id: string, e?: Event) => {
+  if (e) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  activeVenueDropdownId.value = activeVenueDropdownId.value === id ? null : id
+}
+
+const closeAllVenueDropdowns = () => {
+  activeVenueDropdownId.value = null
+}
+
+const handleResize = () => {
+  if (typeof window !== 'undefined') {
+    // Mobil veya tablet boyutunda otomatik kart görünümüne geç
+    if (window.innerWidth < 1024 && venueViewMode.value !== 'cards') {
+      venueViewMode.value = 'cards'
+    }
+  }
+}
+
 onMounted(() => {
-  // Varsayılan olarak bekleyen tahsilatları göster (Otomatik sıfırlama YAPMA, manuel tahsilat ile sıfırlanır)
+  // Varsayılan olarak bekleyen tahsilatları göster
   setDateQuickFilter('pending')
+  if (typeof window !== 'undefined') {
+    window.addEventListener('click', closeAllVenueDropdowns)
+    window.addEventListener('resize', handleResize)
+    if (window.innerWidth < 1024) {
+      venueViewMode.value = 'cards'
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('click', closeAllVenueDropdowns)
+    window.removeEventListener('resize', handleResize)
+  }
 })
 </script>
 
@@ -1073,9 +1113,9 @@ onMounted(() => {
       </div>
 
       <!-- Quick Date Shortcuts & Manuel Reset Indicator -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs">
-        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+        <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 lg:pb-0 -mx-1 px-1 no-scrollbar flex-nowrap shrink-0">
+          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1 shrink-0">
             <Filter class="w-3.5 h-3.5 text-slate-400" />
             <span>Dönem:</span>
           </span>
@@ -1084,7 +1124,7 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer',
+              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0',
               currentFilterMode === 'pending'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
@@ -1099,7 +1139,7 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               currentFilterMode === 'today'
                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
@@ -1113,7 +1153,7 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               currentFilterMode === 'yesterday'
                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
@@ -1127,7 +1167,7 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               currentFilterMode === 'thisWeek'
                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
@@ -1141,7 +1181,7 @@ onMounted(() => {
           <button
             type="button"
             :class="[
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0',
               currentFilterMode === 'all'
                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700/60'
@@ -1153,14 +1193,14 @@ onMounted(() => {
         </div>
 
         <!-- Aktif Dönem & Kayıt Bilgisi Rozeti + Görünüm Seçici -->
-        <div class="flex items-center gap-2">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold font-mono shadow-2xs">
-            <Calendar class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>{{ activePeriodLabel }}</span>
+        <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold font-mono shadow-2xs truncate">
+            <Calendar class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span class="truncate">{{ activePeriodLabel }}</span>
           </div>
 
           <!-- View Mode Toggle (Tablo / Kartlar) -->
-          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+          <div class="inline-flex items-center bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs shrink-0">
             <button
               type="button"
               :class="[
@@ -1169,7 +1209,7 @@ onMounted(() => {
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               ]"
-              title="Tablo Görünümü (Ekrana tam oturan görünüm)"
+              title="Tablo Görünümü (Masaüstü için tam liste)"
               @click="venueViewMode = 'table'"
             >
               <TableIcon class="w-3.5 h-3.5" />
@@ -1398,112 +1438,111 @@ onMounted(() => {
                 </div>
               </td>
 
-              <!-- 6. İşlemler (Kompakt & Ekrana Sığan Düzen) -->
+              <!-- 6. İşlemler (Kompakt, Ekran Uyumlu & Hızlı İşlemler) -->
               <td class="px-2.5 py-3 sm:px-3 sm:py-3.5 text-right whitespace-nowrap">
-                <div class="flex items-center justify-end gap-1">
+                <div class="flex items-center justify-end gap-1.5">
                   <!-- WhatsApp Rapor Butonu (Öncelikli Yeşil Buton) -->
-                  <BaseButton
-                    variant="outline"
-                    size="sm"
-                    class="!text-xs !py-1 !px-2 bg-emerald-600 hover:bg-emerald-500 text-white border-transparent font-bold shadow-xs shadow-emerald-600/30 hover:shadow-emerald-600/50 transition-all active:scale-95"
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                     :title="venue.phone ? `${venue.name} için WhatsApp (${venue.phone}) ile rapor gönder` : `${venue.name} için WhatsApp raporu gönder`"
                     @click="openVenueWhatsAppModal(venue)"
                   >
-                    <template #leading>
-                      <MessageSquare class="w-3.5 h-3.5 text-white" />
-                    </template>
-                    WhatsApp
-                  </BaseButton>
+                    <MessageSquare class="w-3.5 h-3.5 text-white" />
+                    <span class="hidden xl:inline">WhatsApp</span>
+                  </button>
 
-                  <!-- Tahsilat Al Butonu -->
-                  <BaseButton
+                  <!-- Tahsilat Al Butonu (Borç Varsa Aktif) -->
+                  <button
                     v-if="(venue.totalAmount || 0) > 0"
-                    variant="outline"
-                    size="sm"
-                    class="!text-xs !py-1 !px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/70 dark:text-indigo-300 dark:border-indigo-700/70 font-bold shadow-2xs transition-all active:scale-95"
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/70 shadow-2xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                     title="Mekandan tahsilat al ve ana paradan düş veya sıfırla"
                     @click="openSettleModal(venue)"
                   >
-                    <template #leading>
-                      <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-indigo-400" />
-                    </template>
-                    Tahsilat
-                  </BaseButton>
+                    <Wallet class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Tahsilat</span>
+                  </button>
 
                   <!-- Paket Gir Butonu -->
-                  <BaseButton
-                    variant="outline"
-                    size="sm"
-                    class="!text-xs !py-1 !px-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700/80 font-medium transition-all active:scale-95 shadow-2xs"
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition-all active:scale-95 shadow-2xs cursor-pointer"
                     title="Günlük Paket Girişi Yap"
                     @click="openQuickDelivery(venue)"
                   >
-                    <template #leading>
-                      <Plus class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    </template>
-                    + Paket
-                  </BaseButton>
+                    <Plus class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span class="hidden md:inline">Paket</span>
+                  </button>
 
-                  <!-- Günlük Döküm Butonu -->
-                  <BaseButton
-                    variant="outline"
-                    size="sm"
-                    class="!text-xs !py-1 !px-2 text-sky-700 hover:bg-sky-50 border-sky-200 dark:text-sky-300 dark:border-sky-800/60 dark:hover:bg-sky-950/60 font-medium transition-all active:scale-95 shadow-2xs"
-                    title="Günlük Paket Dökümünü ve Hesaplamalarını Gör"
-                    @click="openHistoryModal(venue)"
-                  >
-                    <template #leading>
-                      <FileText class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                    </template>
-                    Döküm
-                  </BaseButton>
-
-                  <!-- İkincil İkon Grubu -->
-                  <div class="flex items-center ml-0.5 border-l border-slate-200 dark:border-slate-750 pl-0.5 space-x-0.5">
-                    <BaseButton
-                      variant="ghost"
-                      size="sm"
-                      class="!p-1 text-slate-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors"
-                      :title="`${venue.name} için haftalık tahsilat raporunu ve ödeme geçmişini aç`"
-                      @click="openCollectionsReportModal(venue.id)"
+                  <!-- Diğer İşlemler Menüsü (Dropdown) -->
+                  <div class="relative">
+                    <button
+                      type="button"
+                      :class="[
+                        'p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer',
+                        activeVenueDropdownId === venue.id ? 'bg-slate-100 dark:bg-slate-800 ring-2 ring-emerald-500/20' : ''
+                      ]"
+                      title="Diğer İşlemler"
+                      @click="toggleVenueActionDropdown(venue.id, $event)"
                     >
-                      <Receipt class="w-3.5 h-3.5" />
-                    </BaseButton>
+                      <MoreHorizontal class="w-3.5 h-3.5" />
+                    </button>
 
-                    <BaseButton
-                      variant="ghost"
-                      size="sm"
-                      class="!p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                      title="Mekan Bilgilerini ve Telefon Numarasını Düzenle"
-                      @click="openEditModal(venue)"
+                    <!-- Dropdown Popover Menu -->
+                    <div
+                      v-if="activeVenueDropdownId === venue.id"
+                      class="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs text-slate-700 dark:text-slate-200 text-left animate-in fade-in zoom-in-95 duration-100"
+                      @click.stop
                     >
-                      <Edit2 class="w-3.5 h-3.5" />
-                    </BaseButton>
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-950/50 text-sky-700 dark:text-sky-400 font-medium transition-colors cursor-pointer"
+                        @click="closeAllVenueDropdowns(); openHistoryModal(venue)"
+                      >
+                        <FileText class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                        <span>Günlük Paket Dökümü</span>
+                      </button>
 
-                    <BaseButton
-                      variant="ghost"
-                      size="sm"
-                      class="!p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                      :title="venue.isActive ? 'Pasife Al' : 'Aktife Al'"
-                      @click="toggleVenueStatus(venue)"
-                    >
-                      <Power
-                        :class="[
-                          'w-3.5 h-3.5',
-                          venue.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-                        ]"
-                      />
-                    </BaseButton>
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors cursor-pointer"
+                        @click="closeAllVenueDropdowns(); openCollectionsReportModal(venue.id)"
+                      >
+                        <Receipt class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Tahsilat Raporu & Geçmişi</span>
+                      </button>
 
-                    <BaseButton
-                      variant="ghost"
-                      size="sm"
-                      class="!p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition-colors"
-                      title="Sil"
-                      @click="openDeleteConfirm(venue)"
-                    >
-                      <Trash2 class="w-3.5 h-3.5" />
-                    </BaseButton>
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                        @click="closeAllVenueDropdowns(); openEditModal(venue)"
+                      >
+                        <Edit2 class="w-3.5 h-3.5" />
+                        <span>Mekanı Düzenle</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors cursor-pointer"
+                        :class="venue.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'"
+                        @click="closeAllVenueDropdowns(); toggleVenueStatus(venue)"
+                      >
+                        <Power class="w-3.5 h-3.5" />
+                        <span>{{ venue.isActive ? 'Pasife Al' : 'Aktife Al' }}</span>
+                      </button>
+
+                      <div class="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
+                        @click="closeAllVenueDropdowns(); openDeleteConfirm(venue)"
+                      >
+                        <Trash2 class="w-3.5 h-3.5" />
+                        <span>Mekanı Sil</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -1601,24 +1640,65 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Menü / Düzenle / Sil İkonları -->
-              <div class="flex items-center gap-1 shrink-0">
+              <!-- Menü / Dropdown (Tüm İşlemler) -->
+              <div class="relative shrink-0">
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Düzenle"
-                  @click="openEditModal(venue)"
+                  :class="[
+                    'p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer',
+                    activeVenueDropdownId === venue.id ? 'bg-slate-100 dark:bg-slate-800 ring-2 ring-emerald-500/20' : ''
+                  ]"
+                  title="İşlemler Menüsü"
+                  @click="toggleVenueActionDropdown(venue.id, $event)"
                 >
-                  <Edit2 class="w-3.5 h-3.5" />
+                  <MoreVertical class="w-4 h-4" />
                 </button>
-                <button
-                  type="button"
-                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                  title="Sil"
-                  @click="openDeleteConfirm(venue)"
+
+                <!-- Dropdown Popover Menu -->
+                <div
+                  v-if="activeVenueDropdownId === venue.id"
+                  class="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs text-slate-700 dark:text-slate-200 text-left animate-in fade-in zoom-in-95 duration-100"
+                  @click.stop
                 >
-                  <Trash2 class="w-3.5 h-3.5" />
-                </button>
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-medium transition-colors cursor-pointer"
+                    @click="closeAllVenueDropdowns(); openCollectionsReportModal(venue.id)"
+                  >
+                    <Receipt class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Tahsilat Raporu & Geçmişi</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                    @click="closeAllVenueDropdowns(); openEditModal(venue)"
+                  >
+                    <Edit2 class="w-3.5 h-3.5" />
+                    <span>Mekanı Düzenle</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors cursor-pointer"
+                    :class="venue.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'"
+                    @click="closeAllVenueDropdowns(); toggleVenueStatus(venue)"
+                  >
+                    <Power class="w-3.5 h-3.5" />
+                    <span>{{ venue.isActive ? 'Pasife Al' : 'Aktife Al' }}</span>
+                  </button>
+
+                  <div class="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-medium transition-colors cursor-pointer"
+                    @click="closeAllVenueDropdowns(); openDeleteConfirm(venue)"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                    <span>Mekanı Sil</span>
+                  </button>
+                </div>
               </div>
             </div>
 

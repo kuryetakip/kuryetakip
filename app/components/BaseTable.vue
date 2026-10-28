@@ -25,21 +25,21 @@ withDefaults(defineProps<Props>(), {
   <div class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors duration-150">
     <div class="overflow-x-auto">
       <table class="w-full text-left border-collapse text-xs sm:text-sm">
-        <thead class="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
+        <thead class="bg-slate-50/90 dark:bg-slate-850 border-b border-slate-200/90 dark:border-slate-800">
           <tr>
             <th
               v-for="col in columns"
               :key="col.key"
               :class="[
-                'px-2.5 sm:px-3 py-3 font-semibold text-slate-700 dark:text-slate-300 select-none whitespace-nowrap text-xs',
+                'px-3 sm:px-3.5 py-3 font-bold text-slate-600 dark:text-slate-400 select-none whitespace-nowrap text-[11px] uppercase tracking-wider',
                 col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
               ]"
               :style="col.width ? { width: col.width } : {}"
             >
               {{ col.label }}
             </th>
-            <th v-if="$slots.actions" class="px-2.5 sm:px-3 py-3 font-semibold text-slate-700 dark:text-slate-300 text-right text-xs whitespace-nowrap">
-              İşlemler
+            <th v-if="$slots.actions" class="px-3 sm:px-3.5 py-3 font-bold text-slate-600 dark:text-slate-400 text-right text-[11px] uppercase tracking-wider whitespace-nowrap">
+              <slot name="actions">İşlemler</slot>
             </th>
           </tr>
         </thead>
