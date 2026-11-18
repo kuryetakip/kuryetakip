@@ -14,9 +14,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Check credentials: allow 'admin123' and 'Admin@2026!'
+    // Check credentials
     const isValidUsername = usernameOrEmail === 'admin' || usernameOrEmail === 'admin@kuryetakip.com'
-    const isValidPassword = password === 'admin123' || password === 'Admin@2026!'
+    const isValidPassword = password === 'ESİLA2018'
 
     if (!isValidUsername || !isValidPassword) {
       throw createError({
